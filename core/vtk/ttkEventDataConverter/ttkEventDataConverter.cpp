@@ -15,6 +15,8 @@
 #include <vtkUnsignedCharArray.h>
 #include <vtkStringArray.h>
 
+#include <ttkUtils.h>
+
 using namespace std;
 
 vtkStandardNewMacro(ttkEventDataConverter);
@@ -67,6 +69,7 @@ int ttkEventDataConverter::RequestData(vtkInformation *request,
   // TODO: initialize buffers
   auto points = vtkSmartPointer<vtkPoints>::New();
   points->SetNumberOfPoints(nPoints);
+  output->SetPoints(points);
 
   auto categoryIndex = vtkSmartPointer<vtkUnsignedCharArray>::New();
   categoryIndex->SetName("CategoryIndex");
@@ -82,20 +85,23 @@ int ttkEventDataConverter::RequestData(vtkInformation *request,
 
   // finalize output
   // {
-  //   // TODO: Cells
-  //   auto cells = vtkSmartPointer<vtkCellArray>::New();
-  //   auto cellIds = cells->WritePointer(nPoints, 2 * nPoints);
-  //   for(int i = 0; i < nPoints; i++) {
-  //     cellIds[2 * i] = 1;
-  //     cellIds[2 * i + 1] = i;
-  //   }
 
-  //   // for(int i = 0; i < nPoints * 2; i += 2)
-  //   //   cout << cellIds[i] << " " << cellIds[i + 1] << endl;
 
-  //   auto output = vtkUnstructuredGrid::GetData(outputVector);
-  //   output->SetPoints(points);
-  //   output->SetCells(VTK_VERTEX, cells);
+        auto cellOffsets = vtkSmartPointer<vtkIdTypeArray>::New();
+        cellOffsets->SetNumberOfTuples(nPoints+1);
+        auto cellOffsetsData = (vtkIdType*) ttkUtils::GetVoidPointer(cellOffsets);
+        for(int i=0; i<nPoints+1; i++)
+            cellOffsetsData[i] = i;
+
+        auto cellConnectivity = vtkSmartPointer<vtkIdTypeArray>::New();
+        cellConnectivity->SetNumberOfTuples(nPoints);
+        auto cellConnectivityData = (vtkIdType*) ttkUtils::GetVoidPointer(cellConnectivity);
+        for(int i=0; i<nPoints; i++)
+            cellConnectivityData[i] = i;
+
+        auto cellArray = vtkSmartPointer<vtkCellArray>::New();
+        cellArray->SetData(cellOffsets,cellConnectivity);
+        output->SetCells(VTK_VERTEX, cellArray);
 
   //   auto categoryDictionaryArray = vtkSmartPointer<vtkStringArray>::New();
   //   categoryDictionaryArray->SetName("CategoryDictionary");
