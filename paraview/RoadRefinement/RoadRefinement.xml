@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServerManagerConfiguration>
+    <ProxyGroup name="filters">
+        <SourceProxy name="RoadRefinement" class="ttkRoadRefinement" label="TTK RoadRefinement">
+            <Documentation long_help="TODO" short_help="TODO">
+                TODO
+            </Documentation>
+
+            <InputProperty name="Object" port_index="0" command="SetInputConnection">
+                <ProxyGroupDomain name="groups">
+                    <Group name="sources" />
+                    <Group name="filters" />
+                </ProxyGroupDomain>
+                <DataTypeDomain name="input_type">
+                    <DataType value="vtkUnstructuredGrid" />
+                </DataTypeDomain>
+                <Documentation>Road network that will be refined.</Documentation>
+            </InputProperty>
+
+            <DoubleVectorProperty name="RoadSegmentUnit" label="RoadSegmentUnit(m)" command="SetRoadSegmentUnit" number_of_elements="1" default_values="10">
+                <Documentation>This parameter controls the maximum unit of the road for segmentation.</Documentation>
+            </DoubleVectorProperty>
+
+            <PropertyGroup panel_widget="Line" label="Input Parameters">
+                <Property name="RoadSegmentUnit" />
+            </PropertyGroup>
+
+            ${DEBUG_WIDGETS}
+
+            <Hints>
+                <ShowInMenu category="TTK" />
+            </Hints>
+        </SourceProxy>
+    </ProxyGroup>
+</ServerManagerConfiguration>

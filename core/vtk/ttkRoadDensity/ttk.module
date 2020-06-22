@@ -1,0 +1,9 @@
+NAME
+  ttkRoadDensity
+SOURCES
+  ttkRoadDensity.cpp
+HEADERS
+  ttkRoadDensity.h
+DEPENDS
+  roadDensity
+  ttkAlgorithm

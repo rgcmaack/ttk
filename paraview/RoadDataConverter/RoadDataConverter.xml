@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServerManagerConfiguration>
+    <ProxyGroup name="sources">
+        <SourceProxy name="RoadDataConverter" class="ttkRoadDataConverter" label="TTK RoadDataConverter">
+           <Documentation long_help="TODO" short_help="TODO">
+               TODO
+           </Documentation>
+
+            <StringVectorProperty name="Filepath" label="Filepath" command="SetFilepath" number_of_elements="1" default_values="">
+                <Documentation>TODO</Documentation>
+                <FileListDomain name="files" />
+            </StringVectorProperty>
+
+            <PropertyGroup panel_widget="Line" label="Input Parameters">
+                <Property name="Filepath" />
+            </PropertyGroup>
+
+            ${DEBUG_WIDGETS}
+
+            <Hints>
+                <ShowInMenu category="TTK" />
+            </Hints>
+        </SourceProxy>
+    </ProxyGroup>
+</ServerManagerConfiguration>

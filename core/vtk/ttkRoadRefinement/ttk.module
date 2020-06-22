@@ -1,0 +1,9 @@
+NAME
+  ttkRoadRefinement
+SOURCES
+  ttkRoadRefinement.cpp
+HEADERS
+  ttkRoadRefinement.h
+DEPENDS
+  roadRefinement
+  ttkAlgorithm

@@ -1,0 +1,9 @@
+NAME
+  ttkRoadDataConverter
+SOURCES
+  ttkRoadDataConverter.cpp
+HEADERS
+  ttkRoadDataConverter.h
+DEPENDS
+  roadDataConverter
+  ttkAlgorithm

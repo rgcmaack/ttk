@@ -1,0 +1,9 @@
+NAME
+  ttkEventDataConverter
+SOURCES
+  ttkEventDataConverter.cpp
+HEADERS
+  ttkEventDataConverter.h
+DEPENDS
+  eventDataConverter
+  ttkAlgorithm

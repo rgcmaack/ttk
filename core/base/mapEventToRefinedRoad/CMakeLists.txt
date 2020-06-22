@@ -1,0 +1,9 @@
+ttk_add_base_library(mapEventToRefinedRoad
+  SOURCES
+    MapEventToRefinedRoad.cpp
+  HEADERS
+    MapEventToRefinedRoad.h
+  DEPENDS
+    triangulation
+    roadRefinement
+    )

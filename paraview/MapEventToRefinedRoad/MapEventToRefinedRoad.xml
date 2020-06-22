@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServerManagerConfiguration>
+    <ProxyGroup name="filters">
+        <SourceProxy name="MapEventToRefinedRoad" class="ttkMapEventToRefinedRoad" label="TTK MapEventToRefinedRoad">
+            <Documentation long_help="TODO" short_help="TODO">
+                TODO
+            </Documentation>
+
+             <InputProperty name="RefindedRoad" port_index="0" command="SetInputConnection">
+                <ProxyGroupDomain name="groups">
+                    <Group name="sources" />
+                    <Group name="filters" />
+                </ProxyGroupDomain>
+                <DataTypeDomain name="input_type">
+                    <DataType value="vtkUnstructuredGrid" />
+                </DataTypeDomain>
+                <Documentation>Refined road data to be maped.</Documentation>
+            </InputProperty>
+            <InputProperty name="EventData" port_index="1" command="SetInputConnection">
+                <ProxyGroupDomain name="groups">
+                    <Group name="sources" />
+                    <Group name="filters" />
+                </ProxyGroupDomain>
+                <DataTypeDomain name="input_type">
+                    <DataType value="vtkUnstructuredGrid" />
+                </DataTypeDomain>
+                <Documentation>Event data to map.</Documentation>
+            </InputProperty>
+
+            <DoubleVectorProperty name="ThresholdtoDefineCloseness" label="ThresholdtoDefineCloseness(m)" command="SetThresholdtoDefineCloseness" number_of_elements="1" default_values="1000">
+                <Documentation>This parameter controls the maximum unit of the road for segmentation.</Documentation>
+            </DoubleVectorProperty>
+
+            <PropertyGroup panel_widget="Line" label="Input Parameters">
+                <Property name="ThresholdtoDefineCloseness" />
+            </PropertyGroup>
+
+            ${DEBUG_WIDGETS}
+
+            <Hints>
+                <ShowInMenu category="TTK" />
+            </Hints>
+        </SourceProxy>
+    </ProxyGroup>
+</ServerManagerConfiguration>

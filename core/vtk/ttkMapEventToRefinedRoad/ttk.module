@@ -1,0 +1,9 @@
+NAME
+  ttkMapEventToRefinedRoad
+SOURCES
+  ttkMapEventToRefinedRoad.cpp
+HEADERS
+  ttkMapEventToRefinedRoad.h
+DEPENDS
+  mapEventToRefinedRoad
+  ttkAlgorithm

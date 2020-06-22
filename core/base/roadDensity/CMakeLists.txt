@@ -1,0 +1,9 @@
+ttk_add_base_library(roadDensity
+  SOURCES
+    RoadDensity.cpp
+  HEADERS
+    RoadDensity.h
+  DEPENDS
+    triangulation
+    roadRefinement
+    )
