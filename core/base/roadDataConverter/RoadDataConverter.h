@@ -12,15 +12,22 @@
 
 namespace ttk {
 
-    class RoadDataConverter : virtual public Debug {
+  class RoadDataConverter : virtual public Debug {
 
-        public:
-            RoadDataConverter(){
-                this->setDebugMsgPrefix("RoadDataConverter"); // inherited from Debug: prefix will be printed at the beginning of every msg
-            };
-            ~RoadDataConverter(){};
-
-            int* getNumberOfPointsandEdges(const std::string &path);
-            int parsePointCoords(const std::string &path, float *pointCoords, long long int* cellIds);
+  public:
+    RoadDataConverter() {
+      this->setDebugMsgPrefix(
+        "RoadDataConverter"); // inherited from Debug: prefix will be printed at
+                              // the beginning of every msg
     };
-}
+    ~RoadDataConverter(){};
+
+    int getNumberOfPointsandEdges(const std::string &path,
+                                  int &npoints,
+                                  int &nedges);
+    int parsePointCoords(const std::string &path,
+                         float *pointCoords,
+                         long long int *cellConnectivityData,
+                         std::string *category4edgeArr);
+  };
+} // namespace ttk

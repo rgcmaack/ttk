@@ -56,47 +56,53 @@ int ttkRoadDataConverter::RequestData(vtkInformation *request,
 
   std::string path = this->GetFilepath();
   this->printMsg("path: " + path);
+  if(path.empty()) {
+    return 0;
+  }
 
-  // Get the output
-  auto output = vtkUnstructuredGrid::GetData(outputVector);
+  int npoints = 0, nedges = 0;
 
   // TODO: compute buffer sizes
-  int *pointsandnedges = this->getNumberOfPointsandEdges(path);
-
-  // this->printMsg("pointandedges " + *pointsandnedges);
-
-  int npoints = pointsandnedges[0];
-  int nedges = pointsandnedges[1];
-
+  int getBuffer = this->getNumberOfPointsandEdges(path, npoints, nedges);
 
   // TODO: initialize buffers
   auto points = vtkSmartPointer<vtkPoints>::New();
   points->SetNumberOfPoints(npoints);
 
-  auto cells = vtkSmartPointer<vtkCellArray>::New();
-//   auto cellIds = (long long int*) cells->WritePointer(nedges, 3 * nedges);
+  auto cellOffsets = vtkSmartPointer<vtkIdTypeArray>::New();
+  cellOffsets->SetNumberOfTuples(nedges + 1);
+  auto cellOffsetsData = (vtkIdType *)ttkUtils::GetVoidPointer(cellOffsets);
+  for(int i = 0; i < nedges + 1; i++)
+    cellOffsetsData[i] = i * 2;
 
-  std::cout << "npoints buffer size:" << npoints << std::endl;
-  std::cout << "nedges buffer size:" << 3 * nedges << std::endl;
+  auto cellConnectivity = vtkSmartPointer<vtkIdTypeArray>::New();
+  cellConnectivity->SetNumberOfTuples(nedges * 2);
+  auto cellConnectivityData
+    = (vtkIdType *)ttkUtils::GetVoidPointer(cellConnectivity);
 
-  // // TODO: fill buffers
+  auto category4edge = vtkSmartPointer<vtkStringArray>::New();
+  category4edge->SetName("Category4Edge");
+  category4edge->SetNumberOfComponents(1);
+  category4edge->SetNumberOfTuples(nedges);
+
+  // TODO: fill buffers
   // vtkIdType = int ; int32; int64
-//   int status = this->parsePointCoords(
-//     path,
-//     (float *)points->GetVoidPointer(0),
-//     cellIds
-//   );
+  int status = this->parsePointCoords(
+    path, (float *)points->GetVoidPointer(0),
+    cellConnectivityData,
+    (std::string *)category4edge->GetVoidPointer(0));
 
   // finalize output
   {
 
-    // for(int i = 0; i < nedges * 3; i += 3)
-    //   cout << cellIds[i] << " " << cellIds[i + 1] << " " << cellIds[i + 2]
-    //        << endl;
+    auto cellArray = vtkSmartPointer<vtkCellArray>::New();
+    cellArray->SetData(cellOffsets, cellConnectivity);
 
     auto output = vtkUnstructuredGrid::GetData(outputVector);
     output->SetPoints(points);
-    output->SetCells(VTK_LINE, cells);
+    output->SetCells(VTK_LINE, cellArray);
+
+    // output->GetCellData()->AddArray(category4edge);
 
     output->Print(std::cout);
   }

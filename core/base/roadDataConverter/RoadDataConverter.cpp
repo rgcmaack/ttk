@@ -12,116 +12,113 @@ std::vector<std::string> splitStr(std::string str2split, char letter4split) {
   return seglist;
 }
 
-int *ttk::RoadDataConverter::getNumberOfPointsandEdges(
-  const std::string &path) {
+int ttk::RoadDataConverter::getNumberOfPointsandEdges(const std::string &path,
+                                                      int &npoints,
+                                                      int &nedges) {
   this->printMsg("Code in base layer: getNumberOfPointsandEdges");
 
-  static int pointsandEdges[2] = {0, 0};
-
   std::ifstream infile(path);
   for(std::string line; getline(infile, line);) {
+    int curPoints = 0;
+
     std::string::iterator end_pos = std::remove(line.begin(), line.end(), ' ');
     line.erase(end_pos, line.end());
 
-    if(line[0] == '{') {
-      int lines4obj = 0;
-      int points4obj = 0;
-      std::size_t coordinatesInfor = line.find("\"coordinates\"");
-      std::string extractedCoor = line.substr(coordinatesInfor);
+    if(line.compare(0, 2, "{\"") != 0)
+      continue;
 
-      //// split for coorsArray
-      std::vector<std::string> seglist = splitStr(extractedCoor, '[');
+    // get coordinates for each line
+    std::size_t coordinatesInfor = line.find("\"coordinates\"");
+    std::string extractedCoor = line.substr(coordinatesInfor);
 
-      for(std::vector<std::string>::iterator it = seglist.begin();
-          it != seglist.end(); ++it) {
-        // this->printMsg("tokens:" + *it);
+    std::string parsed4coor;
+    std::stringstream input_stringstream(extractedCoor);
 
-        std::string segmentStr = *it;
-        // std::cout << segmentStr[0] << std::endl;
-        if(segmentStr[0] == '-') {
-          // split lat and long
-          std::vector<std::string> seglist4latlong = splitStr(segmentStr, ']');
-          // this->printMsg("latlongs: " + seglist4latlong[0]);
-          points4obj += 1;
-        }
-      }
+    while(std::getline(input_stringstream, parsed4coor, '[')) {
+      if(parsed4coor.compare(0, 1, "-") != 0)
+        continue;
 
-      lines4obj = points4obj - 1;
-      if(points4obj < 2) {
-        lines4obj = 0;
-        this->printMsg("no lines!!!!!");
-      }
-
-      pointsandEdges[0] += points4obj;
-      pointsandEdges[1] += lines4obj;
+      curPoints++;
     }
+    npoints += curPoints;
+    nedges += curPoints - 1;
   }
-
-  // std::cout << pointsandEdges << std::endl;
-  // this->printMsg("points: " + std::to_string(pointsandEdges[0]));
-  // this->printMsg("Edges: " + std::to_string(pointsandEdges[1]));
-  return pointsandEdges;
+  std::cout << "npoints in getting: " << npoints << std::endl;
+  std::cout << "nedges in getting: " << nedges << std::endl;
+  return 1;
 };
 
-int ttk::RoadDataConverter::parsePointCoords(const std::string &path,
-                                             float *pointCoords,
-                                             long long int *cellIds) {
+int ttk::RoadDataConverter::parsePointCoords(
+  const std::string &path,
+  float *pointCoords,
+  long long int *cellConnectivityData,
+  std::string *category4edgeArr) {
   this->printMsg("Code in base layer: parsePointCoords");
 
-  std::ifstream infile(path);
-  int pointNum = 0;
-  int lineNum = 0;
+  // record point index and edge index
+  int npoints = 0, nedges = 0;
 
+  std::ifstream infile(path);
   for(std::string line; getline(infile, line);) {
+    // record the num of points in each line
+    int curPoints = 0;
 
     std::string::iterator end_pos = std::remove(line.begin(), line.end(), ' ');
     line.erase(end_pos, line.end());
 
-    if(line[0] == '{') {
-      int numberOfPointsPerLine = 0;
-      int numberOfEdgesPerLine = 0;
-      std::size_t coordinatesInfor = line.find("\"coordinates\"");
-      std::string extractedCoor = line.substr(coordinatesInfor);
+    if(line.compare(0, 2, "{\"") != 0)
+      continue;
 
-      //// split for coorsArray
-      std::vector<std::string> seglist = splitStr(extractedCoor, '[');
+    // get osmId
+    std::size_t osmIdInfor = line.find("\"osm_id\":");
+    std::string extractedOsmId = line.substr(osmIdInfor);
 
-      // std::cout << " -------------- "<< std::endl;
+    std::vector<std::string> seglist4osmid = splitStr(extractedOsmId, ',');
+    std::string osmId = seglist4osmid[0];
 
-      for(std::vector<std::string>::iterator it = seglist.begin();
-          it != seglist.end(); ++it) {
-        std::string segmentStr = *it;
-        if(segmentStr[0] == '-') {
-          // split lat and long
-          std::vector<std::string> seglist4latlong = splitStr(segmentStr, ']');
+    // get coordinates
+    std::size_t coordinatesInfor = line.find("\"coordinates\"");
+    std::string extractedCoor = line.substr(coordinatesInfor);
 
-          std::string latlongstr = seglist4latlong[0];
-          std::vector<std::string> latlongPair = splitStr(latlongstr, ',');
+    std::string parsed4coor;
+    std::stringstream input_stringstream(extractedCoor);
 
-          //// insert point to pointCoords
-          pointCoords[pointNum * 3 + 3 * numberOfPointsPerLine]
-            = std::stof(latlongPair[0]);
-          pointCoords[pointNum * 3 + 3 * numberOfPointsPerLine + 1]
-            = std::stof(latlongPair[1]);
-          pointCoords[pointNum * 3 + 3 * numberOfPointsPerLine + 2] = 0;
+    while(std::getline(input_stringstream, parsed4coor, '[')) {
+      if(parsed4coor.compare(0, 1, "-") != 0)
+        continue;
 
-          numberOfPointsPerLine++;
-        }
-      }
-      numberOfEdgesPerLine = numberOfPointsPerLine - 1;
-      // //// insert cell/line to cellID
-      // std::cout << "-----------------------------" << std::endl;
-      int startIndexofpoint4cell = pointNum * 1;
-      for(int index = 0; index < numberOfEdgesPerLine; index++) {
-        cellIds[(lineNum + index) * 3] = 2;
-        cellIds[(lineNum + index) * 3 + 1] = startIndexofpoint4cell + index;
-        cellIds[(lineNum + index) * 3 + 2] = startIndexofpoint4cell + index + 1;
-      }
+      // get each point
+      std::vector<std::string> seglist4latlong = splitStr(parsed4coor, ']');
 
-      lineNum += numberOfEdgesPerLine;
-      pointNum += numberOfPointsPerLine;
+      std::string longlatstr = seglist4latlong[0];
+      std::vector<std::string> longlatPair = splitStr(longlatstr, ',');
 
-    } // end of the correct line to insert point and edge
-  } // end of the line
+      // insert point to pointCoords
+      pointCoords[3 * (npoints + curPoints)] = std::stof(longlatPair[0]);
+      pointCoords[3 * (npoints + curPoints) + 1] = std::stof(longlatPair[1]);
+      pointCoords[3 * (npoints + curPoints) + 2] = 0;
+
+      curPoints++;
+    }
+
+    // insert cell/line to cellConnectivityData and insert osmid to
+    // category4edgeArr
+    int startIndexofpoint4cell = npoints * 1;
+    for(int index = 0; index < curPoints - 1; index++) {
+      // fill category
+      category4edgeArr[nedges + index] = osmId;
+      // fill cellconnectivity
+      cellConnectivityData[(nedges + index) * 2]
+        = startIndexofpoint4cell + index;
+      cellConnectivityData[(nedges + index) * 2 + 1]
+        = startIndexofpoint4cell + index + 1;
+    }
+
+    npoints += curPoints;
+    nedges += curPoints - 1;
+  }
+  std::cout << "npoints in parseing: " << npoints << std::endl;
+  std::cout << "nedges in parseing: " << nedges << std::endl;
+
   return 1;
 };

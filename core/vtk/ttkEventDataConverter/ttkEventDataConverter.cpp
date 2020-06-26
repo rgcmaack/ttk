@@ -12,8 +12,8 @@
 
 #include <vtkIntArray.h>
 #include <vtkPointData.h>
-#include <vtkUnsignedCharArray.h>
 #include <vtkStringArray.h>
+#include <vtkUnsignedCharArray.h>
 
 #include <ttkUtils.h>
 
@@ -58,6 +58,11 @@ int ttkEventDataConverter::RequestData(vtkInformation *request,
 
   std::string path = this->GetFilepath();
   this->printMsg("path: " + path);
+  if (path.empty())
+  {
+    return 0;
+  }
+  
 
   // Get the output
   auto output = vtkUnstructuredGrid::GetData(outputVector);
@@ -79,44 +84,44 @@ int ttkEventDataConverter::RequestData(vtkInformation *request,
   std::vector<string> categoryDictionary;
 
   // TODO: fill buffers
-  // int status = this->parsePointCoords(
-  //   path, (float *)points->GetVoidPointer(0),
-  //   (unsigned char *)categoryIndex->GetVoidPointer(0), categoryDictionary);
+  int status = this->parsePointCoords(
+    path, (float *)points->GetVoidPointer(0),
+    (unsigned char *)categoryIndex->GetVoidPointer(0), categoryDictionary);
 
   // finalize output
-  // {
+  {
+    auto cellOffsets = vtkSmartPointer<vtkIdTypeArray>::New();
+    cellOffsets->SetNumberOfTuples(nPoints + 1);
+    auto cellOffsetsData = (vtkIdType *)ttkUtils::GetVoidPointer(cellOffsets);
+    for(int i = 0; i < nPoints + 1; i++)
+      cellOffsetsData[i] = i;
 
+    auto cellConnectivity = vtkSmartPointer<vtkIdTypeArray>::New();
+    cellConnectivity->SetNumberOfTuples(nPoints);
+    auto cellConnectivityData
+      = (vtkIdType *)ttkUtils::GetVoidPointer(cellConnectivity);
+    for(int i = 0; i < nPoints; i++)
+      cellConnectivityData[i] = i;
 
-        auto cellOffsets = vtkSmartPointer<vtkIdTypeArray>::New();
-        cellOffsets->SetNumberOfTuples(nPoints+1);
-        auto cellOffsetsData = (vtkIdType*) ttkUtils::GetVoidPointer(cellOffsets);
-        for(int i=0; i<nPoints+1; i++)
-            cellOffsetsData[i] = i;
+    auto cellArray = vtkSmartPointer<vtkCellArray>::New();
+    cellArray->SetData(cellOffsets, cellConnectivity);
+    output->SetCells(VTK_VERTEX, cellArray);
 
-        auto cellConnectivity = vtkSmartPointer<vtkIdTypeArray>::New();
-        cellConnectivity->SetNumberOfTuples(nPoints);
-        auto cellConnectivityData = (vtkIdType*) ttkUtils::GetVoidPointer(cellConnectivity);
-        for(int i=0; i<nPoints; i++)
-            cellConnectivityData[i] = i;
+    // add the file and property to the output
+    auto categoryDictionaryArray = vtkSmartPointer<vtkStringArray>::New();
+    categoryDictionaryArray->SetName("CategoryDictionary");
+    categoryDictionaryArray->SetNumberOfComponents(1);
+    categoryDictionaryArray->SetNumberOfTuples(categoryDictionary.size());
 
-        auto cellArray = vtkSmartPointer<vtkCellArray>::New();
-        cellArray->SetData(cellOffsets,cellConnectivity);
-        output->SetCells(VTK_VERTEX, cellArray);
+    for(int i = 0; i < categoryDictionary.size(); i++)
+      categoryDictionaryArray->SetValue(i, categoryDictionary[i]);
 
-  //   auto categoryDictionaryArray = vtkSmartPointer<vtkStringArray>::New();
-  //   categoryDictionaryArray->SetName("CategoryDictionary");
-  //   categoryDictionaryArray->SetNumberOfComponents(1);
-  //   categoryDictionaryArray->SetNumberOfTuples(categoryDictionary.size());
+    output->GetPointData()->AddArray(categoryIndex);
 
-  //   for(int i = 0; i < categoryDictionary.size(); i++)
-  //     categoryDictionaryArray->SetValue(i, categoryDictionary[i]);
+    output->GetFieldData()->AddArray(categoryDictionaryArray);
 
-  //   output->GetPointData()->AddArray(categoryIndex);
-
-  //   output->GetFieldData()->AddArray(categoryDictionaryArray);
-
-  //   // output->Print(std::cout);
-  // }
+    output->Print(std::cout);
+  }
 
   return 1;
 }
