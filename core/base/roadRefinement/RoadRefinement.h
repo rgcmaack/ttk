@@ -23,27 +23,25 @@ namespace ttk {
     };
     ~RoadRefinement(){};
 
-    static inline double DegreeToRadian(const float& angle) {
+    static inline double DegreeToRadian(const float &angle) {
       return M_PI * angle / 180.0;
     }
 
-    static inline double RadianToDegree(const float& radian) {
+    static inline double RadianToDegree(const float &radian) {
       return 180.0 * radian / M_PI;
     }
 
     // common functions for geographic calculation
     static inline float distance4TwoPoints(float latStartP,
-                                          float longStartP,
-                                          float latEndP,
-                                          float longEndP) {
+                                           float longStartP,
+                                           float latEndP,
+                                           float longEndP) {
       const static float EarthRadiusMeter = 6371e3;
       float diffLat = DegreeToRadian(latEndP - latStartP);
-      float diffLong
-        = DegreeToRadian(longEndP - longStartP);
+      float diffLong = DegreeToRadian(longEndP - longStartP);
 
       float a = sin(diffLat / 2) * sin(diffLat / 2)
-                + cos(DegreeToRadian(latStartP))
-                    * cos(DegreeToRadian(latEndP))
+                + cos(DegreeToRadian(latStartP)) * cos(DegreeToRadian(latEndP))
                     * sin(diffLong / 2) * sin(diffLong / 2);
       float computation = 2 * atan2(sqrt(a), sqrt(1 - a));
       float result = computation * EarthRadiusMeter;
@@ -53,13 +51,12 @@ namespace ttk {
 
     // the bearing should be calculated p1 -p0
     static inline float bearing4TwoPoints(float latStartP,
-                                         float longStartP,
-                                         float latEndP,
-                                         float longEndP) {
+                                          float longStartP,
+                                          float latEndP,
+                                          float longEndP) {
       auto latSPRadian = DegreeToRadian(latStartP);
       auto latEPRadian = DegreeToRadian(latEndP);
-      auto diffLong
-        = DegreeToRadian(longEndP - longStartP);
+      auto diffLong = DegreeToRadian(longEndP - longStartP);
 
       auto bearing
         = atan2(sin(diffLong) * cos(latEPRadian),
@@ -115,9 +112,6 @@ namespace ttk {
   };
 } // namespace ttk
 
-
-
-
 template <class idType>
 int ttk::RoadRefinement::getNumberOfRefinedPointsAndEdges(
   const float *originalPointCoords,
@@ -128,25 +122,26 @@ int ttk::RoadRefinement::getNumberOfRefinedPointsAndEdges(
   const float segmentUnit) const {
   // get the edge
   for(int index4edge = 0; index4edge < nOriginalCells; index4edge++) {
-    auto p1 = originalConnectivityList[index4edge * 3 + 1];
-    auto p2 = originalConnectivityList[index4edge * 3 + 2];
+    auto p1 = originalConnectivityList[index4edge * 2];
+    auto p2 = originalConnectivityList[index4edge * 2 + 1];
     float lat4p1 = originalPointCoords[p1 * 3 + 1];
     float long4p1 = originalPointCoords[p1 * 3];
     float lat4p2 = originalPointCoords[p2 * 3 + 1];
     float long4p2 = originalPointCoords[p2 * 3];
     //  std::cout << "lat4p1 " << lat4p1 << std::endl;
     //  std::cout << "long4p1 " << long4p1 << std::endl;
-    auto distance
-      = ttk::RoadRefinement::distance4TwoPoints(lat4p1, long4p1, lat4p2, long4p2);
+    auto distance = ttk::RoadRefinement::distance4TwoPoints(
+      lat4p1, long4p1, lat4p2, long4p2);
     int nSegments = ceil(distance / segmentUnit);
     if(nSegments > 0) {
       // not dirty edge
-      int nNewPoints = nSegments + 1 - 2;
+      int nNewPoints = nSegments - 1;
       int nNewEdges = nSegments - 1;
 
       nRefinedPoints += nNewPoints;
       nRefinedEdges += nNewEdges;
     } else {
+      // std::cout << "dirty edge!!!!!!!!!!!!!!!!!!!!" << std::endl;
       nRefinedEdges--;
     }
   }
@@ -170,63 +165,61 @@ int ttk::RoadRefinement::refineRoads(const float *originalPointCoords,
   }
 
   for(int cellIndex = 0; cellIndex < nOriginalCells; cellIndex++) {
-    // std::cout << "nTotalPoints in cell loop: " << nTotalPoints <<
-    // std::endl; std::cout << "nTotalEdges in cell loop: " << nTotalEdges <<
-    // std::endl;
-    int cellIndexOffset = 3 * cellIndex;
+    auto p1 = originalConnectivityList[cellIndex * 2];
+    auto p2 = originalConnectivityList[cellIndex * 2 + 1];
+    if(p1 == p2)
+      continue;
 
-    auto p1 = originalConnectivityList[cellIndexOffset + 1];
-    auto p2 = originalConnectivityList[cellIndexOffset + 2];
-    if(p1 != p2) {
-      float p1Lat = originalPointCoords[p1 * 3 + 1];
-      float p1Lon = originalPointCoords[p1 * 3];
-      float p2Lat = originalPointCoords[p2 * 3 + 1];
-      float p2Lon = originalPointCoords[p2 * 3];
+    float p1Lat = originalPointCoords[p1 * 3 + 1];
+    float p1Lon = originalPointCoords[p1 * 3];
+    float p2Lat = originalPointCoords[p2 * 3 + 1];
+    float p2Lon = originalPointCoords[p2 * 3];
 
-      auto distance
-        = ttk::RoadRefinement::distance4TwoPoints(p1Lat, p1Lon, p2Lat, p2Lon);
-      int nSegments = ceil(distance / refinementUnit);
+    auto distance
+      = ttk::RoadRefinement::distance4TwoPoints(p1Lat, p1Lon, p2Lat, p2Lon);
+    int nSegments = ceil(distance / refinementUnit);
 
-      if(nSegments > 1) {
-        // std::cout << "I need to segment! " << nSegments << std::endl;
-        float segmentDist = distance / nSegments;
-        auto bearing
-          = ttk::RoadRefinement::bearing4TwoPoints(p1Lat, p1Lon, p2Lat, p2Lon);
+    if(nSegments == 1) {
+      // std::cout << "I do not need to segment! " << std::endl;
+      // if there is not new points and edges, insert the orignal edges to
+      // the cell array
+      refinedConnectivityList[nTotalEdges * 2] = p1;
+      refinedConnectivityList[nTotalEdges * 2 + 1] = p2;
+      nTotalEdges++;
+      continue;
+    }
 
-        for(int index4seg = 0; index4seg < nSegments; index4seg++) {
+    if(nSegments > 1) {
+      // std::cout << "I need to segment! " << nSegments << std::endl;
+      float segmentDist = distance / nSegments;
+      auto bearing
+        = ttk::RoadRefinement::bearing4TwoPoints(p1Lat, p1Lon, p2Lat, p2Lon);
 
-          int c1 = index4seg == 0 ? p1 : nTotalPoints - 1;
-          int c2 = index4seg == nSegments - 1 ? p2 : nTotalPoints;
+      for(int index4seg = 0; index4seg < nSegments; index4seg++) {
 
-          refinedConnectivityList[nTotalEdges * 3] = 2;
-          refinedConnectivityList[nTotalEdges * 3 + 1] = c1;
-          refinedConnectivityList[nTotalEdges * 3 + 2] = c2;
+        int c1 = index4seg == 0 ? p1 : nTotalPoints - 1;
+        int c2 = index4seg == nSegments - 1 ? p2 : nTotalPoints;
 
-          float distance2startpoint = (index4seg + 1) * segmentDist;
-          double *newPoint = ttk::RoadRefinement::destinationPointGivenDistandBearingfromStartPoint(
-              p1Lat, p1Lon, bearing, distance2startpoint);
+        refinedConnectivityList[nTotalEdges * 2] = c1;
+        refinedConnectivityList[nTotalEdges * 2 + 1] = c2;
 
-          if(c2 != p2) {
-            refinedPointCoords[c2 * 3] = newPoint[1];
-            refinedPointCoords[c2 * 3 + 1] = newPoint[0];
-            refinedPointCoords[c2 * 3 + 2] = 0;
+        float distance2startpoint = (index4seg + 1) * segmentDist;
+        double *newPoint = ttk::RoadRefinement::
+          destinationPointGivenDistandBearingfromStartPoint(
+            p1Lat, p1Lon, bearing, distance2startpoint);
 
-            nTotalPoints += 1;
-          }
+        if(c2 != p2) {
+          refinedPointCoords[c2 * 3] = newPoint[1];
+          refinedPointCoords[c2 * 3 + 1] = newPoint[0];
+          refinedPointCoords[c2 * 3 + 2] = 0;
 
-          nTotalEdges += 1;
+          nTotalPoints += 1;
         }
-      } else if(nSegments == 1) {
-        // std::cout << "I do not need to segment! " << std::endl;
-        // if there is not new points and edges, insert the orignal edges to
-        // the cell array
-        refinedConnectivityList[nTotalEdges * 3] = 2;
-        refinedConnectivityList[nTotalEdges * 3 + 1] = p1;
-        refinedConnectivityList[nTotalEdges * 3 + 2] = p2;
-        nTotalEdges++;
+
+        nTotalEdges += 1;
       }
     }
-  }
+    }
 
   std::cout << "nTotalPoints: " << nTotalPoints << std::endl;
   std::cout << "nTotalEdges: " << nTotalEdges << std::endl;

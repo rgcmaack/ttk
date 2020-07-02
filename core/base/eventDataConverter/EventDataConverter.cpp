@@ -10,17 +10,39 @@ int ttk::EventDataConverter::getNumberOfPoints(const std::string &path) {
 
   std::ifstream infile(path);
   for(std::string line; getline(infile, line);) {
-    // this->printMsg("'" + line + "'");
     std::string::iterator end_pos = std::remove(line.begin(), line.end(), ' ');
     line.erase(end_pos, line.end());
-    // this->printMsg("after:' " + line + "'");
-    if(line.compare(0, 1, "{") == 0) {
+    if(line.compare(0, 2, "{\"") != 0)
+      continue;
+
+    // get the valid line and extact the lat and long info to remove the dirty
+    // events.
+    std::string parsed;
+    std::stringstream input_stringstream(line);
+    bool validLong = false, validLat = false;
+    while(std::getline(input_stringstream, parsed, ',')) {
+      std::string longit = "\"Longitude\":", lat = "\"Latitude\":";
+      if(parsed.compare(0, longit.length(), longit) == 0) {
+        std::string longitude = parsed.substr(longit.length());
+        if(std::stof(longitude) == 0.0)
+          continue;
+        validLong = true;
+      }
+      if(parsed.compare(0, lat.length(), lat) == 0) {
+        std::string latitude = parsed.substr(lat.length());
+        latitude.pop_back();
+        if(std::stof(latitude) == 0.0)
+          continue;
+        validLat = true;
+      }
+    }
+    if(validLat and validLong) {
       eventNum++;
     }
   }
 
   //   this->printMsg("eventNum: " + std::to_string(eventNum));
-  return eventNum - 1;
+  return eventNum;
 };
 
 int ttk::EventDataConverter::parsePointCoords(
@@ -30,31 +52,44 @@ int ttk::EventDataConverter::parsePointCoords(
   std::vector<std::string> &categoryDictionary) {
   this->printMsg("Code in base layer: parsePointCoords");
   int pointIndex = 0;
-  int validBrace = 0;
 
   std::ifstream infile(path);
   for(std::string line; getline(infile, line);) {
     std::string::iterator end_pos = std::remove(line.begin(), line.end(), ' ');
     line.erase(end_pos, line.end());
 
-    if(line.compare(0, 1, "{") != 0)
-      continue;
-
-    validBrace++;
-
-    if(validBrace == 1)
+    if(line.compare(0, 2, "{\"") != 0)
       continue;
 
     std::string parsed;
     std::stringstream input_stringstream(line);
-    std::vector<std::string> seglist;
-
+    bool validLong = false, validLat = false;
     while(std::getline(input_stringstream, parsed, ',')) {
-      // std::cout << "parsed: " << parsed << std::endl;
       std::string offense = "\"Offense\":", longit = "\"Longitude\":",
                   lat = "\"Latitude\":";
 
-      if(parsed.compare(0, offense.length(), offense) == 0) {
+      if(parsed.compare(0, longit.length(), longit) == 0) {
+        std::string longitude = parsed.substr(longit.length());
+        // std::ostringstream out;
+        // out << std::setprecision(8) << std::stof(longitude);
+        // float longitF = std::stof(out.str());
+        if(std::stof(longitude) == 0.0)
+          continue;
+        validLong = true;
+        pointCoords[3 * pointIndex] = std::stof(longitude);
+
+      } else if(parsed.compare(0, lat.length(), lat) == 0) {
+        std::string latitude = parsed.substr(lat.length());
+        latitude.pop_back();
+        // std::ostringstream out;
+        // out << std::setprecision(8) << std::stof(latitude);
+        // float latF = std::stof(out.str());
+        if(std::stof(latitude) == 0.0)
+          continue;
+        validLat = true;
+        pointCoords[3 * pointIndex + 1] = std::stof(latitude);
+        pointCoords[3 * pointIndex + 2] = 0;
+      } else if(parsed.compare(0, offense.length(), offense) == 0) {
         std::string offenseCategory = parsed.substr(offense.length());
         // TODO: Lookup
         auto target = std::find(categoryDictionary.begin(),
@@ -70,26 +105,12 @@ int ttk::EventDataConverter::parsePointCoords(
           categoryDictionary.push_back(offenseCategory);
           categoryIndex[pointIndex] = categoryDictionary.size() - 1;
         }
-
-      } else if(parsed.compare(0, longit.length(), longit) == 0) {
-        std::string longitude = parsed.substr(longit.length());
-        // std::ostringstream out;
-        // out << std::setprecision(8) << std::stof(longitude);
-        // float longitF = std::stof(out.str());
-        pointCoords[3 * pointIndex] = std::stof(longitude);
-
-      } else if(parsed.compare(0, lat.length(), lat) == 0) {
-        std::string latitude = parsed.substr(lat.length());
-        latitude.pop_back();
-        // std::ostringstream out;
-        // out << std::setprecision(8) << std::stof(latitude);
-        // float latF = std::stof(out.str());
-        pointCoords[3 * pointIndex + 1] = std::stof(latitude);
-        pointCoords[3 * pointIndex + 2] = 0;
       }
     }
 
-    pointIndex++;
+    if(validLat and validLong) {
+      pointIndex++;
+    }
   }
 
   //   pointCoords[0] = p0x;

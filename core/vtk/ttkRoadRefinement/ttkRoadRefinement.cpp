@@ -70,60 +70,57 @@ int ttkRoadRefinement::RequestData(vtkInformation *request,
 
   int nRefinedPoints = 0;
   int nRefinedEdges = 0;
-//   this->getNumberOfRefinedPointsAndEdges<vtkIdType>(
-//     (float *)ttkUtils::GetVoidPointer(input->GetPoints()),
-//     input->GetCells()->GetPointer(),
-//     input->GetNumberOfCells(),
-//     nRefinedPoints,
-//     nRefinedEdges,
-//     segmentUnit
-//   );
 
-  std::cout << "nPoints " << nRefinedPoints << std::endl;
-  std::cout << "nEdges " << nRefinedEdges << std::endl;
+  // get buffer size
+  this->getNumberOfRefinedPointsAndEdges<vtkIdType>(
+    (float *)ttkUtils::GetVoidPointer(input->GetPoints()),
+    (vtkIdType *)ttkUtils::GetVoidPointer(input->GetCells()->GetConnectivityArray()),
+    input->GetNumberOfCells(), nRefinedPoints, nRefinedEdges, segmentUnit);
+
+  std::cout << "nRefinedPoints " << nRefinedPoints << std::endl;
+  std::cout << "nRefinedEdges " << nRefinedEdges << std::endl;
 
   int nPoints = nRefinedPoints + input->GetNumberOfPoints();
   int nEdges = nRefinedEdges + input->GetNumberOfCells();
 
   std::cout << "nPoints " << nPoints << std::endl;
   std::cout << "nEdges " << nEdges << std::endl;
+
   // TODO: initialize buffers
   auto points = vtkSmartPointer<vtkPoints>::New();
   points->SetNumberOfPoints(nPoints);
 
-  auto cells = vtkSmartPointer<vtkCellArray>::New();
-//   auto cellIds
-//     = (long long int *)cells->WritePointer(nEdges, 3 * nEdges);
+  auto cellOffsets = vtkSmartPointer<vtkIdTypeArray>::New();
+  cellOffsets->SetNumberOfTuples(nEdges + 1);
+  auto cellOffsetsData = (vtkIdType *)ttkUtils::GetVoidPointer(cellOffsets);
+  for(int i = 0; i < nEdges + 1; i++)
+    cellOffsetsData[i] = i * 2;
+
+  auto cellConnectivity = vtkSmartPointer<vtkIdTypeArray>::New();
+  cellConnectivity->SetNumberOfTuples(2 * nEdges);
+  auto cellConnectivityData
+    = (vtkIdType *)ttkUtils::GetVoidPointer(cellConnectivity);
 
   // TODO: fill buffers
-  // vtkIdType = int ; int32; int64
-//   int status = this->refineRoads<vtkIdType>(
-//     (float *)  ttkUtils::GetVoidPointer(input->GetPoints()),
-//     input->GetCells()->GetPointer(), segmentUnit,
-//     (float *)ttkUtils::GetVoidPointer(points->GetVoidPointer),
-    // cellIds,
-    // input->GetNumberOfCells(),
-//     input->GetNumberOfPoints()
-// );
+  //// vtkIdType = int;int32;int64
+  int status = this->refineRoads<vtkIdType>(
+    (float *)ttkUtils::GetVoidPointer(input->GetPoints()),
+    (vtkIdType *)ttkUtils::GetVoidPointer(input->GetCells()->GetConnectivityArray()),
+    segmentUnit,
+    (float *)ttkUtils::GetVoidPointer(points), cellConnectivityData,
+    input->GetNumberOfCells(), input->GetNumberOfPoints());
 
   // finalize output
   {
-    // for(int i = 0; i < nEdges * 3; i += 3)
-    //   cout << cellIds[i] << " " << cellIds[i + 1] << " " << cellIds[i + 2]
-    //        << endl;
-
     auto output = vtkUnstructuredGrid::GetData(outputVector);
     output->SetPoints(points);
-    output->SetCells(VTK_LINE, cells);
+
+    auto cellArray = vtkSmartPointer<vtkCellArray>::New();
+    cellArray->SetData(cellOffsets, cellConnectivity);
+    output->SetCells(VTK_LINE, cellArray);
 
     // output->Print(std::cout);
   } // Get the output
-
-  // auto output = vtkUnstructuredGrid::GetData(outputVector);
-
-  // output->ShallowCopy(input);
-
-  // output->Print(cout);
 
   return 1;
 }
