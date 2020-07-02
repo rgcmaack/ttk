@@ -15,12 +15,14 @@
 #include <vtkIntArray.h>
 #include <vtkPointData.h>
 
+#include <ttkUtils.h>
+
 using namespace std;
 
 vtkStandardNewMacro(ttkMapEventToRefinedRoad);
 
 ttkMapEventToRefinedRoad::ttkMapEventToRefinedRoad() {
-  this->SetThresholdtoDefineCloseness(100);
+  this->SetThresholdtoDefineCloseness(500);
 
   this->SetNumberOfInputPorts(2);
   this->SetNumberOfOutputPorts(1);
@@ -81,17 +83,16 @@ int ttkMapEventToRefinedRoad::RequestData(vtkInformation *request,
   eventSample2rRoadPoint->SetNumberOfTuples(refinedRoadPointsNum);
 
   this->calculateClosetPointofRoadforEventData<float>(
-    (float *)(inputEvent->GetPoints()->GetVoidPointer(0)),
-    (float *)(inputRefinedRoad->GetPoints()->GetVoidPointer(0)),
-    (float *)eventSample2rRoadPoint->GetVoidPointer(0), eventPointsNum,
-    refinedRoadPointsNum, threshold4closeness);
+    (float *)ttkUtils::GetVoidPointer(inputEvent->GetPoints()),
+    (float *)ttkUtils::GetVoidPointer(inputRefinedRoad->GetPoints()),
+    (float *)ttkUtils::GetVoidPointer(eventSample2rRoadPoint),
+    // (float *)(inputEvent->GetPoints()->GetVoidPointer(0)),
+    // (float *)(inputRefinedRoad->GetPoints()->GetVoidPointer(0)),
+    // (float *)eventSample2rRoadPoint->GetVoidPointer(0),
+    eventPointsNum, refinedRoadPointsNum, threshold4closeness);
 
   // finalize output
   {
-    // for(int i = 0; i < nEdges * 3; i += 3)
-    //   cout << cellIds[i] << " " << cellIds[i + 1] << " " << cellIds[i + 2]
-    //        << endl;
-
     auto output = vtkUnstructuredGrid::GetData(outputVector);
 
     output->ShallowCopy(inputRefinedRoad);

@@ -17,11 +17,15 @@
 #include <vtkIntArray.h>
 #include <vtkPointData.h>
 
+#include <ttkUtils.h>
+
 using namespace std;
 
 vtkStandardNewMacro(ttkRoadDensity);
 
 ttkRoadDensity::ttkRoadDensity() {
+  this->SetKernelBandwidth(500);
+
   this->SetNumberOfInputPorts(1);
   this->SetNumberOfOutputPorts(1);
 }
@@ -70,18 +74,8 @@ int ttkRoadDensity::RequestData(vtkInformation *request,
 
   // Get the input
   auto inputRefinedRoad = vtkUnstructuredGrid::GetData(inputVector[0]);
-  // auto inputEventwithClosetPoint =
-  // vtkUnstructuredGrid::GetData(inputVector[1]);
 
   int refinedRoadPointsNum = inputRefinedRoad->GetNumberOfPoints();
-  // int eventPointsNum = inputEventwithClosetPoint->GetNumberOfPoints();
-
-  // std::vector<int> rRoadPointtoEventSampleDictionary(refinedRoadPointsNum);
-
-  // this->CalculateRRoadPointsEventSamples<vtkIdTypeArray>(
-  //   rRoadPointtoEventSampleDictionary, eventPointsNum,
-  //   (vtkIdTypeArray *)inputEventwithClosetPoint->GetPointData()->GetArray(
-  //     "closestPoints"));
 
   auto refinedRoadPointWeight = vtkSmartPointer<vtkFloatArray>::New();
   refinedRoadPointWeight->SetName("pointWeight");
@@ -95,42 +89,15 @@ int ttkRoadDensity::RequestData(vtkInformation *request,
     = ttkAlgorithm::GetTriangulation(inputRefinedRoad);
   triangulation->preconditionVertexNeighbors();
 
-  // auto nVertices = triangulation -> getNumberOfVertices();
-  // for(int i = 0; i < nVertices; i++) {
-  //   auto nNeighbours = triangulation->getVertexNeighborNumber(i);
-  //   // string line = "Neighbours of " + to_string(i) + ": ";
-  //   for(int j = 0; j < nNeighbours; j++) {
-  //     ttk::SimplexId neighbourId = 0;
-  //     triangulation->getVertexNeighbor(i, j, neighbourId);
-  //     line += to_string(neighbourId) + " ";
-  //   }
-  //   // this->printMsg(line);
-  //   // if(i > 10)
-  //   //   break;
-  // }
-
-  // auto testingRefinedRoads = (float *)inputRefinedRoad->GetPointData()
-  //                              ->GetArray("eventSample2rRoadPoint")
-  //                              ->GetVoidPointer(0);
-
-  // for(int i = 0; i < refinedRoadPointsNum; i++) {
-  //   std::cout << "testingRefinedRoads: " << testingRefinedRoads[i] << std::endl;
-  // }
-
   auto status_to_get_roadDensity = this->CalculateRoadWeight<float>(
-    (float *)inputRefinedRoad->GetPointData()
-      ->GetArray("eventSample2rRoadPoint")
-      ->GetVoidPointer(0),
+    (float *)ttkUtils::GetVoidPointer(
+      inputRefinedRoad->GetPointData()->GetArray("eventSample2rRoadPoint")),
     refinedRoadPointsNum, triangulation,
-    (float *)(inputRefinedRoad->GetPoints()->GetVoidPointer(0)),
-    (float *)refinedRoadPointWeight->GetVoidPointer(0), KernelBandwidth);
+    (float *)ttkUtils::GetVoidPointer(inputRefinedRoad->GetPoints()),
+    (float *)ttkUtils::GetVoidPointer(refinedRoadPointWeight), KernelBandwidth);
 
   // finalize output
   {
-    // for(int i = 0; i < nEdges * 3; i += 3)
-    //   cout << cellIds[i] << " " << cellIds[i + 1] << " " << cellIds[i + 2]
-    //        << endl;
-
     auto output = vtkUnstructuredGrid::GetData(outputVector);
 
     output->ShallowCopy(inputRefinedRoad);
@@ -142,3 +109,26 @@ int ttkRoadDensity::RequestData(vtkInformation *request,
 
   return 1;
 }
+
+// auto nVertices = triangulation -> getNumberOfVertices();
+// for(int i = 0; i < nVertices; i++) {
+//   auto nNeighbours = triangulation->getVertexNeighborNumber(i);
+//   // string line = "Neighbours of " + to_string(i) + ": ";
+//   for(int j = 0; j < nNeighbours; j++) {
+//     ttk::SimplexId neighbourId = 0;
+//     triangulation->getVertexNeighbor(i, j, neighbourId);
+//     line += to_string(neighbourId) + " ";
+//   }
+//   // this->printMsg(line);
+//   // if(i > 10)
+//   //   break;
+// }
+
+// auto testingRefinedRoads = (float *)inputRefinedRoad->GetPointData()
+//                              ->GetArray("eventSample2rRoadPoint")
+//                              ->GetVoidPointer(0);
+
+// for(int i = 0; i < refinedRoadPointsNum; i++) {
+//   std::cout << "testingRefinedRoads: " << testingRefinedRoads[i] <<
+//   std::endl;
+// }

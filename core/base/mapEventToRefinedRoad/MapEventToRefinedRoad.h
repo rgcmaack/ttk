@@ -29,24 +29,24 @@ namespace ttk {
     ~MapEventToRefinedRoad(){};
 
     template <class idType>
-    int
-      calculateClosetPointofRoadforEventData(idType *originalEventPoints,
-                                             const idType *refinedRoadPoints,
-                                             idType *eventSample2rRoadPoint,
-                                             int &nEventPoints,
-                                             int &nRroadPoints,
-                                             idType &threshold4closeness) const;
+    int calculateClosetPointofRoadforEventData(
+      const idType *originalEventPoints,
+      const idType *refinedRoadPoints,
+      idType *eventSample2rRoadPoint,
+      int &nEventPoints,
+      int &nRroadPoints,
+      const idType &threshold4closeness) const;
   };
 } // namespace ttk
 
 template <class idType>
 int ttk::MapEventToRefinedRoad::calculateClosetPointofRoadforEventData(
-  idType *originalEventPoints,
+  const idType *originalEventPoints,
   const idType *refinedRoadPoints,
   idType *eventSample2rRoadPoint,
   int &nEventPoints,
   int &nRroadPoints,
-  idType &threshold4closeness) const {
+  const idType &threshold4closeness) const {
   // initialize the eventSample property for the rRoadpoints
   for(int i = 0; i < nRroadPoints; i++) {
     eventSample2rRoadPoint[i] = 0.0;
@@ -58,16 +58,13 @@ int ttk::MapEventToRefinedRoad::calculateClosetPointofRoadforEventData(
 
   for(int eventPointIndex = 0; eventPointIndex < nEventPoints;
       eventPointIndex++) {
-    std::vector<int> closetPoints;
-    std::vector<float> distances4Points;
-    float sumDistances = 0.0;
+    int closetPoint = -1;
+    int closetDist = std::numeric_limits<int>::max();
 
     auto eventLon = originalEventPoints[eventPointIndex * 3];
     auto eventLat = originalEventPoints[eventPointIndex * 3 + 1];
-    // if(eventPointIndex % 100 == 0) {
-    //   std::cout << "eventPointIndex " << eventPointIndex << std::endl;
-    // }
-    // find out all the closet rRoadPoints within threashould
+
+    // find out the closet rRoadPoints within threashould
     for(int rRoadPointInex = 0; rRoadPointInex < nRroadPoints;
         rRoadPointInex++) {
       auto rRoadPLon = refinedRoadPoints[rRoadPointInex * 3];
@@ -75,29 +72,20 @@ int ttk::MapEventToRefinedRoad::calculateClosetPointofRoadforEventData(
       auto distance = ttk::RoadRefinement::distance4TwoPoints(
         eventLat, eventLon, rRoadPLat, rRoadPLon);
 
-      if(distance <= threshold4closeness) {
-        closetPoints.push_back(rRoadPointInex);
-        distances4Points.push_back(distance);
-        sumDistances += distance;
+      if(distance <= threshold4closeness and distance < closetDist) {
+        closetPoint = rRoadPointInex;
+        closetDist = distance;
       }
     }
     // calculate the event influence to each closet point and assign the value
     // to the eventSample property of each point.
-    auto closetPoints_nums = closetPoints.size();
-    if(closetPoints_nums == 0) {
+
+    if(closetPoint == -1) {
       continue;
-    } else if(closetPoints_nums == 1) {
-      mtx.lock();
-      eventSample2rRoadPoint[closetPoints[0]] += 1;
-      mtx.unlock();
     } else {
-      for(int i = 0; i < closetPoints_nums; i++) {
-        mtx.lock();
-        eventSample2rRoadPoint[closetPoints[i]]
-          += (sumDistances - distances4Points[i])
-             / ((closetPoints_nums - 1) * sumDistances);
-        mtx.unlock();
-      }
+      mtx.lock();
+      eventSample2rRoadPoint[closetPoint] += 1;
+      mtx.unlock();
     }
   }
 
