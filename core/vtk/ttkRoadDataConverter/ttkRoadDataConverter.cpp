@@ -12,6 +12,7 @@
 
 #include <vtkIntArray.h>
 #include <vtkPointData.h>
+#include <vtkUnsignedCharArray.h>
 
 #include <ttkUtils.h>
 
@@ -80,20 +81,30 @@ int ttkRoadDataConverter::RequestData(vtkInformation *request,
   auto cellConnectivityData
     = (vtkIdType *)ttkUtils::GetVoidPointer(cellConnectivity);
 
-  auto category4edge = vtkSmartPointer<vtkStringArray>::New();
+  auto category4edge = vtkSmartPointer<vtkUnsignedCharArray>::New();
   category4edge->SetName("Category4Edge");
   category4edge->SetNumberOfComponents(1);
   category4edge->SetNumberOfTuples(nedges);
 
+  std::vector<std::string> categoryDictionary;
+
   // TODO: fill buffers
   // vtkIdType = int ; int32; int64
   int status = this->parsePointCoords(
-    path, (float *)points->GetVoidPointer(0),
-    cellConnectivityData,
-    (std::string *)category4edge->GetVoidPointer(0));
+    path, (float *)ttkUtils::GetVoidPointer(points), cellConnectivityData,
+    (unsigned char *)ttkUtils::GetVoidPointer(category4edge),
+    categoryDictionary);
 
   // finalize output
   {
+    // add the file and property to the output
+    auto categoryDictionaryArray = vtkSmartPointer<vtkStringArray>::New();
+    categoryDictionaryArray->SetName("CategoryDictionary");
+    categoryDictionaryArray->SetNumberOfComponents(1);
+    categoryDictionaryArray->SetNumberOfTuples(categoryDictionary.size());
+
+    for(int i = 0; i < categoryDictionary.size(); i++)
+      categoryDictionaryArray->SetValue(i, categoryDictionary[i]);
 
     auto cellArray = vtkSmartPointer<vtkCellArray>::New();
     cellArray->SetData(cellOffsets, cellConnectivity);
@@ -103,6 +114,7 @@ int ttkRoadDataConverter::RequestData(vtkInformation *request,
     output->SetCells(VTK_LINE, cellArray);
 
     // output->GetCellData()->AddArray(category4edge);
+    // output->GetFieldData()->AddArray(categoryDictionaryArray);
 
     output->Print(std::cout);
   }

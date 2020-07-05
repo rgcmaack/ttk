@@ -58,11 +58,9 @@ int ttkEventDataConverter::RequestData(vtkInformation *request,
 
   std::string path = this->GetFilepath();
   this->printMsg("path: " + path);
-  if (path.empty())
-  {
+  if(path.empty()) {
     return 0;
   }
-  
 
   // Get the output
   auto output = vtkUnstructuredGrid::GetData(outputVector);
@@ -85,8 +83,9 @@ int ttkEventDataConverter::RequestData(vtkInformation *request,
 
   // TODO: fill buffers
   int status = this->parsePointCoords(
-    path, (float *)points->GetVoidPointer(0),
-    (unsigned char *)categoryIndex->GetVoidPointer(0), categoryDictionary);
+    path, (float *)ttkUtils::GetVoidPointer(points),
+    (unsigned char *)ttkUtils::GetVoidPointer(categoryIndex),
+    categoryDictionary);
 
   // finalize output
   {

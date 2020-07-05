@@ -28,6 +28,7 @@ namespace ttk {
     int parsePointCoords(const std::string &path,
                          float *pointCoords,
                          long long int *cellConnectivityData,
-                         std::string *category4edgeArr);
+                         unsigned char *category4edgeArr,
+                         std::vector<std::string> &categoryDictionary);
   };
 } // namespace ttk

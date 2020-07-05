@@ -52,7 +52,8 @@ int ttk::RoadDataConverter::parsePointCoords(
   const std::string &path,
   float *pointCoords,
   long long int *cellConnectivityData,
-  std::string *category4edgeArr) {
+  unsigned char *category4edgeArr,
+  std::vector<std::string> &categoryDictionary) {
   this->printMsg("Code in base layer: parsePointCoords");
 
   // record point index and edge index
@@ -69,8 +70,8 @@ int ttk::RoadDataConverter::parsePointCoords(
     if(line.compare(0, 2, "{\"") != 0)
       continue;
 
-    // get osmId
-    std::size_t osmIdInfor = line.find("\"osm_id\":");
+    // get property of road
+    std::size_t osmIdInfor = line.find("\"highway\":");
     std::string extractedOsmId = line.substr(osmIdInfor);
 
     std::vector<std::string> seglist4osmid = splitStr(extractedOsmId, ',');
@@ -103,10 +104,25 @@ int ttk::RoadDataConverter::parsePointCoords(
 
     // insert cell/line to cellConnectivityData and insert osmid to
     // category4edgeArr
+    // TODO: Lookup
+    int target_index = -1;
+    auto target
+      = std::find(categoryDictionary.begin(), categoryDictionary.end(), osmId);
+    if(target != categoryDictionary.end()) {
+      // if it's in the dictionary, get the index and store to the
+      // categoryindex array
+      target_index = std::distance(categoryDictionary.begin(), target);
+    } else {
+      // if it's not in the dictionary, add to the dictionary , add the last
+      // index of the dictionary to the categoryindex array
+      categoryDictionary.push_back(osmId);
+      target_index = categoryDictionary.size() - 1;
+    }
+
     int startIndexofpoint4cell = npoints * 1;
     for(int index = 0; index < curPoints - 1; index++) {
       // fill category
-      category4edgeArr[nedges + index] = osmId;
+      category4edgeArr[nedges + index] = target_index;
       // fill cellconnectivity
       cellConnectivityData[(nedges + index) * 2]
         = startIndexofpoint4cell + index;
