@@ -76,6 +76,8 @@ int ttkMapEventToRefinedRoad::RequestData(vtkInformation *request,
 
   int eventPointsNum = inputEvent->GetNumberOfPoints();
   int refinedRoadPointsNum = inputRefinedRoad->GetNumberOfPoints();
+  std::cout << "eventPointsNum: " << eventPointsNum << std::endl;
+  std::cout << "refinedRoadPointsNum: " << refinedRoadPointsNum << std::endl;
 
   auto eventSample2rRoadPoint = vtkSmartPointer<vtkFloatArray>::New();
   eventSample2rRoadPoint->SetName("eventSample2rRoadPoint");

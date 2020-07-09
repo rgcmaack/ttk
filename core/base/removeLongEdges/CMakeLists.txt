@@ -1,0 +1,9 @@
+ttk_add_base_library(removeLongEdges
+  SOURCES
+    RemoveLongEdges.cpp
+  HEADERS
+    RemoveLongEdges.h
+  DEPENDS
+    triangulation
+    roadRefinement
+    )

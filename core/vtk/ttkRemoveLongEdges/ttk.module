@@ -1,0 +1,9 @@
+NAME
+  ttkRemoveLongEdges
+SOURCES
+  ttkRemoveLongEdges.cpp
+HEADERS
+  ttkRemoveLongEdges.h
+DEPENDS
+  removeLongEdges
+  ttkAlgorithm

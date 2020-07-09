@@ -58,6 +58,11 @@ int ttk::MapEventToRefinedRoad::calculateClosetPointofRoadforEventData(
 
   for(int eventPointIndex = 0; eventPointIndex < nEventPoints;
       eventPointIndex++) {
+        
+    if(eventPointIndex % 1000 == 0) {
+      std::cout << "every 1000 events: " << eventPointIndex << std::endl;
+    }
+
     int closetPoint = -1;
     int closetDist = std::numeric_limits<int>::max();
 
