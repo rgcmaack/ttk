@@ -84,13 +84,17 @@ int ttkMapEventToRefinedRoad::RequestData(vtkInformation *request,
   eventSample2rRoadPoint->SetNumberOfComponents(1);
   eventSample2rRoadPoint->SetNumberOfTuples(refinedRoadPointsNum);
 
+///testing for the split of the borading box 
+  auto gridCellIndex = vtkSmartPointer<vtkIntArray>::New();
+  gridCellIndex->SetName("gridCellIndex");
+  gridCellIndex->SetNumberOfComponents(1);
+  gridCellIndex->SetNumberOfTuples(refinedRoadPointsNum);
+
   this->calculateClosetPointofRoadforEventData<float>(
     (float *)ttkUtils::GetVoidPointer(inputEvent->GetPoints()),
     (float *)ttkUtils::GetVoidPointer(inputRefinedRoad->GetPoints()),
     (float *)ttkUtils::GetVoidPointer(eventSample2rRoadPoint),
-    // (float *)(inputEvent->GetPoints()->GetVoidPointer(0)),
-    // (float *)(inputRefinedRoad->GetPoints()->GetVoidPointer(0)),
-    // (float *)eventSample2rRoadPoint->GetVoidPointer(0),
+    (int *)ttkUtils::GetVoidPointer(gridCellIndex),
     eventPointsNum, refinedRoadPointsNum, threshold4closeness);
 
   // finalize output
@@ -100,6 +104,9 @@ int ttkMapEventToRefinedRoad::RequestData(vtkInformation *request,
     output->ShallowCopy(inputRefinedRoad);
 
     output->GetPointData()->AddArray(eventSample2rRoadPoint);
+
+    output->GetPointData()->AddArray(gridCellIndex);
+
 
     output->Print(std::cout);
   } // Get the output
