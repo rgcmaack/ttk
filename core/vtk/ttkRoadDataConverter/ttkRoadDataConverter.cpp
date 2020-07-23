@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <vtkCellArray.h>
+#include <vtkCellData.h>
 #include <vtkPoints.h>
 #include <vtkSmartPointer.h>
 #include <vtkUnstructuredGrid.h>
@@ -113,8 +114,8 @@ int ttkRoadDataConverter::RequestData(vtkInformation *request,
     output->SetPoints(points);
     output->SetCells(VTK_LINE, cellArray);
 
-    // output->GetCellData()->AddArray(category4edge);
-    // output->GetFieldData()->AddArray(categoryDictionaryArray);
+    output->GetCellData()->AddArray(category4edge);
+    output->GetFieldData()->AddArray(categoryDictionaryArray);
 
     output->Print(std::cout);
   }
