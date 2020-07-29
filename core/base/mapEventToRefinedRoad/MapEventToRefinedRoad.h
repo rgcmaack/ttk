@@ -140,12 +140,6 @@ int ttk::MapEventToRefinedRoad::calculateClosetPointofRoadforEventData(
       if(cellX < 0 || cellY < 0 || cellX >= m || cellY >= n)
         continue;
 
-      ///////////////////////testing!!!!!!!!!!!!!!!!!!!!!!
-      if(eventPointIndex == 172712) {
-        std::cout << "cellX, cellY,  " << cellX << " " << cellY << " "
-                  << std::endl;
-      }
-
       // get the index of the cell in the grid vector
       auto indexCell4grids = n * cellX + cellY;
       auto targetCell = grids[indexCell4grids];
@@ -158,24 +152,6 @@ int ttk::MapEventToRefinedRoad::calculateClosetPointofRoadforEventData(
         auto distance = ttk::RoadRefinement::distance4TwoPoints(
           eventLat, eventLon, plat, plong);
 
-        ///////////////////////////////////testing!!!!!!!!!!!!!!!!!!!!!!!!
-        // if(eventPointIndex == 172712 && pIndex == 143371) {
-        //   std::cout << " point 143371: " << std::endl;
-        //   std::cout << " plong: " << plong << std::endl;
-        //   std::cout << " plat: " << plat << std::endl;
-        //   std::cout << " distance: " << distance << std::endl;
-        // }
-        // if(eventPointIndex == 172712 && pIndex == 143059) {
-        //   std::cout << " point 143059: " << std::endl;
-        //   std::cout << " plong: " << plong << std::endl;
-        //   std::cout << " plat: " << plat << std::endl;
-        //   std::cout << " distance: " << distance << std::endl;
-        // }
-        // if(eventPointIndex == 172712 && distance == 0) {
-        //   std::cout << "pIndex for the distance 0:" << pIndex << " " << plong
-        //             << " " << plat << std::endl;
-        // }
-
         if(distance < closetDist) {
           closetPoint = pIndex;
           closetDist = distance;
@@ -183,12 +159,6 @@ int ttk::MapEventToRefinedRoad::calculateClosetPointofRoadforEventData(
       }
     } // end the search for the 9 cells
     // get the closet points for the event data
-
-    ///////////////////////testing!!!!!!!!!!!!!!!!!!!!!!
-    if(eventPointIndex == 172712) {
-      std::cout << "closetPoint, closetDist,  " << closetPoint << " "
-                << closetDist << " " << std::endl;
-    }
 
     if(closetPoint == -1)
       continue;

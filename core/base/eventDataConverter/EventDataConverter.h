@@ -24,6 +24,8 @@ namespace ttk {
             int parsePointCoords(const std::string &path,
                                  float *pointCoords,
                                  unsigned char *categoryIndex,
-                                 std::vector<std::string> &categoryDictionary);
+                                 unsigned char *yearIndex,
+                                 std::vector<std::string> &categoryDictionary,
+                                 std::vector<std::string> &yearDictionary);
     };
 }

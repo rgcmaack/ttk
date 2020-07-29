@@ -69,7 +69,6 @@ int getNeighbors(std::vector<int> &visitedVertics,
         - pilotDistance.begin();
 
     auto verticIndex2visited = candidateVertics[minumDistIndex] * 1;
-    
 
     // push it the the visited array
     visitedVertics.push_back(verticIndex2visited);
@@ -125,6 +124,16 @@ int getNeighbors(std::vector<int> &visitedVertics,
   return 0;
 }
 
+float gassianFun(float x) {
+  float result = 1 / sqrt(2 * M_PI) * exp(-0.5 * x * x);
+  return result;
+}
+
+float densityFun(float distance, float bandwidth) {
+  float result = 1 / bandwidth * gassianFun(distance / bandwidth);
+  return result;
+}
+
 int kernelDensity(std::vector<int> &neighbors,
                   std::vector<float> &shortestDistances,
                   float &eventSamplesValue,
@@ -135,11 +144,12 @@ int kernelDensity(std::vector<int> &neighbors,
     auto vertexIndex = neighbors[i];
     auto vertexDist = shortestDistances[i];
 
+    // float vertexDensity
+    //   = eventSamplesValue * (1 - vertexDist / KernelBandwidth);
     float vertexDensity
-      = eventSamplesValue * (1 - vertexDist / KernelBandwidth);
-    
-    rRoadPointsWeight[vertexIndex] += vertexDensity;
+      = eventSamplesValue * densityFun(vertexDist, KernelBandwidth);
 
+    rRoadPointsWeight[vertexIndex] += vertexDensity;
   }
 
   return 0;
@@ -170,27 +180,27 @@ int ttk::RoadDensity::CalculateRoadWeight(
   idType *rRoadPointsWeight,
   idType &KernelBandwidth) const {
 
-  for(int i = 0; i < refinedRoadPointsNum; i ++) {
+  for(int i = 0; i < refinedRoadPointsNum; i++) {
     rRoadPointsWeight[i] = 0;
   }
-    // int count4nonzero = 0;
-    for(int rRoadPointIndex = 0; rRoadPointIndex < refinedRoadPointsNum;
-        rRoadPointIndex++) {
-      if(rRoadPointtoEventSampleDictionary[rRoadPointIndex] != 0) {
-        // count4nonzero++;
-        auto eventSamplesValue
-          = rRoadPointtoEventSampleDictionary[rRoadPointIndex];
-        
-        std::vector<int> neighbors;
-        std::vector<float> shortestDistances;
-        getNeighbors(neighbors, shortestDistances, rRoadPointIndex,
-                     triangulation, rRoadPointsCoors, KernelBandwidth);
+  // int count4nonzero = 0;
+  for(int rRoadPointIndex = 0; rRoadPointIndex < refinedRoadPointsNum;
+      rRoadPointIndex++) {
+    if(rRoadPointtoEventSampleDictionary[rRoadPointIndex] != 0) {
+      // count4nonzero++;
+      auto eventSamplesValue
+        = rRoadPointtoEventSampleDictionary[rRoadPointIndex];
 
-        std::vector<float> neighborsDensity(shortestDistances.size());
-        kernelDensity(neighbors, shortestDistances, eventSamplesValue,
-                      rRoadPointsWeight, KernelBandwidth);
-      }
+      std::vector<int> neighbors;
+      std::vector<float> shortestDistances;
+      getNeighbors(neighbors, shortestDistances, rRoadPointIndex, triangulation,
+                   rRoadPointsCoors, KernelBandwidth);
+
+      std::vector<float> neighborsDensity(shortestDistances.size());
+      kernelDensity(neighbors, shortestDistances, eventSamplesValue,
+                    rRoadPointsWeight, KernelBandwidth);
     }
+  }
   // std::cout << "count4nonzero " << count4nonzero << std::endl;
 
   return 1;

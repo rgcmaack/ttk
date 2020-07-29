@@ -79,13 +79,21 @@ int ttkEventDataConverter::RequestData(vtkInformation *request,
   categoryIndex->SetNumberOfComponents(1);
   categoryIndex->SetNumberOfTuples(nPoints);
 
+  auto yearIndex = vtkSmartPointer<vtkUnsignedCharArray>::New();
+  yearIndex->SetName("YearIndex");
+  yearIndex->SetNumberOfComponents(1);
+  yearIndex->SetNumberOfTuples(nPoints);
+
   std::vector<string> categoryDictionary;
+  std::vector<string> yearDictionary;
 
   // TODO: fill buffers
   int status = this->parsePointCoords(
     path, (float *)ttkUtils::GetVoidPointer(points),
     (unsigned char *)ttkUtils::GetVoidPointer(categoryIndex),
-    categoryDictionary);
+    (unsigned char *)ttkUtils::GetVoidPointer(yearIndex),
+    categoryDictionary,
+    yearDictionary);
 
   // finalize output
   {
@@ -106,7 +114,7 @@ int ttkEventDataConverter::RequestData(vtkInformation *request,
     cellArray->SetData(cellOffsets, cellConnectivity);
     output->SetCells(VTK_VERTEX, cellArray);
 
-    // add the file and property to the output
+    // create filed data for the category 
     auto categoryDictionaryArray = vtkSmartPointer<vtkStringArray>::New();
     categoryDictionaryArray->SetName("CategoryDictionary");
     categoryDictionaryArray->SetNumberOfComponents(1);
@@ -115,9 +123,22 @@ int ttkEventDataConverter::RequestData(vtkInformation *request,
     for(int i = 0; i < categoryDictionary.size(); i++)
       categoryDictionaryArray->SetValue(i, categoryDictionary[i]);
 
+    // create filed data for the year of each event
+    auto yearDictionaryArray = vtkSmartPointer<vtkStringArray>::New();
+    yearDictionaryArray->SetName("YearDictionary");
+    yearDictionaryArray->SetNumberOfComponents(1);
+    yearDictionaryArray->SetNumberOfTuples(yearDictionary.size());
+
+    for(int i = 0; i < yearDictionary.size(); i++)
+      yearDictionaryArray->SetValue(i, yearDictionary[i]);
+    
+    // add property and filed d ata to the output
+
     output->GetPointData()->AddArray(categoryIndex);
+    output->GetPointData()->AddArray(yearIndex);
 
     output->GetFieldData()->AddArray(categoryDictionaryArray);
+    output->GetFieldData()->AddArray(yearDictionaryArray);
 
     output->Print(std::cout);
   }
