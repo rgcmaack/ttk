@@ -71,20 +71,16 @@ int ttkMergeTreeSimplification::RequestData(
     auto i_mtVertexIdsData = (int*) ttkUtils::GetVoidPointer( i_MergeTree->GetPointData()->GetArray("VertexId") );
     auto i_mtPairIdsData = (int*) ttkUtils::GetVoidPointer( i_MergeTree->GetPointData()->GetArray("PairId") );
 
-    auto i_SegmentationIds = vtkIntArray::SafeDownCast(i_Segmentation->GetPointData()->GetArray("SegmentationId"));
+    auto i_sSegmentationIds = vtkIntArray::SafeDownCast(i_Segmentation->GetPointData()->GetArray("SegmentationId"));
 
     auto o_sBranchIds = vtkSmartPointer<vtkIntArray>::New();
-    o_sBranchIds->DeepCopy(i_SegmentationIds);
+    o_sBranchIds->DeepCopy(i_sSegmentationIds);
     o_sBranchIds->SetName("BranchId");
     auto o_sBranchIdsData = (int*) ttkUtils::GetVoidPointer(o_sBranchIds);
 
     auto o_mtBranchIds = vtkSmartPointer<vtkIntArray>::New();
     o_mtBranchIds->DeepCopy(i_mtBranchIds);
     auto o_mtBranchIdsData = (int*) ttkUtils::GetVoidPointer( o_mtBranchIds );
-
-    // auto o_sRegionTypes = vtkSmartPointer<vtkSignedCharArray>::New();
-    // o_sRegionTypes->DeepCopy(i_SegmentationIds);
-    // auto o_sRegionTypesData = (signed char*) ttkUtils::GetVoidPointer( o_sRegionTypes );
 
     const size_t nPoints = i_MergeTree->GetNumberOfPoints();
 
@@ -127,7 +123,7 @@ int ttkMergeTreeSimplification::RequestData(
 
         if(persistence<=persistenceThreshold){
             auto it = simplifiedBranchToPersistentBranchMap.find(i_mtBranchIdsData[maxIndex]);
-            if(persistence<0){
+            if(persistence<=0){
                 it->second = globalBranchId;
             } else {
                 it->second = simplifiedBranchToPersistentBranchMap[i_mtBranchIdsData[ saddleIndex ]];
