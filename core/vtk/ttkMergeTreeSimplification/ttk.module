@@ -1,0 +1,9 @@
+NAME
+  ttkMergeTreeSimplification
+SOURCES
+  ttkMergeTreeSimplification.cpp
+HEADERS
+  ttkMergeTreeSimplification.h
+DEPENDS
+  MergeTreeSimplification
+  ttkAlgorithm

@@ -1,0 +1,9 @@
+ttk_add_base_library(MergeTree
+  SOURCES
+    MergeTree.cpp
+  HEADERS
+    MergeTree.h
+    Propagation.h
+  DEPENDS
+    triangulation
+)
