@@ -138,8 +138,8 @@ int ttkMergeTree::RequestData(
     {
         int status = 0;
         ttkVtkTemplateMacro(
-            orderField->GetDataType(),
             triangulation->getType(),
+            orderField->GetDataType(),
             (
                 status = this->computeMergeTreeSegmentation<int, TTK_TT>(
                     (int*) ttkUtils::GetVoidPointer(segmentationIds),
