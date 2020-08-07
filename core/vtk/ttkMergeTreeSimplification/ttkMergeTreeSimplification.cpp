@@ -56,6 +56,9 @@ int ttkMergeTreeSimplification::RequestData(
     vtkInformationVector** inputVector,
     vtkInformationVector* outputVector
 ){
+    ttk::Timer timer;
+    this->printMsg("Retrieving Input Data",0,0,this->threadNumber_,ttk::debug::LineMode::REPLACE);
+
     // Get the input
     auto i_MergeTree = vtkUnstructuredGrid::GetData( inputVector[0] );
     auto i_Segmentation = vtkDataSet::GetData( inputVector[1] );
@@ -65,7 +68,7 @@ int ttkMergeTreeSimplification::RequestData(
     auto i_mtScalarsData = (float*) ttkUtils::GetVoidPointer(i_mtScalars);
 
     // Get arrays with fixed name
-    auto i_mtOrderFieldData = (int*) ttkUtils::GetVoidPointer( i_MergeTree->GetPointData()->GetArray("OrderField") );
+    // auto i_mtOrderFieldData = (int*) ttkUtils::GetVoidPointer( i_MergeTree->GetPointData()->GetArray("OrderField") );
     auto i_mtBranchIds = vtkIntArray::SafeDownCast(i_MergeTree->GetPointData()->GetArray("BranchId"));
     auto i_mtBranchIdsData = (int*) ttkUtils::GetVoidPointer( i_mtBranchIds );
     auto i_mtVertexIdsData = (int*) ttkUtils::GetVoidPointer( i_MergeTree->GetPointData()->GetArray("VertexId") );
@@ -82,6 +85,10 @@ int ttkMergeTreeSimplification::RequestData(
     o_mtBranchIds->DeepCopy(i_mtBranchIds);
     auto o_mtBranchIdsData = (int*) ttkUtils::GetVoidPointer( o_mtBranchIds );
 
+    this->printMsg("Retrieving Input Data",1,timer.getElapsedTime());
+    timer.reStart();
+
+    this->printMsg("Simplifying Merge Tree",0,0,this->threadNumber_,ttk::debug::LineMode::REPLACE);
     const size_t nPoints = i_MergeTree->GetNumberOfPoints();
 
     std::unordered_map<int,int> vertexIdToIndexMap;
@@ -151,5 +158,8 @@ int ttkMergeTreeSimplification::RequestData(
 
     o_Segmentation->ShallowCopy( i_Segmentation );
     o_Segmentation->GetPointData()->AddArray( o_sBranchIds );
+
+    this->printMsg("Simplifying Merge Tree",1,timer.getElapsedTime());
+
     return 1;
 }

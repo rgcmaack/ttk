@@ -59,13 +59,13 @@ int fillPointData(
 
     vtkDataArray* outputScalars,
     vtkDataArray* inputScalars,
-    std::unordered_map<int,std::pair<int,int>>& indexToIdMap,
+    std::unordered_map<int,std::pair<int,int>>& idToIndexMap,
     const ttk::Triangulation* triangulation
 ){
     auto inputScalarData = (T*) ttkUtils::GetVoidPointer( inputScalars );
     auto outputScalarData = (T*) ttkUtils::GetVoidPointer( outputScalars );
 
-    for( const auto& it : indexToIdMap ) {
+    for( const auto& it : idToIndexMap ) {
         const auto& v = it.first;
 
         mtOrderFieldData[it.second.first] = orderFieldData[v];
@@ -176,15 +176,15 @@ int ttkMergeTree::RequestData(
         {
             const int nPropagations = propagations.size();
 
-            std::unordered_map<int,std::pair<int,int>> indexToIdMap;
+            std::unordered_map<int,std::pair<int,int>> idToIndexMap;
             for(int p=0, i=0; p<nPropagations; p++){
                 const auto& criticalPoints = propagations[p].criticalPoints;
                 const int nCriticalPoints = criticalPoints.size();
 
                 for(int c=0; c<nCriticalPoints; c++){
-                    auto it = indexToIdMap.find( criticalPoints[c] );
-                    if(it==indexToIdMap.end())
-                        indexToIdMap.insert({criticalPoints[c], {i++, p}});
+                    auto it = idToIndexMap.find( criticalPoints[c] );
+                    if(it==idToIndexMap.end())
+                        idToIndexMap.insert({criticalPoints[c], {i++, p}});
                     else if(
                         orderFieldData[propagations[it->second.second].criticalPoints[0]]
                         <
@@ -194,7 +194,9 @@ int ttkMergeTree::RequestData(
                 }
             }
 
-            const int nPoints = indexToIdMap.size();
+            const int nPoints = idToIndexMap.size();
+
+            // this->printWrn( std::to_string(nPoints) );
 
             auto pointCoords = vtkSmartPointer<vtkFloatArray>::New();
             pointCoords->SetNumberOfComponents(3);
@@ -238,7 +240,7 @@ int ttkMergeTree::RequestData(
 
                             outputScalars,
                             inputScalars,
-                            indexToIdMap,
+                            idToIndexMap,
                             triangulation
                         )
                     )
@@ -305,15 +307,17 @@ int ttkMergeTree::RequestData(
                     const auto& s0 = criticalPoints[0];
                     const auto& s1 = criticalPoints[nCriticalPoints-1];
 
-                    pairIdData[ indexToIdMap[ s0 ].first ] = s1;
-                    pairIdData[ indexToIdMap[ s1 ].first ] = s0;
+                    pairIdData[ idToIndexMap[ s0 ].first ] = s1;
+                    pairIdData[ idToIndexMap[ s1 ].first ] = s0;
 
                     for(int c=0; c<nCriticalPoints-1; c++){
-                        cellBranchIdsData[k++] = propagations[indexToIdMap[criticalPoints[c]].second].criticalPoints[0];
-                        connectivityData[j++] = indexToIdMap[ criticalPoints[c  ] ].first;
-                        connectivityData[j++] = indexToIdMap[ criticalPoints[c+1] ].first;
+                        cellBranchIdsData[k++] = propagations[idToIndexMap[criticalPoints[c]].second].criticalPoints[0];
+                        connectivityData[j++] = idToIndexMap[ criticalPoints[c  ] ].first;
+                        connectivityData[j++] = idToIndexMap[ criticalPoints[c+1] ].first;
                     }
                 }
+
+                // this->printWrn(std::to_string(nEdges*2) + " " + std::to_string(j));
 
                 auto cells = vtkSmartPointer<vtkCellArray>::New();
                 cells->SetData(offsets, connectivity);
