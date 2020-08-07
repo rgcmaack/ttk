@@ -12,7 +12,7 @@ int ttk::EventDataConverter::getNumberOfPoints(const std::string &path) {
   for(std::string line; getline(infile, line);) {
     std::string::iterator end_pos = std::remove(line.begin(), line.end(), ' ');
     line.erase(end_pos, line.end());
-    //// for seattleCrimes
+    // // for seattleCrimes
     // if(line.compare(0, 2, "{\"") != 0)
     //   continue;
 
@@ -24,7 +24,7 @@ int ttk::EventDataConverter::getNumberOfPoints(const std::string &path) {
     while(std::getline(input_stringstream, parsed, ',')) {
       ///// parameter for seattle crimes
       // std::string longit = "\"Longitude\":", lat = "\"Latitude\":";
-      //// parameter for chicago crimes
+      // parameter for chicago crimes
       std::string longit = "\"longitude\":", lat = "\"latitude\":";
       if(parsed.compare(0, longit.length(), longit) == 0) {
         std::string longitude = parsed.substr(longit.length());
@@ -64,7 +64,7 @@ int ttk::EventDataConverter::parsePointCoords(
     std::string::iterator end_pos = std::remove(line.begin(), line.end(), ' ');
     line.erase(end_pos, line.end());
 
-    //// for seattleCrimes
+    // // for seattleCrimes
     // if(line.compare(0, 2, "{\"") != 0)
     //   continue;
 
@@ -77,7 +77,7 @@ int ttk::EventDataConverter::parsePointCoords(
       //             lat = "\"Latitude\":", timeYear =
       //             "\"OffenseStartDateTime\":";
 
-      //// extraction parameter for chicagoCrimes
+      // extraction parameter for chicagoCrimes
       std::string offense = "\"category\":", longit = "\"longitude\":",
                   lat = "\"latitude\":", timeYear = "\"incident_date\":";
 
