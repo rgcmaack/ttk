@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- TODO 11: Add widgets to the ParaView UI that control the member variables of the vtk filter -->
+
+<!-- NOTE: Unfortunately the widget types and their properties are not well documented. -->
+<!--       The best thing you can do is to look at filters that have similar widgets you require and copy their source code. -->
+<!--       Good resources are: IcoSphere.xml, PersistenceDiagram.xml, and ArrayEditor.xml -->
+
+<ServerManagerConfiguration>
+    <ProxyGroup name="filters">
+        <SourceProxy name="RemoveRoads" class="ttkRemoveRoads" label="TTK RemoveRoads">
+           <Documentation long_help="RemoveRoads Long" short_help="RemoveRoads Short">
+               This filter is a well documented ttk example filter that computes for each vertex of a vtkDataSet the average scalar value of itself and its neighbors.
+           </Documentation>
+
+           <InputProperty name="Network" port_index="0" command="SetInputConnection">
+                <ProxyGroupDomain name="groups">
+                    <Group name="sources" />
+                    <Group name="filters" />
+                </ProxyGroupDomain>
+                <DataTypeDomain name="input_type">
+                    <DataType value="vtkUnstructuredGrid" />
+                </DataTypeDomain>
+                <Documentation>TODO.</Documentation>
+            </InputProperty>
+
+            <InputProperty name="Selection" port_index="1" command="SetInputConnection">
+                <ProxyGroupDomain name="groups">
+                    <Group name="sources" />
+                    <Group name="filters" />
+                </ProxyGroupDomain>
+                <DataTypeDomain name="input_type">
+                    <DataType value="vtkUnstructuredGrid" />
+                </DataTypeDomain>
+                <Documentation>TODO.</Documentation>
+            </InputProperty>
+
+            <!-- INPUT PARAMETER WIDGETS -->
+
+                <!-- This is the VTK way of selecting arrays for processing by calling the SetInputArrayToProcess method -->
+                <!-- (see ttkRemoveRoads.cpp for details) -->
+                <StringVectorProperty name="InputArray" label="Input Array" command="SetInputArrayToProcess" element_types="0 0 0 0 2" number_of_elements="5" default_values="0">
+                    <ArrayListDomain attribute_type="Scalars" name="array_list">
+                        <RequiredProperties>
+                            <Property function="Input" name="Network" />
+                        </RequiredProperties>
+                    </ArrayListDomain>
+                    <Documentation>Identifiers.</Documentation>
+                </StringVectorProperty>
+
+                <!-- Create a UI group that contains all input parameter widgets (here only one) -->
+                <PropertyGroup panel_widget="Line" label="Input Options">
+                    <Property name="InputArray" />
+                </PropertyGroup>
+
+            <!-- DEBUG -->
+            ${DEBUG_WIDGETS}
+
+            <!-- MENU CATEGORY -->
+                <Hints>
+                    <ShowInMenu category="TTK - Road" />
+                </Hints>
+        </SourceProxy>
+    </ProxyGroup>
+</ServerManagerConfiguration>

@@ -1,0 +1,8 @@
+NAME
+  ttkRemoveRoads
+SOURCES
+  ttkRemoveRoads.cpp
+HEADERS
+  ttkRemoveRoads.h
+DEPENDS
+  ttkAlgorithm
