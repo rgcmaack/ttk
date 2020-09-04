@@ -100,6 +100,15 @@ else()
   option(TTK_ENABLE_ZLIB "Enable Zlib support" ON)
 endif()
 
+find_package(WEBSOCKETPP)
+if(NOT WEBSOCKETPP_FOUND)
+  option(TTK_ENABLE_WEBSOCKETIO "Enable WebSocketIO module" OFF)
+  message(STATUS "WebSocketPP not found, disabling WebSocketIO module in TTK.")
+else()
+  option(TTK_ENABLE_WEBSOCKETIO "Enable WebSocketIO module" ON)
+  message(STATUS "WebSocketPP found, enabling WebSocketIO module in TTK.")
+endif()
+
 # START_FIND_GRAPHVIZ
 find_path(GRAPHVIZ_INCLUDE_DIR
   NAMES
