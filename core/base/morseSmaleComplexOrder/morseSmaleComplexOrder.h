@@ -60,93 +60,159 @@ namespace ttk {
 
         /* compute the Descending Maifold iterating over each vertex, searching
          * the biggest neighbor and compressing its path to its maximum */
+
         SimplexId nVertices = triangulation->getNumberOfVertices();
         std::unordered_map<SimplexId, SimplexId> maxima;
-        
-        //std::vector<SimplexId> descendingManifold(nVertices, -1);
 
-        bool globalChange = true; // paths compressed by any thread
+        // vertices that may still be compressed
+        std::vector<SimplexId>* activeVertices
+          = new std::vector<SimplexId>();
+        SimplexId nActiveVertices;
 
-        #ifdef TTK_ENABLE_OPENMP
+#ifndef TTK_ENABLE_OPENMP
+        // find maxima and intialize vector of not fully compressed vertices
+        for(SimplexId i = 0; i < nVertices; i++) {
+          SimplexId neighborId;
+          SimplexId numNeighbors =
+            triangulation->getVertexNeighborNumber(i);
+          bool hasBiggerNeighbor = false;
+
+          outputData[i] = i;
+
+          // check all neighbors
+          for(SimplexId n = 0; n < numNeighbors; n++) {
+            triangulation->getVertexNeighbor(i, n, neighborId);
+            if(inputData[neighborId] > inputData[(SimplexId)outputData[i]]) {
+              outputData[i] = neighborId;
+              hasBiggerNeighbor = true;
+            }
+          }
+          if(hasBiggerNeighbor) {
+            activeVertices->push_back(i);
+          }
+          else {
+            maxima.insert( {i, numMaxima++} );
+          }
+        }
+
+        nActiveVertices = activeVertices->size();
+        std::vector<SimplexId>* newActiveVert;
+
+        // compress paths until no changes occur
+        while(nActiveVertices > 0) {
+          newActiveVert = new std::vector<SimplexId>();
+
+          std::string msgit = "Iteration: " + std::to_string(iterations) +
+            "(" + std::to_string(nActiveVertices) + "/" +
+            std::to_string(nVertices) + ")";
+          this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
+            localTimer.getElapsedTime(), this->threadNumber_);
+            
+          for(SimplexId i = 0; i < nActiveVertices; i++) {
+            SimplexId v = activeVertices->at(i);
+            dataType &vo = outputData[v];
+            // compress path
+            vo = outputData[(SimplexId)vo];
+
+            if(vo != outputData[(SimplexId)vo]) {
+              newActiveVert->push_back(v);
+            }
+          }
+
+          iterations += 1;
+          delete activeVertices;
+          activeVertices = &*newActiveVert;
+
+          nActiveVertices = activeVertices->size();
+        }
+
+        delete activeVertices;
+
+        for(SimplexId i = 0; i < nVertices; i++) {
+          outputData[i] = maxima[outputData[i]];
+        }
+#else
+/*        bool globalChange = true; // paths compressed by any thread
+
         #pragma omp parallel num_threads(this->threadNumber_) \
-                shared(globalChange, iterations, maxima, numMaxima)
-        #endif
+                shared(globalChange, iterations, maxima, numMaxima, \
+                activeVertices, nActiveVertices)
         {
           bool localChange = false; // paths compressed by the local thread
+          std::vector<SimplexId> lActiveVertices;
 
-          #ifdef TTK_ENABLE_OPENMP
           #pragma omp for schedule(dynamic)
-          #endif
           // find the biggest neighbor for each vertex
           for(SimplexId i = 0; i < nVertices; i++) {
+            SimplexId neighborId;
             SimplexId numNeighbors =
               triangulation->getVertexNeighborNumber(i);
-            SimplexId neighborId;
-            outputData[i] = i;
             bool hasBiggerNeighbor = false;
+
+            outputData[i] = i;
+
             // check all neighbors
             for(SimplexId n = 0; n < numNeighbors; n++) {
               triangulation->getVertexNeighbor(i, n, neighborId);
-              if(inputData[neighborId] > inputData[i]) {
+              if(inputData[neighborId] > outputData[i]) {
                 outputData[i] = neighborId;
                 hasBiggerNeighbor = true;
               }
-            } 
-            if(!hasBiggerNeighbor) {
-              #ifdef TTK_ENABLE_OPENMP
+            }
+
+            if(hasBiggerNeighbor) {
+              if(outputData[i] != outputData[outputData[i]]) {
+                lActiveVertices.push_back(i);
+              }
+            }
+            else {
               #pragma omp critical
-              #endif      
               maxima.insert( {i, numMaxima} );
-              
-              #ifdef TTK_ENABLE_OPENMP
+
               #pragma omp atomic update
-              #endif     
               numMaxima += 1;
             }
           }
 
-          #ifdef TTK_ENABLE_OPENMP
-          #pragma omp barrier
-          #endif
+          #pragma omp critical
+          activeVertices->insert(activeVertices->end(),
+            lActiveVertices.begin(), lActiveVertices.end());
 
-          #ifdef TTK_ENABLE_OPENMP
+          lActiveVertices.clear();
+
+          #pragma omp barrier
+
           #pragma omp single
           {
             this->printMsg("Computed Maxima",
               0.1, // progress
               localTimer.getElapsedTime(), this->threadNumber_);
           }
-          #endif
 
           // compress paths until no changes occur
           while(globalChange) {
-            #ifdef TTK_ENABLE_OPENMP
             #pragma omp barrier
-            #endif
 
-            #ifdef TTK_ENABLE_OPENMP
             #pragma omp single
-            #endif
             {
               globalChange = false;
+              nActiveVertices = activeVertices->size();
             }
 
             localChange = false;
 
-            #ifdef TTK_ENABLE_OPENMP
-            #pragma omp single
+            #pragma omp single 
             {
               std::string msgdbg = "iteration: " + std::to_string(iterations);
-              this->printMsg(msgdbg,
-                0.12, // progress
+              this->printMsg(msgdbg, 0.12,
                 localTimer.getElapsedTime(), this->threadNumber_);
             }
-            #endif
 
-            #ifdef TTK_ENABLE_OPENMP
             #pragma omp for schedule(dynamic)
-            #endif
-            for(SimplexId i = 0; i < nVertices; i++) {
+            for(SimplexId i = 0; i < nActiveVertices; i++) {
+              SimplexId v = activeVertices->at(i);
+
+
               // maxima or pointing to maxima
               if(i == (SimplexId)outputData[i]
               || outputData[i] == outputData[(SimplexId)outputData[i]]) {
@@ -159,39 +225,29 @@ namespace ttk {
               }
             }
           
-            #ifdef TTK_ENABLE_OPENMP
             #pragma omp atomic update
-            #endif
               globalChange |= localChange;
             
-            #ifdef TTK_ENABLE_OPENMP
-            #pragma omp single
-            #endif
-            {
+            #pragma omp single {
               iterations += 1;
             }
             
-            #ifdef TTK_ENABLE_OPENMP
             #pragma omp barrier
-            #endif
           }
 
-          #ifdef TTK_ENABLE_OPENMP
           #pragma omp single
           {
             this->printMsg("Compressed Paths",
               0.1, // progress
               localTimer.getElapsedTime(), this->threadNumber_);
           }
-          #endif
 
-          #ifdef TTK_ENABLE_OPENMP
           #pragma omp for schedule(dynamic, 4)
-          #endif
           for(SimplexId i = 0; i < nVertices; i++) {
             outputData[i] = maxima[outputData[i]];
           }
-        }
+        }*/
+#endif
 
         // print the progress of the current subprocedure with elapsed time
         this->printMsg("Computed Descending Manifold",
