@@ -8,6 +8,7 @@
 #include <Debug.h>
 #include <Triangulation.h>
 #include <unordered_map>
+#include <list>
 
 namespace ttk {
 
@@ -126,22 +127,17 @@ namespace ttk {
           nActiveVertices = activeVertices->size();
         }
 
-        delete activeVertices;
-
         for(SimplexId i = 0; i < nVertices; i++) {
           outputData[i] = maxima[outputData[i]];
         }
 #else
-/*        bool globalChange = true; // paths compressed by any thread
-
         #pragma omp parallel num_threads(this->threadNumber_) \
-                shared(globalChange, iterations, maxima, numMaxima, \
+                shared(iterations, maxima, numMaxima, \
                 activeVertices, nActiveVertices)
         {
-          bool localChange = false; // paths compressed by the local thread
-          std::vector<SimplexId> lActiveVertices;
+          std::vector<SimplexId> lActiveVertices; //active verticies per thread
 
-          #pragma omp for schedule(dynamic)
+          #pragma omp for schedule(dynamic, 8)
           // find the biggest neighbor for each vertex
           for(SimplexId i = 0; i < nVertices; i++) {
             SimplexId neighborId;
@@ -154,16 +150,14 @@ namespace ttk {
             // check all neighbors
             for(SimplexId n = 0; n < numNeighbors; n++) {
               triangulation->getVertexNeighbor(i, n, neighborId);
-              if(inputData[neighborId] > outputData[i]) {
+              if(inputData[neighborId] > inputData[(SimplexId)outputData[i]]) {
                 outputData[i] = neighborId;
                 hasBiggerNeighbor = true;
               }
             }
 
             if(hasBiggerNeighbor) {
-              if(outputData[i] != outputData[outputData[i]]) {
                 lActiveVertices.push_back(i);
-              }
             }
             else {
               #pragma omp critical
@@ -172,6 +166,14 @@ namespace ttk {
               #pragma omp atomic update
               numMaxima += 1;
             }
+          }
+
+          #pragma omp single nowait
+          {
+            std::string msgm =
+              "Computed " + std::to_string(numMaxima) + " Maxima";
+            this->printMsg(msgm,
+              0.1, localTimer.getElapsedTime(), this->threadNumber_);
           }
 
           #pragma omp critical
@@ -184,70 +186,83 @@ namespace ttk {
 
           #pragma omp single
           {
-            this->printMsg("Computed Maxima",
-              0.1, // progress
-              localTimer.getElapsedTime(), this->threadNumber_);
+            nActiveVertices = activeVertices->size();
           }
 
           // compress paths until no changes occur
-          while(globalChange) {
+          while(nActiveVertices > 0) {
             #pragma omp barrier
 
-            #pragma omp single
+            #pragma omp single nowait
             {
-              globalChange = false;
-              nActiveVertices = activeVertices->size();
-            }
-
-            localChange = false;
-
-            #pragma omp single 
-            {
-              std::string msgdbg = "iteration: " + std::to_string(iterations);
-              this->printMsg(msgdbg, 0.12,
+              std::string msgit = "Iteration: " + std::to_string(iterations) +
+                "(" + std::to_string(nActiveVertices) + "/" +
+                std::to_string(nVertices) + ")";
+              double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
+              this->printMsg(msgit, prog,
                 localTimer.getElapsedTime(), this->threadNumber_);
             }
+
+            /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
 
             #pragma omp for schedule(dynamic)
             for(SimplexId i = 0; i < nActiveVertices; i++) {
               SimplexId v = activeVertices->at(i);
+              dataType &vo = outputData[v];
 
+              /* // save changes
+              lChanges.push_front(
+                std::make_tuple(v, outputData[(SimplexId)outputData[v]]));*/
+              vo = outputData[(SimplexId)vo];
 
-              // maxima or pointing to maxima
-              if(i == (SimplexId)outputData[i]
-              || outputData[i] == outputData[(SimplexId)outputData[i]]) {
-                continue;
-              }
-              // path compression
-              else {
-                outputData[i] = outputData[(SimplexId)outputData[i]];
-                localChange = true;
+              // check if fully compressed
+              if(vo != outputData[(SimplexId)vo]) {
+                lActiveVertices.push_back(v);
               }
             }
-          
-            #pragma omp atomic update
-              globalChange |= localChange;
-            
-            #pragma omp single {
+            #pragma omp barrier
+
+            /* // apply changes
+            for(auto it = lChanges.begin(); it != lChanges.end(); ++it) {
+              outputData[std::get<0>(*it)] = std::get<1>(*it);
+            }*/
+
+            #pragma omp single
+            {
+              activeVertices->clear();
+            }
+
+            #pragma omp critical
+            activeVertices->insert(activeVertices->end(),
+              lActiveVertices.begin(), lActiveVertices.end());
+
+            lActiveVertices.clear();
+
+            #pragma omp barrier
+
+            #pragma omp single
+            {
+              nActiveVertices = activeVertices->size();
               iterations += 1;
             }
-            
-            #pragma omp barrier
           }
 
           #pragma omp single
           {
             this->printMsg("Compressed Paths",
-              0.1, // progress
+              0.95, // progress
               localTimer.getElapsedTime(), this->threadNumber_);
           }
 
-          #pragma omp for schedule(dynamic, 4)
+          // set critical point indices
+          #pragma omp for schedule(dynamic)
           for(SimplexId i = 0; i < nVertices; i++) {
-            outputData[i] = maxima[outputData[i]];
+            outputData[i] = maxima.at((SimplexId)outputData[i]);
           }
-        }*/
+        }
 #endif
+
+        delete activeVertices;
 
         // print the progress of the current subprocedure with elapsed time
         this->printMsg("Computed Descending Manifold",
