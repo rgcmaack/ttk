@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- TODO 11: Add widgets to the ParaView UI that control the member variables of the vtk filter -->
-<!-- NOTE: Unfortunately the widget types and their properties are not well documented. -->
-<!--       The best thing you can do is to look at filters that have similar widgets you require and copy their source code. -->
-<!--       Good resources are: IcoSphere.xml, PersistenceDiagram.xml, and ArrayEditor.xml -->
+
 <ServerManagerConfiguration>
   <ProxyGroup name="filters">
-    <SourceProxy name="ttkmorseSmaleComplexOrder" class="ttkmorseSmaleComplexOrder" label="TTK morseSmaleComplexOrder">
-      <Documentation long_help="morseSmaleComplexOrder Long" short_help="morseSmaleComplexOrder Short">Filter description.</Documentation>
+    <SourceProxy
+      name="ttkmorseSmaleComplexOrder" class="ttkmorseSmaleComplexOrder"
+      label="TTK morseSmaleComplexOrder">
+      <Documentation 
+        long_help="TTK order morseSmaleComplex plugin."
+        short_help="TTK order morseSmaleComplex plugin.">
+        TTK plugin for the computation of order Morse-Smale complexes only using
+        an order field and a triangulation.
+      </Documentation>
 
       <!-- INPUT DATA OBJECTS -->
       <InputProperty name="Input" command="SetInputConnection">
@@ -17,22 +21,85 @@
         <DataTypeDomain name="input_type">
           <DataType value="vtkDataSet" />
         </DataTypeDomain>
-        <InputArrayDomain name="input_array" attribute_type="point" number_of_components="1" />
-        <Documentation>A vtkDataSet that has at least one point data scalar array that can be used to compute the MSC variant.</Documentation>
+        <InputArrayDomain
+          name="input_array" attribute_type="point" number_of_components="1" />
+        <Documentation>
+          A vtkDataSet that has at least one point data scalar array that can be
+           used to compute the MSC variant.
+        </Documentation>
       </InputProperty>
 
       <!-- INPUT PARAMETER WIDGETS -->
-
-      <!-- This is the VTK way of selecting arrays for processing by calling the SetInputArrayToProcess method -->
-      <!-- (see ttkmorseSmaleComplexOrder.cpp for details) -->
-      <StringVectorProperty name="InputArray" label="Input Array" command="SetInputArrayToProcess" element_types="0 0 0 0 2" number_of_elements="5">
+      <StringVectorProperty
+        name="InputArray"
+        label="Input Array"
+        command="SetInputArrayToProcess"
+        element_types="0 0 0 0 2"
+        number_of_elements="5">
         <ArrayListDomain attribute_type="Scalars" name="array_list">
           <RequiredProperties>
             <Property function="Input" name="Input" />
           </RequiredProperties>
         </ArrayListDomain>
-        <Documentation>The scalar array that will be used to compute the MSC variant.</Documentation>
+        <Documentation>
+          The scalar array that will be used to compute the MSC variant.
+        </Documentation>
       </StringVectorProperty>
+
+      <IntVectorProperty name="ComputeCriticalPoints"
+        label="Critical Points"
+        command="SetComputeCriticalPoints"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Check the box to calculate critical points
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeAscendingSegmentation"
+        label="Ascending Segmentation"
+        command="SetComputeAscendingSegmentation"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Documentation.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeDescendingSegmentation"
+        label="Descending Segmentation"
+        command="SetComputeDescendingSegmentation"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Documentation.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeFinalSegmentation"
+        label="Morse-Smale Complex Segmentation"
+        command="SetComputeFinalSegmentation"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Documentation.
+        </Documentation>
+      </IntVectorProperty>
+
+      <PropertyGroup panel_widget="Line" label="Output options">
+        <Property name="ComputeCriticalPoints"/>
+        <Property name="ComputeAscendingSegmentation"/>
+        <Property name="ComputeDescendingSegmentation"/>
+        <Property name="ComputeFinalSegmentation"/>
+      </PropertyGroup>
 
       <OutputPort name="Critical Points" index="0" id="port0"/>
       <OutputPort name="1-Separatrices" index="1" id="port1"/>
@@ -44,7 +111,7 @@
 
       <!-- MENU CATEGORY -->
       <Hints>
-        <ShowInMenu category="TTK - Misc" />
+        <ShowInMenu category="TTK - Scalar Data" />
       </Hints>
     </SourceProxy>
   </ProxyGroup>
