@@ -429,8 +429,13 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
 
     const int dim = triangulation.getDimensionality();
 
+    float x, y, z;
     for (auto& it: maxima) {
       criticalPoints.push_back(CriticalPoint(dim, it.first));
+      triangulation.getVertexPoint(it.first, x, y, z);
+      outputCriticalPoints_points_->push_back({x, y, z});
+      outputCriticalPoints_points_cellDimensions_->push_back(dim);
+      outputCriticalPoints_points_cellIds_->push_back(it.first);
     }
 
     delete activeVertices;
@@ -700,8 +705,13 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
     }
 #endif // TTK_ENABLE_OPENMP
 
+    float x, y, z;
     for (auto& it: minima) {
       criticalPoints.push_back(CriticalPoint(0, it.first));
+      triangulation.getVertexPoint(it.first, x, y, z);
+      outputCriticalPoints_points_->push_back({x, y, z});
+      outputCriticalPoints_points_cellDimensions_->push_back(0);
+      outputCriticalPoints_points_cellIds_->push_back(it.first);
     }
 
     delete activeVertices;
@@ -753,14 +763,6 @@ int ttk::morseSmaleComplexOrder::computeFinalSegmentation(
       morseSmaleManifold[i] = -1;
     } else {
       morseSmaleManifold[i] = a * numberOfMaxima + d;
-    }
-    if(i < 100)
-    {
-      const std::string itMsg = "\n#a: " + std::to_string(a) + "\n" + 
-                                "#d: " + std::to_string(d) + "\n" + 
-                                "#min: " + std::to_string(numberOfMaxima) + "\n" + 
-                                "#max: " + std::to_string(numberOfMinima) + "\n";
-      this->printMsg(itMsg, 1 );
     }
   }
 
