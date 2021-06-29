@@ -85,6 +85,8 @@ int ttkmorseSmaleComplexOrder::RequestData(vtkInformation *request,
   }
 #endif
 
+  this->setInputOrderField(ttkUtils::GetVoidPointer(inputArray));
+
   const auto triangulation = ttkAlgorithm::GetTriangulation(input);
 
 #ifndef TTK_ENABLE_KAMIKAZE    
@@ -95,11 +97,6 @@ int ttkmorseSmaleComplexOrder::RequestData(vtkInformation *request,
 #endif
 
   this->preconditionTriangulation(triangulation);
-
-  // If all checks pass then log which array is going to be processed.
-  this->printMsg("MSC Order computation starting...");
-  this->printMsg("  Scalar Array: " + std::string(inputArray->GetName()));
-
   const SimplexId numberOfVertices = triangulation->getNumberOfVertices();
 
 #ifndef TTK_ENABLE_KAMIKAZE
@@ -108,6 +105,32 @@ int ttkmorseSmaleComplexOrder::RequestData(vtkInformation *request,
     return -1;
   }
 #endif
+
+  vtkNew<ttkSimplexIdTypeArray> OrderFieldIdMap{};
+
+#ifndef TTK_ENABLE_KAMIKAZE
+  if(!OrderFieldIdMap) {
+    this->printErr("Order Id map vtkDataArray allocation problem.");
+    return -1;
+  }
+#endif
+
+  OrderFieldIdMap->SetNumberOfComponents(1);
+  OrderFieldIdMap->SetNumberOfTuples(numberOfVertices);
+  OrderFieldIdMap->SetName("OrderFieldIdMap");
+
+#ifdef TTK_ENABLE_OPENMP
+#pragma omp parallel for num_threads(threadNumber_) schedule(dynamic, 8)
+#endif
+  for(SimplexId i = 0; i < numberOfVertices; ++i) {
+    OrderFieldIdMap->SetValue(inputArray->GetTuple1(i), i);
+  }
+
+  void *OrderFieldIdMapPtr = nullptr;
+  if(ComputeAscendingSegmentation)
+    OrderFieldIdMapPtr = ttkUtils::GetVoidPointer(OrderFieldIdMap);
+
+  this->setOrderFieldIdMap(OrderFieldIdMapPtr);
 
   vtkNew<ttkSimplexIdTypeArray> ascendingManifold{};
   vtkNew<ttkSimplexIdTypeArray> descendingManifold{};
@@ -132,21 +155,6 @@ int ttkmorseSmaleComplexOrder::RequestData(vtkInformation *request,
   morseSmaleManifold->SetNumberOfTuples(numberOfVertices);
   morseSmaleManifold->SetName("MorseSmaleManifold");
 
-  // Create an output array that has the same data type as the input array
-  vtkSmartPointer<vtkDataArray> outputDescArray
-    = vtkSmartPointer<vtkDataArray>::Take(inputArray->NewInstance());
-  outputDescArray->SetName("Descending Manifold"); // set array name
-  outputDescArray->SetNumberOfComponents(1); // only one component per tuple
-  outputDescArray->SetNumberOfTuples(inputArray->GetNumberOfTuples());
-
-  vtkSmartPointer<vtkDataArray> outputAscArray
-    = vtkSmartPointer<vtkDataArray>::Take(inputArray->NewInstance());
-  outputAscArray->SetName("Ascending Manifold"); // set array name
-  outputAscArray->SetNumberOfComponents(1); // only one component per tuple
-  outputAscArray->SetNumberOfTuples(inputArray->GetNumberOfTuples());
-
-  this->setInputOrderField(ttkUtils::GetVoidPointer(inputArray));
-
   void *ascendingManifoldPtr = nullptr;
   void *descendingManifoldPtr = nullptr;
   void *morseSmaleManifoldPtr = nullptr;
@@ -160,6 +168,10 @@ int ttkmorseSmaleComplexOrder::RequestData(vtkInformation *request,
 
   this->setOutputMorseComplexes(
     ascendingManifoldPtr, descendingManifoldPtr, morseSmaleManifoldPtr);
+
+  // If all checks pass then log which array is going to be processed.
+  this->printMsg("MSC Order computation starting...");
+  this->printMsg("  Scalar Array: " + std::string(inputArray->GetName()));
 
   int status = 0;
 
@@ -307,36 +319,3 @@ int ttkmorseSmaleComplexOrder::dispatch(vtkDataArray *const inputArray,
   }
   return 0;
 }
-
-// Templatize over the different input array data types and call the base code
-  /*int status = 0; // this integer checks if the base code returns an error
-  ttkVtkTemplateMacro(inputArray->GetDataType(), triangulation->getType(),
-                      (status = this->computeDescendingManifold<VTK_TT, TTK_TT>(
-                         (VTK_TT *)ttkUtils::GetVoidPointer(outputDescArray),
-                         (VTK_TT *)ttkUtils::GetVoidPointer(inputArray),
-                         (TTK_TT *)triangulation->getData())));
-
-  // On error cancel filter execution
-  if(status != 1)
-    return 0;
-
-  ttkVtkTemplateMacro(inputArray->GetDataType(), triangulation->getType(),
-                      (status = this->computeAscendingManifold<VTK_TT, TTK_TT>(
-                         (VTK_TT *)ttkUtils::GetVoidPointer(outputAscArray),
-                         (VTK_TT *)ttkUtils::GetVoidPointer(inputArray),
-                         (TTK_TT *)triangulation->getData())));
-                        
-  if(status != 1)
-    return 0;
-    
-  // Get output vtkDataSet (which was already instantiated based on the
-  // information provided by FillOutputPortInformation)
-  vtkDataSet *outputDataSet = vtkDataSet::GetData(outputVector, 0);
-
-  // make a SHALLOW copy of the input
-  outputDataSet->ShallowCopy(input);
-
-  // add to the output point data the computed output array
-  outputDataSet->GetPointData()->AddArray(outputDescArray);
-  outputDataSet->GetPointData()->AddArray(outputAscArray);
-  */

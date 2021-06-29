@@ -10,24 +10,106 @@
 #include <unordered_map>
 #include <map>
 #include <list>
-#include <vtk-9.0/vtkDataArray.h>
+
+using ttk::SimplexId;
 
 namespace ttk {
 
-  /**
-   * Basic concept of critical point representing its vertexid and index of 
-   * criticality
-   */
-  struct CriticalPoint {
-    explicit CriticalPoint() = default;
+  namespace omsc {
+    /**
+     * Basic concept of critical point representing its vertexid and index of 
+     * criticality
+     */
+    struct CriticalPoint {
+      explicit CriticalPoint() = default;
 
-    explicit CriticalPoint(const int index, const SimplexId id)
-      : index_{index}, id_{id} {
-    }
+      explicit CriticalPoint(const int index, const SimplexId id)
+        : index_{index}, id_{id} {
+      }
 
-    int index_{-1};
-    SimplexId id_{-1};
-  };
+      int index_{-1};
+      SimplexId id_{-1};
+    };
+
+    struct Separatrix {
+      // default :
+      explicit Separatrix()
+        : isValid_{}, source_{}, destination_{}, isReversed_{}, geometry_{} {
+      }
+
+      // initialization with one segment :
+      explicit Separatrix(const bool isValid,
+                          const SimplexId &saddle,
+                          const SimplexId &extremum,
+                          const bool isSegmentReversed,
+                          const SimplexId segmentGeometry)
+        : isValid_{isValid}, source_{saddle}, destination_{extremum} {
+        isReversed_.push_back(isSegmentReversed);
+        geometry_.push_back(segmentGeometry);
+      }
+
+      // initialization with multiple segments :
+      explicit Separatrix(const bool isValid,
+                          const SimplexId &saddle,
+                          const SimplexId &extremum,
+                          const std::vector<char> &isReversed,
+                          const std::vector<SimplexId> &geometry)
+        : isValid_{isValid}, source_{saddle}, destination_{extremum},
+          isReversed_{isReversed}, geometry_{geometry} {
+      }
+
+      explicit Separatrix(const Separatrix &separatrix)
+        : isValid_{separatrix.isValid_}, source_{separatrix.source_},
+          destination_{separatrix.destination_},
+          isReversed_{separatrix.isReversed_}, geometry_{separatrix.geometry_} {
+      }
+
+      explicit Separatrix(Separatrix &&separatrix) noexcept
+        : isValid_{separatrix.isValid_}, source_{separatrix.source_},
+          destination_{separatrix.destination_}, isReversed_{std::move(
+                                                   separatrix.isReversed_)},
+          geometry_{std::move(separatrix.geometry_)} {
+      }
+
+      Separatrix &operator=(Separatrix &&separatrix) noexcept {
+        isValid_ = separatrix.isValid_;
+        source_ = separatrix.source_;
+        destination_ = separatrix.destination_;
+        isReversed_ = std::move(separatrix.isReversed_);
+        geometry_ = std::move(separatrix.geometry_);
+
+        return *this;
+      }
+
+      /**
+       * Flag indicating if this separatrix can be processed.
+       */
+      bool isValid_;
+
+      /**
+       * Source vertex of the separatrix.
+       */
+      SimplexId source_;
+
+      /**
+       * Destination vertex of the separatrix.
+       */
+      SimplexId destination_;
+
+      /**
+       * Container of flags, isReversed[i] indicates if the
+       * element stored at id=geometry_[i] can be reversed.
+       */
+      std::vector<char> isReversed_;
+
+      /**
+       * Container of ids. Each id addresses a separate
+       * container corresponding to a dense representation
+       * of the geometry (i.e. separatricesGeometry).
+       */
+      std::vector<SimplexId> geometry_;
+    };
+  }
 
   /**
    * The morseSmaleComplexOrder class provides methods to compute a
@@ -48,6 +130,14 @@ namespace ttk {
      */
     inline int setInputOrderField(void *const data) {
       inputOrderField_ = data;
+      return 0;
+    };
+
+    /**
+     * Set the order field Id Map.
+     */
+    inline int setOrderFieldIdMap(void *const data) {
+      orderFieldIdMap_ = data;
       return 0;
     };
 
@@ -83,14 +173,14 @@ namespace ttk {
     template <class dataType, class triangulationType>
     int computeDescendingManifold(
       SimplexId *const descendingManifold,
-      std::vector<CriticalPoint> &criticalPoints,
+      std::vector<omsc::CriticalPoint> &criticalPoints,
       SimplexId &numberOfMaxima,
       const triangulationType &triangulation) const;
 
     template <class dataType, class triangulationType>
     int computeAscendingManifold(
       SimplexId *const ascendingManifold,
-      std::vector<CriticalPoint> &criticalPoints,
+      std::vector<omsc::CriticalPoint> &criticalPoints,
       SimplexId &numberOfMinima,
       const triangulationType &triangulation) const;
 
@@ -101,6 +191,14 @@ namespace ttk {
       const SimplexId *const ascendingManifold,
       const SimplexId *const descendingManifold,
       SimplexId *const morseSmaleManifold,
+      const triangulationType &triangulation) const;
+
+    template <typename triangulationType>
+    int computeSeparatrices1(
+      const SimplexId numMaxima,
+      const SimplexId numMinima,
+      std::vector<omsc::CriticalPoint> &criticalPoints,
+      const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
       
   protected:
@@ -113,6 +211,7 @@ namespace ttk {
 
     // input
     const void *inputOrderField_{};
+    const void *orderFieldIdMap_{}; 
 
     // critical points
     std::vector<std::array<float, 3>> *outputCriticalPoints_points_{};
@@ -141,8 +240,6 @@ int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
 
   Timer t;
 
-  // nullptr_t is implicitly convertible and comparable to any pointer type
-  // or pointer-to-member type.
   SimplexId *ascendingManifold
     = static_cast<SimplexId *>(outputAscendingManifold_);
   SimplexId *descendingManifold
@@ -150,7 +247,7 @@ int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
   SimplexId *morseSmaleManifold
     = static_cast<SimplexId *>(outputMorseSmaleManifold_);
 
-  std::vector<CriticalPoint> criticalPoints;
+  std::vector<omsc::CriticalPoint> criticalPoints;
   {
     Timer tmp;
 
@@ -190,11 +287,12 @@ int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
 template <class dataType, class triangulationType>
 int ttk::morseSmaleComplexOrder::computeDescendingManifold(
   SimplexId *const descendingManifold,
-  std::vector<CriticalPoint> &criticalPoints,
+  std::vector<omsc::CriticalPoint> &criticalPoints,
   SimplexId &numberOfMaxima,
   const triangulationType &triangulation) const {
 
   const dataType *inputField = static_cast<const dataType *>(inputOrderField_);
+  const SimplexId *orderId = static_cast<const SimplexId *>(orderFieldIdMap_);
 
   // start global timer
   ttk::Timer globalTimer;
@@ -226,7 +324,7 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
 
     /* compute the Descending Maifold iterating over each vertex, searching
      * the biggest neighbor and compressing its path to its maximum */
-    SimplexId nVertices = triangulation.getNumberOfVertices();
+    const SimplexId nVertices = triangulation.getNumberOfVertices();
     std::unordered_map<SimplexId, SimplexId> maxima;
 
     // vertices that may still be compressed
@@ -236,27 +334,31 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
 
 #ifndef TTK_ENABLE_OPENMP
     // find maxima and intialize vector of not fully compressed vertices
-    for(SimplexId i = 0; i < nVertices; i++) {
+    for(SimplexId i = nVertices - 1; i >= 0; i--) {
+      const SimplexId orderI = orderId[i];
+
+      const SimplexId numNeighbors =
+        triangulation.getVertexNeighborNumber(orderI);
+
       SimplexId neighborId;
-      SimplexId numNeighbors =
-        triangulation.getVertexNeighborNumber(i);
       bool hasBiggerNeighbor = false;
 
-      descendingManifold[i] = i;
+      SimplexId &dmi = descendingManifold[orderI];
+      dmi = orderI;
 
       // check all neighbors
       for(SimplexId n = 0; n < numNeighbors; n++) {
-        triangulation.getVertexNeighbor(i, n, neighborId);
-        if(inputField[neighborId] > inputField[descendingManifold[i]]) {
-          descendingManifold[i] = neighborId;
+        triangulation.getVertexNeighbor(orderI, n, neighborId);
+        if(inputField[neighborId] > inputField[dmi]) {
+          dmi = neighborId;
           hasBiggerNeighbor = true;
         }
       }
       if(hasBiggerNeighbor) {
-        activeVertices->push_back(i);
+        activeVertices->push_back(orderI);
       }
       else {
-        maxima.insert( {i, numberOfMaxima++} );
+        maxima.insert( {orderI, numberOfMaxima++} );
       }
     }
 
@@ -275,10 +377,12 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
         
       for(SimplexId i = 0; i < nActiveVertices; i++) {
         SimplexId v = activeVertices->at(i);
-        dataType &vo = descendingManifold[v];
+        SimplexId &vo = descendingManifold[v];
+
         // compress path
         vo = descendingManifold[vo];
 
+        // check if not fully compressed
         if(vo != descendingManifold[vo]) {
           newActiveVert->push_back(v);
         }
@@ -286,7 +390,7 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
 
       iterations += 1;
       delete activeVertices;
-      activeVertices = &*newActiveVert;
+      activeVertices = newActiveVert;
 
       nActiveVertices = activeVertices->size();
     }
@@ -302,21 +406,22 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
     {
       std::vector<SimplexId> lActiveVertices; //active verticies per thread
 
-      #pragma omp for schedule(dynamic, 8)
       // find the biggest neighbor for each vertex
-      for(SimplexId i = 0; i < nVertices; i++) {
+      #pragma omp for schedule(dynamic, 8)
+      for(SimplexId i = nVertices - 1; i >= 0; i--) {
         SimplexId neighborId;
         SimplexId numNeighbors =
           triangulation.getVertexNeighborNumber(i);
         bool hasBiggerNeighbor = false;
+        SimplexId &dmi = descendingManifold[i];
 
-        descendingManifold[i] = i;
+        dmi = i;
 
         // check all neighbors
         for(SimplexId n = 0; n < numNeighbors; n++) {
           triangulation.getVertexNeighbor(i, n, neighborId);
-          if(inputField[neighborId] > inputField[descendingManifold[i]]) {
-            descendingManifold[i] = neighborId;
+          if(inputField[neighborId] > inputField[dmi]) {
+            dmi = neighborId;
             hasBiggerNeighbor = true;
           }
         }
@@ -431,7 +536,7 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
 
     float x, y, z;
     for (auto& it: maxima) {
-      criticalPoints.push_back(CriticalPoint(dim, it.first));
+      criticalPoints.push_back(omsc::CriticalPoint(dim, it.first));
       triangulation.getVertexPoint(it.first, x, y, z);
       outputCriticalPoints_points_->push_back({x, y, z});
       outputCriticalPoints_points_cellDimensions_->push_back(dim);
@@ -469,11 +574,12 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
 template <class dataType, class triangulationType>
 int ttk::morseSmaleComplexOrder::computeAscendingManifold(
   SimplexId *const ascendingManifold,
-  std::vector<CriticalPoint> &criticalPoints,
+  std::vector<omsc::CriticalPoint> &criticalPoints,
   SimplexId &numberOfMinima,
   const triangulationType &triangulation) const {
 
   const dataType *inputField = static_cast<const dataType *>(inputOrderField_);
+  const SimplexId *orderId = static_cast<const SimplexId *>(orderFieldIdMap_);
   
   // start global timer
   ttk::Timer globalTimer;
@@ -516,26 +622,30 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
 #ifndef TTK_ENABLE_OPENMP
     // find minima and intialize vector of not fully compressed vertices
     for(SimplexId i = 0; i < nVertices; i++) {
-      SimplexId neighborId;
-      SimplexId numNeighbors =
-        triangulation.getVertexNeighborNumber(i);
-      bool hasBiggerNeighbor = false;
+      const SimplexId orderI = orderId[i];
 
-      ascendingManifold[i] = i;
+      const SimplexId numNeighbors =
+        triangulation.getVertexNeighborNumber(orderI);
+
+      SimplexId neighborId;
+      bool hasSmallerNeighbor = false;
+
+      SimplexId &ami = ascendingManifold[orderI];
+      ami = orderI;
 
       // check all neighbors
       for(SimplexId n = 0; n < numNeighbors; n++) {
-        triangulation.getVertexNeighbor(i, n, neighborId);
-        if(inputField[neighborId] < inputField[ascendingManifold[i]]) {
-          ascendingManifold[i] = neighborId;
-          hasBiggerNeighbor = true;
+        triangulation.getVertexNeighbor(orderI, n, neighborId);
+        if(inputField[neighborId] < inputField[ami]) {
+          ami = neighborId;
+          hasSmallerNeighbor = true;
         }
       }
-      if(hasBiggerNeighbor) {
-        activeVertices->push_back(i);
+      if(hasSmallerNeighbor) {
+        activeVertices->push_back(orderI);
       }
       else {
-        minima.insert( {i, numberOfMinima++} );
+        minima.insert( {orderI, numberOfMinima++} );
       }
     }
 
@@ -554,7 +664,8 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
         
       for(SimplexId i = 0; i < nActiveVertices; i++) {
         SimplexId v = activeVertices->at(i);
-        dataType &vo = ascendingManifold[v];
+        SimplexId &vo = ascendingManifold[v];
+
         // compress path
         vo = ascendingManifold[vo];
 
@@ -586,7 +697,7 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
         SimplexId neighborId;
         SimplexId numNeighbors =
           triangulation.getVertexNeighborNumber(i);
-        bool hasBiggerNeighbor = false;
+        bool hasSmallerNeighbor = false;
 
         ascendingManifold[i] = i;
 
@@ -595,11 +706,11 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
           triangulation.getVertexNeighbor(i, n, neighborId);
           if(inputField[neighborId] < inputField[ascendingManifold[i]]) {
             ascendingManifold[i] = neighborId;
-            hasBiggerNeighbor = true;
+            hasSmallerNeighbor = true;
           }
         }
 
-        if(hasBiggerNeighbor) {
+        if(hasSmallerNeighbor) {
             lActiveVertices.push_back(i);
         }
         else {
@@ -707,7 +818,7 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
 
     float x, y, z;
     for (auto& it: minima) {
-      criticalPoints.push_back(CriticalPoint(0, it.first));
+      criticalPoints.push_back(omsc::CriticalPoint(0, it.first));
       triangulation.getVertexPoint(it.first, x, y, z);
       outputCriticalPoints_points_->push_back({x, y, z});
       outputCriticalPoints_points_cellDimensions_->push_back(0);
@@ -792,4 +903,41 @@ int ttk::morseSmaleComplexOrder::computeFinalSegmentation(
   }
 
   return 0;
+}
+
+template <typename triangulationType>
+int ttk::morseSmaleComplexOrder::computeSeparatrices1(
+  const SimplexId numMaxima,
+  const SimplexId numMinima,
+  std::vector<omsc::CriticalPoint> &criticalPoints,
+  const SimplexId *const morseSmaleManifold,
+  const triangulationType &triangulation) const {
+    
+  std::vector<omsc::CriticalPoint> maxima;
+  std::vector<omsc::CriticalPoint> minima;
+  const int dim = triangulation.getDimensionality();
+
+  // retrieve maxima and minima
+  for(const auto& c: criticalPoints) {
+    if(c.index_ == 0) {
+      maxima.push_back(c);
+    }
+    else if(c.index_ == dim) {
+      minima.push_back(c);
+    }
+  }
+
+  for(SimplexId i = 0; i < numMaxima; ++i) {
+
+    SimplexId numNeigh = triangulation.getVertexNeighborNumber(maxima[i]);
+    for(SimplexId neighId = 0; neighId < numNeigh; ++neighId) {
+    //triangulation.getVertexNeighbor();
+    }
+  
+
+  //std::queue<std::tuple<SimplexId, Separatrix> bfs;
+  }
+
+  return 0;
+  
 }
