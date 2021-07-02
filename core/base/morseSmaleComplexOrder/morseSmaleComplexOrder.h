@@ -11,7 +11,20 @@
 #include <map>
 #include <list>
 
+#include <cstddef>
+
 using ttk::SimplexId;
+
+#ifdef __cpp_lib_hardware_interference_size
+    using std::hardware_constructive_interference_size;
+    using std::hardware_destructive_interference_size;
+#else
+    // 64 bytes on x86-64 │ L1_CACHE_BYTES │ L1_CACHE_SHIFT │ __cacheline_aligned │ ...
+    constexpr std::size_t hardware_constructive_interference_size
+        = 2 * sizeof(std::max_align_t);
+    constexpr std::size_t hardware_destructive_interference_size
+        = 2 * sizeof(std::max_align_t);
+#endif
 
 namespace ttk {
 
@@ -237,7 +250,7 @@ template <typename dataType, typename triangulationType>
 int ttk::morseSmaleComplexOrder::executeSpeedTest(
   const triangulationType &triangulation) {
 
-  const int iterations = 5;
+  const int iterations = 10;
 
   SimplexId *ascendingManifold
     = static_cast<SimplexId *>(outputAscendingManifold_);
@@ -289,10 +302,10 @@ int ttk::morseSmaleComplexOrder::executeSpeedTest(
     t3 += tmp3.getElapsedTime();
   }
 
-  std::string testStr1 = "Ascending:\nT0 = " + std::to_string(t0) + "\n" +
-  "T1 = " + std::to_string(t1) + "\n" +
-  "T2 = " + std::to_string(t2) + "\n" +
-  "T3 = " + std::to_string(t3);
+  std::string testStr1 = "Ascending:\nT0 = " + std::to_string(t0/iterations) + "\n" +
+  "T1 = " + std::to_string(t1/iterations) + "\n" +
+  "T2 = " + std::to_string(t2/iterations) + "\n" +
+  "T3 = " + std::to_string(t3/iterations);
                
   t0 = 0, t1 = 0, t2  = 0, t3 = 0;
 
@@ -331,10 +344,10 @@ int ttk::morseSmaleComplexOrder::executeSpeedTest(
     t3 += tmp3.getElapsedTime();
   }
 
-  std::string testStr2 = "Descending:\nT0 = " + std::to_string(t0) + "\n" +
-  "T1 = " + std::to_string(t1) + "\n" +
-  "T2 = " + std::to_string(t2) + "\n" +
-  "T3 = " + std::to_string(t3);
+  std::string testStr2 = "Descending:\nT0 = " + std::to_string(t0/iterations) + "\n" +
+  "T1 = " + std::to_string(t1/iterations) + "\n" +
+  "T2 = " + std::to_string(t2/iterations) + "\n" +
+  "T3 = " + std::to_string(t3/iterations);
   this->printMsg(testStr1);
   this->printMsg(testStr2);
 
@@ -583,6 +596,9 @@ else if(!db_omp && db_opt == 1) {
 }
 //#else // TTK_ENABLE_OPENMP
 else if(db_omp && db_opt == 0) {
+    const size_t numCacheLineEntries =
+      hardware_destructive_interference_size / sizeof(SimplexId);
+
     #pragma omp parallel num_threads(this->threadNumber_) \
             shared(iterations, maxima, numberOfMaxima, \
             activeVertices, nActiveVertices)
@@ -590,7 +606,7 @@ else if(db_omp && db_opt == 0) {
       std::vector<SimplexId> lActiveVertices; //active verticies per thread
 
       // find the biggest neighbor for each vertex
-      #pragma omp for schedule(dynamic, 8)
+      #pragma omp for schedule(guided)
       for(SimplexId i = nVertices - 1; i >= 0; i--) {
         const SimplexId orderI = orderId[i];
 
@@ -661,7 +677,7 @@ else if(db_omp && db_opt == 0) {
 
         /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
 
-        #pragma omp for schedule(dynamic)
+        #pragma omp for schedule(guided)
         for(SimplexId i = 0; i < nActiveVertices; i++) {
           SimplexId v = activeVertices->at(i);
           SimplexId &vo = descendingManifold[v];
@@ -711,13 +727,16 @@ else if(db_omp && db_opt == 0) {
       }*/
 
       // set critical point indices
-      #pragma omp for schedule(dynamic, 8)
+      #pragma omp for schedule(dynamic, numCacheLineEntries)
       for(SimplexId i = 0; i < nVertices; i++) {
         descendingManifold[i] = maxima.at(descendingManifold[i]);
       }
     }
 }
 else {
+    const size_t numCacheLineEntries =
+      hardware_destructive_interference_size / sizeof(SimplexId);
+
     #pragma omp parallel num_threads(this->threadNumber_) \
             shared(iterations, maxima, numberOfMaxima, \
             activeVertices, nActiveVertices)
@@ -725,7 +744,7 @@ else {
       std::vector<SimplexId> lActiveVertices; //active verticies per thread
 
       // find the biggest neighbor for each vertex
-      #pragma omp for schedule(dynamic, 8)
+      #pragma omp for schedule(dynamic, numCacheLineEntries)
       for(SimplexId i = nVertices - 1; i >= 0; i--) {
         SimplexId neighborId;
         SimplexId numNeighbors =
@@ -793,7 +812,7 @@ else {
 
         /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
 
-        #pragma omp for schedule(dynamic)
+        #pragma omp for schedule(guided)
         for(SimplexId i = 0; i < nActiveVertices; i++) {
           SimplexId v = activeVertices->at(i);
           SimplexId &vo = descendingManifold[v];
@@ -843,7 +862,7 @@ else {
       }*/
 
       // set critical point indices
-      #pragma omp for schedule(dynamic, 8)
+      #pragma omp for schedule(dynamic, numCacheLineEntries)
       for(SimplexId i = 0; i < nVertices; i++) {
         descendingManifold[i] = maxima.at(descendingManifold[i]);
       }
@@ -1073,6 +1092,9 @@ else if(!db_omp && db_opt == 1) {
 }
 //#else // TTK_ENABLE_OPENMP
 else if(db_omp && db_opt == 0) {
+    const size_t numCacheLineEntries =
+      hardware_destructive_interference_size / sizeof(SimplexId);
+
     #pragma omp parallel num_threads(this->threadNumber_) \
             shared(iterations, minima, numberOfMinima, \
             activeVertices, nActiveVertices)
@@ -1080,7 +1102,7 @@ else if(db_omp && db_opt == 0) {
       std::vector<SimplexId> lActiveVertices; //active verticies per thread
 
       // find the smallest neighbor for each vertex
-      #pragma omp for schedule(dynamic, 8)
+      #pragma omp for schedule(guided)
       for(SimplexId i = 0; i < nVertices; i++) {
         const SimplexId orderI = orderId[i];
 
@@ -1151,7 +1173,7 @@ else if(db_omp && db_opt == 0) {
 
         /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
 
-        #pragma omp for schedule(dynamic)
+        #pragma omp for schedule(guided)
         for(SimplexId i = 0; i < nActiveVertices; i++) {
           SimplexId v = activeVertices->at(i);
           SimplexId &vo = ascendingManifold[v];
@@ -1201,20 +1223,23 @@ else if(db_omp && db_opt == 0) {
       }*/
 
       // set critical point indices
-      #pragma omp for schedule(dynamic, 8)
+      #pragma omp for schedule(dynamic, numCacheLineEntries)
       for(SimplexId i = 0; i < nVertices; i++) {
         ascendingManifold[i] = minima.at(ascendingManifold[i]);
       }
     }
 }
 else {
+    const size_t numCacheLineEntries =
+      hardware_destructive_interference_size / sizeof(SimplexId);
+
     #pragma omp parallel num_threads(this->threadNumber_) \
             shared(iterations, minima, numberOfMinima, \
             activeVertices, nActiveVertices)
     {
       std::vector<SimplexId> lActiveVertices; //active verticies per thread
 
-      #pragma omp for schedule(dynamic, 8)
+      #pragma omp for schedule(dynamic, numCacheLineEntries)
       // find the biggest neighbor for each vertex
       for(SimplexId i = 0; i < nVertices; i++) {
         SimplexId neighborId;
@@ -1282,7 +1307,7 @@ else {
 
         /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
 
-        #pragma omp for schedule(dynamic)
+        #pragma omp for schedule(guided)
         for(SimplexId i = 0; i < nActiveVertices; i++) {
           SimplexId v = activeVertices->at(i);
           SimplexId &vo = ascendingManifold[v];
@@ -1332,7 +1357,7 @@ else {
       }*/
 
       // set critical point indices
-      #pragma omp for schedule(dynamic, 8)
+      #pragma omp for schedule(dynamic, numCacheLineEntries)
       for(SimplexId i = 0; i < nVertices; i++) {
         ascendingManifold[i] = minima.at(ascendingManifold[i]);
       }
