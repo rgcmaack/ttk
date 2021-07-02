@@ -123,7 +123,9 @@ int ttkmorseSmaleComplexOrder::RequestData(vtkInformation *request,
 #pragma omp parallel for num_threads(threadNumber_) schedule(dynamic, 8)
 #endif
   for(SimplexId i = 0; i < numberOfVertices; ++i) {
-    OrderFieldIdMap->SetValue(inputArray->GetTuple1(i), i);
+    double orderIdx;
+    inputArray->GetTuple(i, &orderIdx);
+    OrderFieldIdMap->SetValue((SimplexId)orderIdx, i);
   }
 
   void *OrderFieldIdMapPtr = nullptr;
@@ -240,6 +242,7 @@ int ttkmorseSmaleComplexOrder::dispatch(vtkDataArray *const inputArray,
       nullptr, nullptr, nullptr);
   }
 
+  this->executeSpeedTest<dataType>(triangulation);
   const int ret = this->execute<dataType>(triangulation);
 
 #ifndef TTK_ENABLE_KAMIKAZE

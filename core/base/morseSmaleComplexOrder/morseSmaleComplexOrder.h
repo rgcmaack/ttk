@@ -200,6 +200,9 @@ namespace ttk {
       std::vector<omsc::CriticalPoint> &criticalPoints,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
+
+    template <typename dataType, typename triangulationType>
+    int executeSpeedTest(const triangulationType &triangulation);
       
   protected:
     bool ComputeAscendingSeparatrices1{false};
@@ -223,9 +226,120 @@ namespace ttk {
     void *outputDescendingManifold_{};
     void *outputMorseSmaleManifold_{};
 
+    bool db_omp = false;
+    int db_opt = 0;
+
   }; // morseSmaleComplexOrder class
 
 } // namespace ttk
+
+template <typename dataType, typename triangulationType>
+int ttk::morseSmaleComplexOrder::executeSpeedTest(
+  const triangulationType &triangulation) {
+
+  const int iterations = 5;
+
+  SimplexId *ascendingManifold
+    = static_cast<SimplexId *>(outputAscendingManifold_);
+  SimplexId *descendingManifold
+    = static_cast<SimplexId *>(outputDescendingManifold_);
+
+  std::vector<omsc::CriticalPoint> criticalPoints;
+  Timer tmp;
+
+  SimplexId numberOfMaxima{};
+  SimplexId numberOfMinima{};
+
+  this->printMsg("starting Speedtest");
+
+  double t0 = 0, t1 = 0, t2  = 0, t3 = 0;
+
+  for(int i  = 0; i < iterations; ++i) {
+    db_omp = false;
+    db_opt = 0;
+    Timer tmp0;
+    computeAscendingManifold<dataType, triangulationType>(
+                              ascendingManifold, criticalPoints,
+                              numberOfMinima, triangulation);
+    t0 += tmp0.getElapsedTime();
+    
+    db_omp = false;
+    db_opt = 1;
+    Timer tmp1;
+    computeAscendingManifold<dataType, triangulationType>(
+                              ascendingManifold, criticalPoints,
+                              numberOfMinima, triangulation);
+    t1 += tmp1.getElapsedTime();
+
+    db_omp = true;
+    db_opt = 0;
+
+    Timer tmp2;
+    computeAscendingManifold<dataType, triangulationType>(
+                              ascendingManifold, criticalPoints,
+                              numberOfMinima, triangulation);
+    t2 += tmp2.getElapsedTime();
+
+    db_omp = true;
+    db_opt = 1;
+    Timer tmp3;
+    computeAscendingManifold<dataType, triangulationType>(
+                              ascendingManifold, criticalPoints,
+                              numberOfMinima, triangulation);
+    t3 += tmp3.getElapsedTime();
+  }
+
+  std::string testStr1 = "Ascending:\nT0 = " + std::to_string(t0) + "\n" +
+  "T1 = " + std::to_string(t1) + "\n" +
+  "T2 = " + std::to_string(t2) + "\n" +
+  "T3 = " + std::to_string(t3);
+               
+  t0 = 0, t1 = 0, t2  = 0, t3 = 0;
+
+  for(int i  = 0; i < iterations; ++i) {
+    db_omp = false;
+    db_opt = 0;
+    Timer tmp0;
+    computeDescendingManifold<dataType, triangulationType>(
+                              descendingManifold, criticalPoints,
+                              numberOfMaxima, triangulation);
+    t0 += tmp0.getElapsedTime();
+    
+    db_omp = false;
+    db_opt = 1;
+    Timer tmp1;
+    computeDescendingManifold<dataType, triangulationType>(
+                              descendingManifold, criticalPoints,
+                              numberOfMaxima, triangulation);
+    t1 += tmp1.getElapsedTime();
+
+    db_omp = true;
+    db_opt = 0;
+
+    Timer tmp2;
+    computeDescendingManifold<dataType, triangulationType>(
+                              descendingManifold, criticalPoints,
+                              numberOfMaxima, triangulation);
+    t2 += tmp2.getElapsedTime();
+
+    db_omp = true;
+    db_opt = 1;
+    Timer tmp3;
+    computeDescendingManifold<dataType, triangulationType>(
+                              descendingManifold, criticalPoints,
+                              numberOfMaxima, triangulation);
+    t3 += tmp3.getElapsedTime();
+  }
+
+  std::string testStr2 = "Descending:\nT0 = " + std::to_string(t0) + "\n" +
+  "T1 = " + std::to_string(t1) + "\n" +
+  "T2 = " + std::to_string(t2) + "\n" +
+  "T3 = " + std::to_string(t3);
+  this->printMsg(testStr1);
+  this->printMsg(testStr2);
+
+  return 0;
+}
 
 template <typename dataType, typename triangulationType>
 int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
@@ -300,14 +414,14 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
   numberOfMaxima = 0;
 
   // print horizontal separator
-  this->printMsg(ttk::debug::Separator::L1); // L1 is the '=' separator
+  /*this->printMsg(ttk::debug::Separator::L1); // L1 is the '=' separator
 
   // print input parameters in table format
   this->printMsg({
     {"#Threads", std::to_string(this->threadNumber_)},
     {"#Vertices", std::to_string(triangulation.getNumberOfVertices())},
   });
-  this->printMsg(ttk::debug::Separator::L1);
+  this->printMsg(ttk::debug::Separator::L1);*/
 
   // -----------------------------------------------------------------------
   // Compute MSC variant
@@ -317,10 +431,10 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
     ttk::Timer localTimer;
 
     // print the progress of the current subprocedure (currently 0%)
-    this->printMsg("Computing Descending Manifold",
+    /*this->printMsg("Computing Descending Manifold",
                    0, // progress form 0-1
                    0, // elapsed time so far
-                   this->threadNumber_);
+                   this->threadNumber_);*/
 
     /* compute the Descending Maifold iterating over each vertex, searching
      * the biggest neighbor and compressing its path to its maximum */
@@ -332,7 +446,8 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
       = new std::vector<SimplexId>();
     SimplexId nActiveVertices;
 
-#ifndef TTK_ENABLE_OPENMP
+//#ifndef TTK_ENABLE_OPENMP
+if(!db_omp && db_opt == 0) {
     // find maxima and intialize vector of not fully compressed vertices
     for(SimplexId i = nVertices - 1; i >= 0; i--) {
       const SimplexId orderI = orderId[i];
@@ -369,11 +484,11 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
     while(nActiveVertices > 0) {
       newActiveVert = new std::vector<SimplexId>();
 
-      std::string msgit = "Iteration: " + std::to_string(iterations) +
+      /*std::string msgit = "Iteration: " + std::to_string(iterations) +
         "(" + std::to_string(nActiveVertices) + "/" +
         std::to_string(nVertices) + ")";
       this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
-        localTimer.getElapsedTime(), this->threadNumber_);
+        localTimer.getElapsedTime(), this->threadNumber_);*/
         
       for(SimplexId i = 0; i < nActiveVertices; i++) {
         SimplexId v = activeVertices->at(i);
@@ -399,7 +514,75 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
     for(SimplexId i = 0; i < nVertices; i++) {
       descendingManifold[i] = maxima[descendingManifold[i]];
     }
-#else // TTK_ENABLE_OPENMP
+}
+else if(!db_omp && db_opt == 1) {
+    // find maxima and intialize vector of not fully compressed vertices
+    for(SimplexId i = nVertices - 1; i >= 0; i--) {
+      const SimplexId numNeighbors =
+        triangulation.getVertexNeighborNumber(i);
+
+      SimplexId neighborId;
+      bool hasBiggerNeighbor = false;
+
+      SimplexId &dmi = descendingManifold[i];
+      dmi = i;
+
+      // check all neighbors
+      for(SimplexId n = 0; n < numNeighbors; n++) {
+        triangulation.getVertexNeighbor(i, n, neighborId);
+        if(inputField[neighborId] > inputField[dmi]) {
+          dmi = neighborId;
+          hasBiggerNeighbor = true;
+        }
+      }
+      if(hasBiggerNeighbor) {
+        activeVertices->push_back(i);
+      }
+      else {
+        maxima.insert( {i, numberOfMaxima++} );
+      }
+    }
+
+    nActiveVertices = activeVertices->size();
+    std::vector<SimplexId>* newActiveVert;
+
+    // compress paths until no changes occur
+    while(nActiveVertices > 0) {
+      newActiveVert = new std::vector<SimplexId>();
+
+      /*std::string msgit = "Iteration: " + std::to_string(iterations) +
+        "(" + std::to_string(nActiveVertices) + "/" +
+        std::to_string(nVertices) + ")";
+      this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
+        localTimer.getElapsedTime(), this->threadNumber_);*/
+        
+      for(SimplexId i = 0; i < nActiveVertices; i++) {
+        SimplexId v = activeVertices->at(i);
+        SimplexId &vo = descendingManifold[v];
+
+        // compress path
+        vo = descendingManifold[vo];
+
+        // check if not fully compressed
+        if(vo != descendingManifold[vo]) {
+          newActiveVert->push_back(v);
+        }
+      }
+
+      iterations += 1;
+      delete activeVertices;
+      activeVertices = newActiveVert;
+
+      nActiveVertices = activeVertices->size();
+    }
+
+    // make indices dense
+    for(SimplexId i = 0; i < nVertices; i++) {
+      descendingManifold[i] = maxima[descendingManifold[i]];
+    }
+}
+//#else // TTK_ENABLE_OPENMP
+else if(db_omp && db_opt == 0) {
     #pragma omp parallel num_threads(this->threadNumber_) \
             shared(iterations, maxima, numberOfMaxima, \
             activeVertices, nActiveVertices)
@@ -409,42 +592,45 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
       // find the biggest neighbor for each vertex
       #pragma omp for schedule(dynamic, 8)
       for(SimplexId i = nVertices - 1; i >= 0; i--) {
-        SimplexId neighborId;
-        SimplexId numNeighbors =
-          triangulation.getVertexNeighborNumber(i);
-        bool hasBiggerNeighbor = false;
-        SimplexId &dmi = descendingManifold[i];
+        const SimplexId orderI = orderId[i];
 
-        dmi = i;
+        const SimplexId numNeighbors =
+        triangulation.getVertexNeighborNumber(orderI);
 
-        // check all neighbors
-        for(SimplexId n = 0; n < numNeighbors; n++) {
-          triangulation.getVertexNeighbor(i, n, neighborId);
-          if(inputField[neighborId] > inputField[dmi]) {
-            dmi = neighborId;
-            hasBiggerNeighbor = true;
-          }
+      SimplexId neighborId;
+      bool hasBiggerNeighbor = false;
+
+      SimplexId &dmi = descendingManifold[orderI];
+      dmi = orderI;
+
+      // check all neighbors
+      for(SimplexId n = 0; n < numNeighbors; n++) {
+        triangulation.getVertexNeighbor(orderI, n, neighborId);
+        if(inputField[neighborId] > inputField[dmi]) {
+          dmi = neighborId;
+          hasBiggerNeighbor = true;
         }
+      }
 
         if(hasBiggerNeighbor) {
-            lActiveVertices.push_back(i);
+            lActiveVertices.push_back(orderI);
         }
         else {
           #pragma omp critical
-          maxima.insert( {i, numberOfMaxima} );
+          maxima.insert( {orderI, numberOfMaxima} );
 
           #pragma omp atomic update
           numberOfMaxima += 1;
         }
       }
 
-      #pragma omp single nowait
+      /*#pragma omp single nowait
       {
         std::string msgm =
           "Computed " + std::to_string(numberOfMaxima) + " Maxima";
         this->printMsg(msgm,
           0.1, localTimer.getElapsedTime(), this->threadNumber_);
-      }
+      }*/
 
       #pragma omp critical
       activeVertices->insert(activeVertices->end(),
@@ -463,7 +649,7 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
       while(nActiveVertices > 0) {
         #pragma omp barrier
 
-        #pragma omp single nowait
+        /*#pragma omp single nowait
         {
           std::string msgit = "Iteration: " + std::to_string(iterations) +
             "(" + std::to_string(nActiveVertices) + "/" +
@@ -471,7 +657,7 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
           double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
           this->printMsg(msgit, prog,
             localTimer.getElapsedTime(), this->threadNumber_);
-        }
+        }*/
 
         /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
 
@@ -517,12 +703,12 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
         }
       }
 
-      #pragma omp single
+      /*#pragma omp single
       {
         this->printMsg("Compressed Paths",
           0.95, // progress
           localTimer.getElapsedTime(), this->threadNumber_);
-      }
+      }*/
 
       // set critical point indices
       #pragma omp for schedule(dynamic, 8)
@@ -530,7 +716,140 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
         descendingManifold[i] = maxima.at(descendingManifold[i]);
       }
     }
-#endif // TTK_ENABLE_OPENMP
+}
+else {
+    #pragma omp parallel num_threads(this->threadNumber_) \
+            shared(iterations, maxima, numberOfMaxima, \
+            activeVertices, nActiveVertices)
+    {
+      std::vector<SimplexId> lActiveVertices; //active verticies per thread
+
+      // find the biggest neighbor for each vertex
+      #pragma omp for schedule(dynamic, 8)
+      for(SimplexId i = nVertices - 1; i >= 0; i--) {
+        SimplexId neighborId;
+        SimplexId numNeighbors =
+          triangulation.getVertexNeighborNumber(i);
+        bool hasBiggerNeighbor = false;
+        SimplexId &dmi = descendingManifold[i];
+
+        dmi = i;
+
+        // check all neighbors
+        for(SimplexId n = 0; n < numNeighbors; n++) {
+          triangulation.getVertexNeighbor(i, n, neighborId);
+          if(inputField[neighborId] > inputField[dmi]) {
+            dmi = neighborId;
+            hasBiggerNeighbor = true;
+          }
+        }
+
+        if(hasBiggerNeighbor) {
+            lActiveVertices.push_back(i);
+        }
+        else {
+          #pragma omp critical
+          maxima.insert( {i, numberOfMaxima} );
+
+          #pragma omp atomic update
+          numberOfMaxima += 1;
+        }
+      }
+
+      /*#pragma omp single nowait
+      {
+        std::string msgm =
+          "Computed " + std::to_string(numberOfMaxima) + " Maxima";
+        this->printMsg(msgm,
+          0.1, localTimer.getElapsedTime(), this->threadNumber_);
+      }*/
+
+      #pragma omp critical
+      activeVertices->insert(activeVertices->end(),
+        lActiveVertices.begin(), lActiveVertices.end());
+
+      lActiveVertices.clear();
+
+      #pragma omp barrier
+
+      #pragma omp single
+      {
+        nActiveVertices = activeVertices->size();
+      }
+
+      // compress paths until no changes occur
+      while(nActiveVertices > 0) {
+        #pragma omp barrier
+
+        /*#pragma omp single nowait
+        {
+          std::string msgit = "Iteration: " + std::to_string(iterations) +
+            "(" + std::to_string(nActiveVertices) + "/" +
+            std::to_string(nVertices) + ")";
+          double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
+          this->printMsg(msgit, prog,
+            localTimer.getElapsedTime(), this->threadNumber_);
+        }*/
+
+        /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
+
+        #pragma omp for schedule(dynamic)
+        for(SimplexId i = 0; i < nActiveVertices; i++) {
+          SimplexId v = activeVertices->at(i);
+          SimplexId &vo = descendingManifold[v];
+
+          /* // save changes
+          lChanges.push_front(
+            std::make_tuple(v, descendingManifold[descendingManifold[v]]));*/
+          vo = descendingManifold[vo];
+
+          // check if fully compressed
+          if(vo != descendingManifold[vo]) {
+            lActiveVertices.push_back(v);
+          }
+        }
+        #pragma omp barrier
+
+        /* // apply changes
+        for(auto it = lChanges.begin(); it != lChanges.end(); ++it) {
+          descendingManifold[std::get<0>(*it)] = std::get<1>(*it);
+        }*/
+
+        #pragma omp single
+        {
+          activeVertices->clear();
+        }
+
+        #pragma omp critical
+        activeVertices->insert(activeVertices->end(),
+          lActiveVertices.begin(), lActiveVertices.end());
+
+        lActiveVertices.clear();
+
+        #pragma omp barrier
+
+        #pragma omp single
+        {
+          nActiveVertices = activeVertices->size();
+          iterations += 1;
+        }
+      }
+
+      /*#pragma omp single
+      {
+        this->printMsg("Compressed Paths",
+          0.95, // progress
+          localTimer.getElapsedTime(), this->threadNumber_);
+      }*/
+
+      // set critical point indices
+      #pragma omp for schedule(dynamic, 8)
+      for(SimplexId i = 0; i < nVertices; i++) {
+        descendingManifold[i] = maxima.at(descendingManifold[i]);
+      }
+    }
+}
+//#endif // TTK_ENABLE_OPENMP
 
     const int dim = triangulation.getDimensionality();
 
@@ -546,15 +865,15 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
     delete activeVertices;
 
     // print the progress of the current subprocedure with elapsed time
-    this->printMsg("Computed Descending Manifold",
+    /*this->printMsg("Computed Descending Manifold",
                    1, // progress
-                   localTimer.getElapsedTime(), this->threadNumber_);
+                   localTimer.getElapsedTime(), this->threadNumber_);*/
   }
 
   // ---------------------------------------------------------------------
   // print global performance
   // ---------------------------------------------------------------------
-  {
+  /*{
     this->printMsg(ttk::debug::Separator::L2); // horizontal '-' separator
 
     const std::string maxMsg = "#Maxima: " + std::to_string(numberOfMaxima);
@@ -565,7 +884,7 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
 
     this->printMsg("Completed", 1, globalTimer.getElapsedTime() );
     this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
-  }
+  }*/
 
   return 1; // return success
 }
@@ -586,14 +905,14 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
   int iterations = 1;
 
   // print horizontal separator
-  this->printMsg(ttk::debug::Separator::L1); // L1 is the '=' separator
+  //this->printMsg(ttk::debug::Separator::L1); // L1 is the '=' separator
 
   // print input parameters in table format
-  this->printMsg({
+  /*this->printMsg({
     {"#Threads", std::to_string(this->threadNumber_)},
     {"#Vertices", std::to_string(triangulation.getNumberOfVertices())},
-  });
-  this->printMsg(ttk::debug::Separator::L1);
+  });*/
+  //this->printMsg(ttk::debug::Separator::L1);
 
   // -----------------------------------------------------------------------
   // Compute MSC variant
@@ -603,10 +922,10 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
     ttk::Timer localTimer;
 
     // print the progress of the current subprocedure (currently 0%)
-    this->printMsg("Computing Ascending Manifold",
+    /*this->printMsg("Computing Ascending Manifold",
                    0, // progress form 0-1
                    0, // elapsed time so far
-                   this->threadNumber_);
+                   this->threadNumber_);*/
 
     /* compute the Descending Maifold iterating over each vertex, searching
      * the biggest neighbor and compressing its path to its maximum */
@@ -614,12 +933,15 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
     SimplexId nVertices = triangulation.getNumberOfVertices();
     std::unordered_map<SimplexId, SimplexId> minima;
 
+    numberOfMinima = 0;
+
     // vertices that may still be compressed
     std::vector<SimplexId>* activeVertices
       = new std::vector<SimplexId>();
     SimplexId nActiveVertices;
 
-#ifndef TTK_ENABLE_OPENMP
+//#ifndef TTK_ENABLE_OPENMP
+if(!db_omp && db_opt == 0) {
     // find minima and intialize vector of not fully compressed vertices
     for(SimplexId i = 0; i < nVertices; i++) {
       const SimplexId orderI = orderId[i];
@@ -656,11 +978,11 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
     while(nActiveVertices > 0) {
       newActiveVert = new std::vector<SimplexId>();
 
-      std::string msgit = "Iteration: " + std::to_string(iterations) +
+      /*std::string msgit = "Iteration: " + std::to_string(iterations) +
         "(" + std::to_string(nActiveVertices) + "/" +
         std::to_string(nVertices) + ")";
       this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
-        localTimer.getElapsedTime(), this->threadNumber_);
+        localTimer.getElapsedTime(), this->threadNumber_);*/
         
       for(SimplexId i = 0; i < nActiveVertices; i++) {
         SimplexId v = activeVertices->at(i);
@@ -684,51 +1006,121 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
     for(SimplexId i = 0; i < nVertices; i++) {
       ascendingManifold[i] = minima[ascendingManifold[i]];
     }
-#else // TTK_ENABLE_OPENMP
+}
+else if(!db_omp && db_opt == 1) {
+    // find minima and intialize vector of not fully compressed vertices
+    for(SimplexId i = 0; i < nVertices; i++) {
+      const SimplexId numNeighbors =
+        triangulation.getVertexNeighborNumber(i);
+
+      SimplexId neighborId;
+      bool hasSmallerNeighbor = false;
+
+      SimplexId &ami = ascendingManifold[i];
+      ami = i;
+
+      // check all neighbors
+      for(SimplexId n = 0; n < numNeighbors; n++) {
+        triangulation.getVertexNeighbor(i, n, neighborId);
+        if(inputField[neighborId] < inputField[ami]) {
+          ami = neighborId;
+          hasSmallerNeighbor = true;
+        }
+      }
+      if(hasSmallerNeighbor) {
+        activeVertices->push_back(i);
+      }
+      else {
+        minima.insert( {i, numberOfMinima++} );
+      }
+    }
+
+    nActiveVertices = activeVertices->size();
+    std::vector<SimplexId>* newActiveVert;
+
+    // compress paths until no changes occur
+    while(nActiveVertices > 0) {
+      newActiveVert = new std::vector<SimplexId>();
+
+      /*std::string msgit = "Iteration: " + std::to_string(iterations) +
+        "(" + std::to_string(nActiveVertices) + "/" +
+        std::to_string(nVertices) + ")";
+      this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
+        localTimer.getElapsedTime(), this->threadNumber_);*/
+        
+      for(SimplexId i = 0; i < nActiveVertices; i++) {
+        SimplexId v = activeVertices->at(i);
+        SimplexId &vo = ascendingManifold[v];
+
+        // compress path
+        vo = ascendingManifold[vo];
+
+        if(vo != ascendingManifold[vo]) {
+          newActiveVert->push_back(v);
+        }
+      }
+
+      iterations += 1;
+      delete activeVertices;
+      activeVertices = &*newActiveVert;
+
+      nActiveVertices = activeVertices->size();
+    }
+
+    for(SimplexId i = 0; i < nVertices; i++) {
+      ascendingManifold[i] = minima[ascendingManifold[i]];
+    }
+}
+//#else // TTK_ENABLE_OPENMP
+else if(db_omp && db_opt == 0) {
     #pragma omp parallel num_threads(this->threadNumber_) \
             shared(iterations, minima, numberOfMinima, \
             activeVertices, nActiveVertices)
     {
       std::vector<SimplexId> lActiveVertices; //active verticies per thread
 
+      // find the smallest neighbor for each vertex
       #pragma omp for schedule(dynamic, 8)
-      // find the biggest neighbor for each vertex
       for(SimplexId i = 0; i < nVertices; i++) {
+        const SimplexId orderI = orderId[i];
+
+        const SimplexId numNeighbors =
+          triangulation.getVertexNeighborNumber(orderI);
+
         SimplexId neighborId;
-        SimplexId numNeighbors =
-          triangulation.getVertexNeighborNumber(i);
         bool hasSmallerNeighbor = false;
 
-        ascendingManifold[i] = i;
+        SimplexId &ami = ascendingManifold[orderI];
+        ami = orderI;
 
         // check all neighbors
         for(SimplexId n = 0; n < numNeighbors; n++) {
-          triangulation.getVertexNeighbor(i, n, neighborId);
-          if(inputField[neighborId] < inputField[ascendingManifold[i]]) {
-            ascendingManifold[i] = neighborId;
+          triangulation.getVertexNeighbor(orderI, n, neighborId);
+          if(inputField[neighborId] < inputField[ami]) {
+            ami = neighborId;
             hasSmallerNeighbor = true;
           }
         }
 
         if(hasSmallerNeighbor) {
-            lActiveVertices.push_back(i);
+            lActiveVertices.push_back(orderI);
         }
         else {
           #pragma omp critical
-          minima.insert( {i, numberOfMinima} );
+          minima.insert( {orderI, numberOfMinima} );
 
           #pragma omp atomic update
           numberOfMinima += 1;
         }
       }
 
-      #pragma omp single nowait
+      /*#pragma omp single nowait
       {
         std::string msgm =
           "Computed " + std::to_string(numberOfMinima) + " Minima";
         this->printMsg(msgm,
           0.1, localTimer.getElapsedTime(), this->threadNumber_);
-      }
+      }*/
 
       #pragma omp critical
       activeVertices->insert(activeVertices->end(),
@@ -747,7 +1139,7 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
       while(nActiveVertices > 0) {
         #pragma omp barrier
 
-        #pragma omp single nowait
+        /*#pragma omp single nowait
         {
           std::string msgit = "Iteration: " + std::to_string(iterations) +
             "(" + std::to_string(nActiveVertices) + "/" +
@@ -755,7 +1147,7 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
           double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
           this->printMsg(msgit, prog,
             localTimer.getElapsedTime(), this->threadNumber_);
-        }
+        }*/
 
         /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
 
@@ -801,12 +1193,12 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
         }
       }
 
-      #pragma omp single
+      /*#pragma omp single
       {
         this->printMsg("Compressed Paths",
           0.95, // progress
           localTimer.getElapsedTime(), this->threadNumber_);
-      }
+      }*/
 
       // set critical point indices
       #pragma omp for schedule(dynamic, 8)
@@ -814,7 +1206,139 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
         ascendingManifold[i] = minima.at(ascendingManifold[i]);
       }
     }
-#endif // TTK_ENABLE_OPENMP
+}
+else {
+    #pragma omp parallel num_threads(this->threadNumber_) \
+            shared(iterations, minima, numberOfMinima, \
+            activeVertices, nActiveVertices)
+    {
+      std::vector<SimplexId> lActiveVertices; //active verticies per thread
+
+      #pragma omp for schedule(dynamic, 8)
+      // find the biggest neighbor for each vertex
+      for(SimplexId i = 0; i < nVertices; i++) {
+        SimplexId neighborId;
+        SimplexId numNeighbors =
+          triangulation.getVertexNeighborNumber(i);
+        bool hasSmallerNeighbor = false;
+
+        ascendingManifold[i] = i;
+
+        // check all neighbors
+        for(SimplexId n = 0; n < numNeighbors; n++) {
+          triangulation.getVertexNeighbor(i, n, neighborId);
+          if(inputField[neighborId] < inputField[ascendingManifold[i]]) {
+            ascendingManifold[i] = neighborId;
+            hasSmallerNeighbor = true;
+          }
+        }
+
+        if(hasSmallerNeighbor) {
+            lActiveVertices.push_back(i);
+        }
+        else {
+          #pragma omp critical
+          minima.insert( {i, numberOfMinima} );
+
+          #pragma omp atomic update
+          numberOfMinima += 1;
+        }
+      }
+
+      /*#pragma omp single nowait
+      {
+        std::string msgm =
+          "Computed " + std::to_string(numberOfMinima) + " Minima";
+        this->printMsg(msgm,
+          0.1, localTimer.getElapsedTime(), this->threadNumber_);
+      }*/
+
+      #pragma omp critical
+      activeVertices->insert(activeVertices->end(),
+        lActiveVertices.begin(), lActiveVertices.end());
+
+      lActiveVertices.clear();
+
+      #pragma omp barrier
+
+      #pragma omp single
+      {
+        nActiveVertices = activeVertices->size();
+      }
+
+      // compress paths until no changes occur
+      while(nActiveVertices > 0) {
+        #pragma omp barrier
+
+        /*#pragma omp single nowait
+        {
+          std::string msgit = "Iteration: " + std::to_string(iterations) +
+            "(" + std::to_string(nActiveVertices) + "/" +
+            std::to_string(nVertices) + ")";
+          double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
+          this->printMsg(msgit, prog,
+            localTimer.getElapsedTime(), this->threadNumber_);
+        }*/
+
+        /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
+
+        #pragma omp for schedule(dynamic)
+        for(SimplexId i = 0; i < nActiveVertices; i++) {
+          SimplexId v = activeVertices->at(i);
+          SimplexId &vo = ascendingManifold[v];
+
+          /* // save changes
+          lChanges.push_front(
+            std::make_tuple(v, ascendingManifold[ascendingManifold[v]]));*/
+          vo = ascendingManifold[vo];
+
+          // check if fully compressed
+          if(vo != ascendingManifold[vo]) {
+            lActiveVertices.push_back(v);
+          }
+        }
+        #pragma omp barrier
+
+        /* // apply changes
+        for(auto it = lChanges.begin(); it != lChanges.end(); ++it) {
+          ascendingManifold[std::get<0>(*it)] = std::get<1>(*it);
+        }*/
+
+        #pragma omp single
+        {
+          activeVertices->clear();
+        }
+
+        #pragma omp critical
+        activeVertices->insert(activeVertices->end(),
+          lActiveVertices.begin(), lActiveVertices.end());
+
+        lActiveVertices.clear();
+
+        #pragma omp barrier
+
+        #pragma omp single
+        {
+          nActiveVertices = activeVertices->size();
+          iterations += 1;
+        }
+      }
+
+      /*#pragma omp single
+      {
+        this->printMsg("Compressed Paths",
+          0.95, // progress
+          localTimer.getElapsedTime(), this->threadNumber_);
+      }*/
+
+      // set critical point indices
+      #pragma omp for schedule(dynamic, 8)
+      for(SimplexId i = 0; i < nVertices; i++) {
+        ascendingManifold[i] = minima.at(ascendingManifold[i]);
+      }
+    }
+}
+//#endif // TTK_ENABLE_OPENMP
 
     float x, y, z;
     for (auto& it: minima) {
@@ -828,15 +1352,15 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
     delete activeVertices;
 
     // print the progress of the current subprocedure with elapsed time
-    this->printMsg("Computed Ascending Manifold",
+    /*this->printMsg("Computed Ascending Manifold",
                    1, // progress
-                   localTimer.getElapsedTime(), this->threadNumber_);
+                   localTimer.getElapsedTime(), this->threadNumber_);*/
   }
 
   // ---------------------------------------------------------------------
   // print global performance
   // ---------------------------------------------------------------------
-  {
+  /*{
     this->printMsg(ttk::debug::Separator::L2); // horizontal '-' separator
 
     const std::string maxMsg = "#Minima: " + std::to_string(numberOfMinima);
@@ -847,7 +1371,7 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
 
     this->printMsg("Completed", 1, globalTimer.getElapsedTime() );
     this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
-  }
+  }*/
 
   return 1; // return success
 }
