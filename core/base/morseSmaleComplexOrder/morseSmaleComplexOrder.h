@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <map>
 #include <list>
+#include <stack>
 
 #include <cstddef>
 
@@ -47,17 +48,22 @@ namespace ttk {
     struct Separatrix {
       // default :
       explicit Separatrix()
-        : isValid_{}, source_{}, destination_{}, isReversed_{}, geometry_{} {
+        : isValid_{}, source_{}, destination_{}, geometry_{} {
       }
+
+      // initialization with only the extrema :
+      explicit Separatrix(const SimplexId &extremum,
+                          const SimplexId segmentGeometry)
+        : isValid_{true}, source_{extremum} {
+          geometry_.push_back(segmentGeometry);
+        }
 
       // initialization with one segment :
       explicit Separatrix(const bool isValid,
                           const SimplexId &saddle,
                           const SimplexId &extremum,
-                          const bool isSegmentReversed,
                           const SimplexId segmentGeometry)
         : isValid_{isValid}, source_{saddle}, destination_{extremum} {
-        isReversed_.push_back(isSegmentReversed);
         geometry_.push_back(segmentGeometry);
       }
 
@@ -65,22 +71,20 @@ namespace ttk {
       explicit Separatrix(const bool isValid,
                           const SimplexId &saddle,
                           const SimplexId &extremum,
-                          const std::vector<char> &isReversed,
                           const std::vector<SimplexId> &geometry)
         : isValid_{isValid}, source_{saddle}, destination_{extremum},
-          isReversed_{isReversed}, geometry_{geometry} {
+          geometry_{geometry} {
       }
 
       explicit Separatrix(const Separatrix &separatrix)
         : isValid_{separatrix.isValid_}, source_{separatrix.source_},
           destination_{separatrix.destination_},
-          isReversed_{separatrix.isReversed_}, geometry_{separatrix.geometry_} {
+          geometry_{separatrix.geometry_} {
       }
 
       explicit Separatrix(Separatrix &&separatrix) noexcept
         : isValid_{separatrix.isValid_}, source_{separatrix.source_},
-          destination_{separatrix.destination_}, isReversed_{std::move(
-                                                   separatrix.isReversed_)},
+          destination_{separatrix.destination_},
           geometry_{std::move(separatrix.geometry_)} {
       }
 
@@ -88,7 +92,6 @@ namespace ttk {
         isValid_ = separatrix.isValid_;
         source_ = separatrix.source_;
         destination_ = separatrix.destination_;
-        isReversed_ = std::move(separatrix.isReversed_);
         geometry_ = std::move(separatrix.geometry_);
 
         return *this;
@@ -110,12 +113,6 @@ namespace ttk {
       SimplexId destination_;
 
       /**
-       * Container of flags, isReversed[i] indicates if the
-       * element stored at id=geometry_[i] can be reversed.
-       */
-      std::vector<char> isReversed_;
-
-      /**
        * Container of ids. Each id addresses a separate
        * container corresponding to a dense representation
        * of the geometry (i.e. separatricesGeometry).
@@ -135,7 +132,11 @@ namespace ttk {
 
     int preconditionTriangulation(
       ttk::AbstractTriangulation *triangulation) const {
-      return triangulation->preconditionVertexNeighbors();
+        int success = triangulation->preconditionVertexNeighbors();
+        success += triangulation->preconditionVertexStars();
+        success += triangulation->preconditionEdgeTriangles();
+        success += triangulation->preconditionTriangleEdges();
+      return success;
     };
 
     /**
@@ -143,14 +144,6 @@ namespace ttk {
      */
     inline int setInputOrderField(void *const data) {
       inputOrderField_ = data;
-      return 0;
-    };
-
-    /**
-     * Set the order field Id Map.
-     */
-    inline int setOrderFieldIdMap(void *const data) {
-      orderFieldIdMap_ = data;
       return 0;
     };
 
@@ -207,15 +200,13 @@ namespace ttk {
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
-    int computeSeparatrices1(
+    int computeSeparatrices1_2D(
       const SimplexId numMaxima,
       const SimplexId numMinima,
-      std::vector<omsc::CriticalPoint> &criticalPoints,
+      std::vector<omsc::CriticalPoint> &criticalPoints,    
+      std::vector<omsc::Separatrix> &separatrices,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
-
-    template <typename dataType, typename triangulationType>
-    int executeSpeedTest(const triangulationType &triangulation);
       
   protected:
     bool ComputeAscendingSeparatrices1{false};
@@ -227,7 +218,6 @@ namespace ttk {
 
     // input
     const void *inputOrderField_{};
-    const void *orderFieldIdMap_{}; 
 
     // critical points
     std::vector<std::array<float, 3>> *outputCriticalPoints_points_{};
@@ -239,120 +229,11 @@ namespace ttk {
     void *outputDescendingManifold_{};
     void *outputMorseSmaleManifold_{};
 
-    bool db_omp = false;
-    int db_opt = 0;
+    bool db_omp = true;
 
   }; // morseSmaleComplexOrder class
 
 } // namespace ttk
-
-template <typename dataType, typename triangulationType>
-int ttk::morseSmaleComplexOrder::executeSpeedTest(
-  const triangulationType &triangulation) {
-
-  const int iterations = 10;
-
-  SimplexId *ascendingManifold
-    = static_cast<SimplexId *>(outputAscendingManifold_);
-  SimplexId *descendingManifold
-    = static_cast<SimplexId *>(outputDescendingManifold_);
-
-  std::vector<omsc::CriticalPoint> criticalPoints;
-  Timer tmp;
-
-  SimplexId numberOfMaxima{};
-  SimplexId numberOfMinima{};
-
-  this->printMsg("starting Speedtest");
-
-  double t0 = 0, t1 = 0, t2  = 0, t3 = 0;
-
-  for(int i  = 0; i < iterations; ++i) {
-    db_omp = false;
-    db_opt = 0;
-    Timer tmp0;
-    computeAscendingManifold<dataType, triangulationType>(
-                              ascendingManifold, criticalPoints,
-                              numberOfMinima, triangulation);
-    t0 += tmp0.getElapsedTime();
-    
-    db_omp = false;
-    db_opt = 1;
-    Timer tmp1;
-    computeAscendingManifold<dataType, triangulationType>(
-                              ascendingManifold, criticalPoints,
-                              numberOfMinima, triangulation);
-    t1 += tmp1.getElapsedTime();
-
-    db_omp = true;
-    db_opt = 0;
-
-    Timer tmp2;
-    computeAscendingManifold<dataType, triangulationType>(
-                              ascendingManifold, criticalPoints,
-                              numberOfMinima, triangulation);
-    t2 += tmp2.getElapsedTime();
-
-    db_omp = true;
-    db_opt = 1;
-    Timer tmp3;
-    computeAscendingManifold<dataType, triangulationType>(
-                              ascendingManifold, criticalPoints,
-                              numberOfMinima, triangulation);
-    t3 += tmp3.getElapsedTime();
-  }
-
-  std::string testStr1 = "Ascending:\nT0 = " + std::to_string(t0/iterations) + "\n" +
-  "T1 = " + std::to_string(t1/iterations) + "\n" +
-  "T2 = " + std::to_string(t2/iterations) + "\n" +
-  "T3 = " + std::to_string(t3/iterations);
-               
-  t0 = 0, t1 = 0, t2  = 0, t3 = 0;
-
-  for(int i  = 0; i < iterations; ++i) {
-    db_omp = false;
-    db_opt = 0;
-    Timer tmp0;
-    computeDescendingManifold<dataType, triangulationType>(
-                              descendingManifold, criticalPoints,
-                              numberOfMaxima, triangulation);
-    t0 += tmp0.getElapsedTime();
-    
-    db_omp = false;
-    db_opt = 1;
-    Timer tmp1;
-    computeDescendingManifold<dataType, triangulationType>(
-                              descendingManifold, criticalPoints,
-                              numberOfMaxima, triangulation);
-    t1 += tmp1.getElapsedTime();
-
-    db_omp = true;
-    db_opt = 0;
-
-    Timer tmp2;
-    computeDescendingManifold<dataType, triangulationType>(
-                              descendingManifold, criticalPoints,
-                              numberOfMaxima, triangulation);
-    t2 += tmp2.getElapsedTime();
-
-    db_omp = true;
-    db_opt = 1;
-    Timer tmp3;
-    computeDescendingManifold<dataType, triangulationType>(
-                              descendingManifold, criticalPoints,
-                              numberOfMaxima, triangulation);
-    t3 += tmp3.getElapsedTime();
-  }
-
-  std::string testStr2 = "Descending:\nT0 = " + std::to_string(t0/iterations) + "\n" +
-  "T1 = " + std::to_string(t1/iterations) + "\n" +
-  "T2 = " + std::to_string(t2/iterations) + "\n" +
-  "T3 = " + std::to_string(t3/iterations);
-  this->printMsg(testStr1);
-  this->printMsg(testStr2);
-
-  return 0;
-}
 
 template <typename dataType, typename triangulationType>
 int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
@@ -366,6 +247,16 @@ int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
 #endif
 
   Timer t;
+
+  // print horizontal separator
+  this->printMsg(ttk::debug::Separator::L1); // L1 is the '=' separator
+
+  // print input parameters in table format
+  this->printMsg({
+    {"#Threads", std::to_string(this->threadNumber_)},
+    {"#Vertices", std::to_string(triangulation.getNumberOfVertices())},
+  });
+  this->printMsg(ttk::debug::Separator::L1);
 
   SimplexId *ascendingManifold
     = static_cast<SimplexId *>(outputAscendingManifold_);
@@ -403,9 +294,8 @@ int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
     }
   }
 
-  this->printMsg("Data-set ("
-                   + std::to_string(triangulation.getNumberOfVertices())
-                   + " points) processed",
+  this->printMsg( std::to_string(triangulation.getNumberOfVertices())
+                   + " verticies processed",
                  1.0, t.getElapsedTime(), this->threadNumber_);
 
   return 0;
@@ -419,22 +309,11 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
   const triangulationType &triangulation) const {
 
   const dataType *inputField = static_cast<const dataType *>(inputOrderField_);
-  const SimplexId *orderId = static_cast<const SimplexId *>(orderFieldIdMap_);
 
   // start global timer
   ttk::Timer globalTimer;
   int iterations = 1;
   numberOfMaxima = 0;
-
-  // print horizontal separator
-  /*this->printMsg(ttk::debug::Separator::L1); // L1 is the '=' separator
-
-  // print input parameters in table format
-  this->printMsg({
-    {"#Threads", std::to_string(this->threadNumber_)},
-    {"#Vertices", std::to_string(triangulation.getNumberOfVertices())},
-  });
-  this->printMsg(ttk::debug::Separator::L1);*/
 
   // -----------------------------------------------------------------------
   // Compute MSC variant
@@ -443,11 +322,12 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
     // start a local timer for this subprocedure
     ttk::Timer localTimer;
 
+    this->printMsg(ttk::debug::Separator::L1);
     // print the progress of the current subprocedure (currently 0%)
-    /*this->printMsg("Computing Descending Manifold",
+    this->printMsg("Computing Descending Manifold",
                    0, // progress form 0-1
                    0, // elapsed time so far
-                   this->threadNumber_);*/
+                   this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
     /* compute the Descending Maifold iterating over each vertex, searching
      * the biggest neighbor and compressing its path to its maximum */
@@ -460,75 +340,7 @@ int ttk::morseSmaleComplexOrder::computeDescendingManifold(
     SimplexId nActiveVertices;
 
 //#ifndef TTK_ENABLE_OPENMP
-if(!db_omp && db_opt == 0) {
-    // find maxima and intialize vector of not fully compressed vertices
-    for(SimplexId i = nVertices - 1; i >= 0; i--) {
-      const SimplexId orderI = orderId[i];
-
-      const SimplexId numNeighbors =
-        triangulation.getVertexNeighborNumber(orderI);
-
-      SimplexId neighborId;
-      bool hasBiggerNeighbor = false;
-
-      SimplexId &dmi = descendingManifold[orderI];
-      dmi = orderI;
-
-      // check all neighbors
-      for(SimplexId n = 0; n < numNeighbors; n++) {
-        triangulation.getVertexNeighbor(orderI, n, neighborId);
-        if(inputField[neighborId] > inputField[dmi]) {
-          dmi = neighborId;
-          hasBiggerNeighbor = true;
-        }
-      }
-      if(hasBiggerNeighbor) {
-        activeVertices->push_back(orderI);
-      }
-      else {
-        maxima.insert( {orderI, numberOfMaxima++} );
-      }
-    }
-
-    nActiveVertices = activeVertices->size();
-    std::vector<SimplexId>* newActiveVert;
-
-    // compress paths until no changes occur
-    while(nActiveVertices > 0) {
-      newActiveVert = new std::vector<SimplexId>();
-
-      /*std::string msgit = "Iteration: " + std::to_string(iterations) +
-        "(" + std::to_string(nActiveVertices) + "/" +
-        std::to_string(nVertices) + ")";
-      this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
-        localTimer.getElapsedTime(), this->threadNumber_);*/
-        
-      for(SimplexId i = 0; i < nActiveVertices; i++) {
-        SimplexId v = activeVertices->at(i);
-        SimplexId &vo = descendingManifold[v];
-
-        // compress path
-        vo = descendingManifold[vo];
-
-        // check if not fully compressed
-        if(vo != descendingManifold[vo]) {
-          newActiveVert->push_back(v);
-        }
-      }
-
-      iterations += 1;
-      delete activeVertices;
-      activeVertices = newActiveVert;
-
-      nActiveVertices = activeVertices->size();
-    }
-
-    // make indices dense
-    for(SimplexId i = 0; i < nVertices; i++) {
-      descendingManifold[i] = maxima[descendingManifold[i]];
-    }
-}
-else if(!db_omp && db_opt == 1) {
+if(!db_omp) {
     // find maxima and intialize vector of not fully compressed vertices
     for(SimplexId i = nVertices - 1; i >= 0; i--) {
       const SimplexId numNeighbors =
@@ -563,11 +375,12 @@ else if(!db_omp && db_opt == 1) {
     while(nActiveVertices > 0) {
       newActiveVert = new std::vector<SimplexId>();
 
-      /*std::string msgit = "Iteration: " + std::to_string(iterations) +
+      std::string msgit = "Iteration: " + std::to_string(iterations) +
         "(" + std::to_string(nActiveVertices) + "/" +
         std::to_string(nVertices) + ")";
       this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
-        localTimer.getElapsedTime(), this->threadNumber_);*/
+        localTimer.getElapsedTime(), this->threadNumber_,
+        ttk::debug::LineMode::REPLACE);
         
       for(SimplexId i = 0; i < nActiveVertices; i++) {
         SimplexId v = activeVertices->at(i);
@@ -595,144 +408,6 @@ else if(!db_omp && db_opt == 1) {
     }
 }
 //#else // TTK_ENABLE_OPENMP
-else if(db_omp && db_opt == 0) {
-    const size_t numCacheLineEntries =
-      hardware_destructive_interference_size / sizeof(SimplexId);
-
-    #pragma omp parallel num_threads(this->threadNumber_) \
-            shared(iterations, maxima, numberOfMaxima, \
-            activeVertices, nActiveVertices)
-    {
-      std::vector<SimplexId> lActiveVertices; //active verticies per thread
-
-      // find the biggest neighbor for each vertex
-      #pragma omp for schedule(guided)
-      for(SimplexId i = nVertices - 1; i >= 0; i--) {
-        const SimplexId orderI = orderId[i];
-
-        const SimplexId numNeighbors =
-        triangulation.getVertexNeighborNumber(orderI);
-
-      SimplexId neighborId;
-      bool hasBiggerNeighbor = false;
-
-      SimplexId &dmi = descendingManifold[orderI];
-      dmi = orderI;
-
-      // check all neighbors
-      for(SimplexId n = 0; n < numNeighbors; n++) {
-        triangulation.getVertexNeighbor(orderI, n, neighborId);
-        if(inputField[neighborId] > inputField[dmi]) {
-          dmi = neighborId;
-          hasBiggerNeighbor = true;
-        }
-      }
-
-        if(hasBiggerNeighbor) {
-            lActiveVertices.push_back(orderI);
-        }
-        else {
-          #pragma omp critical
-          maxima.insert( {orderI, numberOfMaxima} );
-
-          #pragma omp atomic update
-          numberOfMaxima += 1;
-        }
-      }
-
-      /*#pragma omp single nowait
-      {
-        std::string msgm =
-          "Computed " + std::to_string(numberOfMaxima) + " Maxima";
-        this->printMsg(msgm,
-          0.1, localTimer.getElapsedTime(), this->threadNumber_);
-      }*/
-
-      #pragma omp critical
-      activeVertices->insert(activeVertices->end(),
-        lActiveVertices.begin(), lActiveVertices.end());
-
-      lActiveVertices.clear();
-
-      #pragma omp barrier
-
-      #pragma omp single
-      {
-        nActiveVertices = activeVertices->size();
-      }
-
-      // compress paths until no changes occur
-      while(nActiveVertices > 0) {
-        #pragma omp barrier
-
-        /*#pragma omp single nowait
-        {
-          std::string msgit = "Iteration: " + std::to_string(iterations) +
-            "(" + std::to_string(nActiveVertices) + "/" +
-            std::to_string(nVertices) + ")";
-          double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
-          this->printMsg(msgit, prog,
-            localTimer.getElapsedTime(), this->threadNumber_);
-        }*/
-
-        /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
-
-        #pragma omp for schedule(guided)
-        for(SimplexId i = 0; i < nActiveVertices; i++) {
-          SimplexId v = activeVertices->at(i);
-          SimplexId &vo = descendingManifold[v];
-
-          /* // save changes
-          lChanges.push_front(
-            std::make_tuple(v, descendingManifold[descendingManifold[v]]));*/
-          vo = descendingManifold[vo];
-
-          // check if fully compressed
-          if(vo != descendingManifold[vo]) {
-            lActiveVertices.push_back(v);
-          }
-        }
-        #pragma omp barrier
-
-        /* // apply changes
-        for(auto it = lChanges.begin(); it != lChanges.end(); ++it) {
-          descendingManifold[std::get<0>(*it)] = std::get<1>(*it);
-        }*/
-
-        #pragma omp single
-        {
-          activeVertices->clear();
-        }
-
-        #pragma omp critical
-        activeVertices->insert(activeVertices->end(),
-          lActiveVertices.begin(), lActiveVertices.end());
-
-        lActiveVertices.clear();
-
-        #pragma omp barrier
-
-        #pragma omp single
-        {
-          nActiveVertices = activeVertices->size();
-          iterations += 1;
-        }
-      }
-
-      /*#pragma omp single
-      {
-        this->printMsg("Compressed Paths",
-          0.95, // progress
-          localTimer.getElapsedTime(), this->threadNumber_);
-      }*/
-
-      // set critical point indices
-      #pragma omp for schedule(dynamic, numCacheLineEntries)
-      for(SimplexId i = 0; i < nVertices; i++) {
-        descendingManifold[i] = maxima.at(descendingManifold[i]);
-      }
-    }
-}
 else {
     const size_t numCacheLineEntries =
       hardware_destructive_interference_size / sizeof(SimplexId);
@@ -775,14 +450,6 @@ else {
         }
       }
 
-      /*#pragma omp single nowait
-      {
-        std::string msgm =
-          "Computed " + std::to_string(numberOfMaxima) + " Maxima";
-        this->printMsg(msgm,
-          0.1, localTimer.getElapsedTime(), this->threadNumber_);
-      }*/
-
       #pragma omp critical
       activeVertices->insert(activeVertices->end(),
         lActiveVertices.begin(), lActiveVertices.end());
@@ -800,15 +467,16 @@ else {
       while(nActiveVertices > 0) {
         #pragma omp barrier
 
-        /*#pragma omp single nowait
+        #pragma omp single nowait
         {
           std::string msgit = "Iteration: " + std::to_string(iterations) +
             "(" + std::to_string(nActiveVertices) + "/" +
             std::to_string(nVertices) + ")";
           double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
           this->printMsg(msgit, prog,
-            localTimer.getElapsedTime(), this->threadNumber_);
-        }*/
+            localTimer.getElapsedTime(), this->threadNumber_,
+            ttk::debug::LineMode::REPLACE);
+        }
 
         /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
 
@@ -854,12 +522,13 @@ else {
         }
       }
 
-      /*#pragma omp single
+      #pragma omp single nowait
       {
         this->printMsg("Compressed Paths",
           0.95, // progress
-          localTimer.getElapsedTime(), this->threadNumber_);
-      }*/
+          localTimer.getElapsedTime(), this->threadNumber_,
+          ttk::debug::LineMode::REPLACE);
+      }
 
       // set critical point indices
       #pragma omp for schedule(dynamic, numCacheLineEntries)
@@ -884,26 +553,26 @@ else {
     delete activeVertices;
 
     // print the progress of the current subprocedure with elapsed time
-    /*this->printMsg("Computed Descending Manifold",
+    this->printMsg("Computed Descending Manifold",
                    1, // progress
-                   localTimer.getElapsedTime(), this->threadNumber_);*/
+                   localTimer.getElapsedTime(), this->threadNumber_);
   }
 
   // ---------------------------------------------------------------------
   // print global performance
   // ---------------------------------------------------------------------
-  /*{
+  {
     this->printMsg(ttk::debug::Separator::L2); // horizontal '-' separator
 
     const std::string maxMsg = "#Maxima: " + std::to_string(numberOfMaxima);
     this->printMsg(maxMsg, 1, globalTimer.getElapsedTime() );
 
-    const std::string itMsg = "#Iterations: " + std::to_string(iterations);
+    const std::string itMsg = "#Iterations: " + std::to_string(iterations - 1);
     this->printMsg(itMsg, 1, globalTimer.getElapsedTime() );
 
     this->printMsg("Completed", 1, globalTimer.getElapsedTime() );
     this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
-  }*/
+  }
 
   return 1; // return success
 }
@@ -917,21 +586,10 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
   const triangulationType &triangulation) const {
 
   const dataType *inputField = static_cast<const dataType *>(inputOrderField_);
-  const SimplexId *orderId = static_cast<const SimplexId *>(orderFieldIdMap_);
-  
+
   // start global timer
   ttk::Timer globalTimer;
   int iterations = 1;
-
-  // print horizontal separator
-  //this->printMsg(ttk::debug::Separator::L1); // L1 is the '=' separator
-
-  // print input parameters in table format
-  /*this->printMsg({
-    {"#Threads", std::to_string(this->threadNumber_)},
-    {"#Vertices", std::to_string(triangulation.getNumberOfVertices())},
-  });*/
-  //this->printMsg(ttk::debug::Separator::L1);
 
   // -----------------------------------------------------------------------
   // Compute MSC variant
@@ -941,10 +599,10 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
     ttk::Timer localTimer;
 
     // print the progress of the current subprocedure (currently 0%)
-    /*this->printMsg("Computing Ascending Manifold",
+    this->printMsg("Computing Ascending Manifold",
                    0, // progress form 0-1
                    0, // elapsed time so far
-                   this->threadNumber_);*/
+                   this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
     /* compute the Descending Maifold iterating over each vertex, searching
      * the biggest neighbor and compressing its path to its maximum */
@@ -960,73 +618,7 @@ int ttk::morseSmaleComplexOrder::computeAscendingManifold(
     SimplexId nActiveVertices;
 
 //#ifndef TTK_ENABLE_OPENMP
-if(!db_omp && db_opt == 0) {
-    // find minima and intialize vector of not fully compressed vertices
-    for(SimplexId i = 0; i < nVertices; i++) {
-      const SimplexId orderI = orderId[i];
-
-      const SimplexId numNeighbors =
-        triangulation.getVertexNeighborNumber(orderI);
-
-      SimplexId neighborId;
-      bool hasSmallerNeighbor = false;
-
-      SimplexId &ami = ascendingManifold[orderI];
-      ami = orderI;
-
-      // check all neighbors
-      for(SimplexId n = 0; n < numNeighbors; n++) {
-        triangulation.getVertexNeighbor(orderI, n, neighborId);
-        if(inputField[neighborId] < inputField[ami]) {
-          ami = neighborId;
-          hasSmallerNeighbor = true;
-        }
-      }
-      if(hasSmallerNeighbor) {
-        activeVertices->push_back(orderI);
-      }
-      else {
-        minima.insert( {orderI, numberOfMinima++} );
-      }
-    }
-
-    nActiveVertices = activeVertices->size();
-    std::vector<SimplexId>* newActiveVert;
-
-    // compress paths until no changes occur
-    while(nActiveVertices > 0) {
-      newActiveVert = new std::vector<SimplexId>();
-
-      /*std::string msgit = "Iteration: " + std::to_string(iterations) +
-        "(" + std::to_string(nActiveVertices) + "/" +
-        std::to_string(nVertices) + ")";
-      this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
-        localTimer.getElapsedTime(), this->threadNumber_);*/
-        
-      for(SimplexId i = 0; i < nActiveVertices; i++) {
-        SimplexId v = activeVertices->at(i);
-        SimplexId &vo = ascendingManifold[v];
-
-        // compress path
-        vo = ascendingManifold[vo];
-
-        if(vo != ascendingManifold[vo]) {
-          newActiveVert->push_back(v);
-        }
-      }
-
-      iterations += 1;
-      delete activeVertices;
-      activeVertices = &*newActiveVert;
-
-      nActiveVertices = activeVertices->size();
-    }
-
-    for(SimplexId i = 0; i < nVertices; i++) {
-      ascendingManifold[i] = minima[ascendingManifold[i]];
-    }
-}
-else if(!db_omp && db_opt == 1) {
+if(!db_omp) {
     // find minima and intialize vector of not fully compressed vertices
     for(SimplexId i = 0; i < nVertices; i++) {
       const SimplexId numNeighbors =
@@ -1061,11 +653,12 @@ else if(!db_omp && db_opt == 1) {
     while(nActiveVertices > 0) {
       newActiveVert = new std::vector<SimplexId>();
 
-      /*std::string msgit = "Iteration: " + std::to_string(iterations) +
+      std::string msgit = "Iteration: " + std::to_string(iterations) +
         "(" + std::to_string(nActiveVertices) + "/" +
         std::to_string(nVertices) + ")";
       this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
-        localTimer.getElapsedTime(), this->threadNumber_);*/
+        localTimer.getElapsedTime(), this->threadNumber_,
+        ttk::debug::LineMode::REPLACE);
         
       for(SimplexId i = 0; i < nActiveVertices; i++) {
         SimplexId v = activeVertices->at(i);
@@ -1081,7 +674,7 @@ else if(!db_omp && db_opt == 1) {
 
       iterations += 1;
       delete activeVertices;
-      activeVertices = &*newActiveVert;
+      activeVertices = newActiveVert;
 
       nActiveVertices = activeVertices->size();
     }
@@ -1091,144 +684,6 @@ else if(!db_omp && db_opt == 1) {
     }
 }
 //#else // TTK_ENABLE_OPENMP
-else if(db_omp && db_opt == 0) {
-    const size_t numCacheLineEntries =
-      hardware_destructive_interference_size / sizeof(SimplexId);
-
-    #pragma omp parallel num_threads(this->threadNumber_) \
-            shared(iterations, minima, numberOfMinima, \
-            activeVertices, nActiveVertices)
-    {
-      std::vector<SimplexId> lActiveVertices; //active verticies per thread
-
-      // find the smallest neighbor for each vertex
-      #pragma omp for schedule(guided)
-      for(SimplexId i = 0; i < nVertices; i++) {
-        const SimplexId orderI = orderId[i];
-
-        const SimplexId numNeighbors =
-          triangulation.getVertexNeighborNumber(orderI);
-
-        SimplexId neighborId;
-        bool hasSmallerNeighbor = false;
-
-        SimplexId &ami = ascendingManifold[orderI];
-        ami = orderI;
-
-        // check all neighbors
-        for(SimplexId n = 0; n < numNeighbors; n++) {
-          triangulation.getVertexNeighbor(orderI, n, neighborId);
-          if(inputField[neighborId] < inputField[ami]) {
-            ami = neighborId;
-            hasSmallerNeighbor = true;
-          }
-        }
-
-        if(hasSmallerNeighbor) {
-            lActiveVertices.push_back(orderI);
-        }
-        else {
-          #pragma omp critical
-          minima.insert( {orderI, numberOfMinima} );
-
-          #pragma omp atomic update
-          numberOfMinima += 1;
-        }
-      }
-
-      /*#pragma omp single nowait
-      {
-        std::string msgm =
-          "Computed " + std::to_string(numberOfMinima) + " Minima";
-        this->printMsg(msgm,
-          0.1, localTimer.getElapsedTime(), this->threadNumber_);
-      }*/
-
-      #pragma omp critical
-      activeVertices->insert(activeVertices->end(),
-        lActiveVertices.begin(), lActiveVertices.end());
-
-      lActiveVertices.clear();
-
-      #pragma omp barrier
-
-      #pragma omp single
-      {
-        nActiveVertices = activeVertices->size();
-      }
-
-      // compress paths until no changes occur
-      while(nActiveVertices > 0) {
-        #pragma omp barrier
-
-        /*#pragma omp single nowait
-        {
-          std::string msgit = "Iteration: " + std::to_string(iterations) +
-            "(" + std::to_string(nActiveVertices) + "/" +
-            std::to_string(nVertices) + ")";
-          double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
-          this->printMsg(msgit, prog,
-            localTimer.getElapsedTime(), this->threadNumber_);
-        }*/
-
-        /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
-
-        #pragma omp for schedule(guided)
-        for(SimplexId i = 0; i < nActiveVertices; i++) {
-          SimplexId v = activeVertices->at(i);
-          SimplexId &vo = ascendingManifold[v];
-
-          /* // save changes
-          lChanges.push_front(
-            std::make_tuple(v, ascendingManifold[ascendingManifold[v]]));*/
-          vo = ascendingManifold[vo];
-
-          // check if fully compressed
-          if(vo != ascendingManifold[vo]) {
-            lActiveVertices.push_back(v);
-          }
-        }
-        #pragma omp barrier
-
-        /* // apply changes
-        for(auto it = lChanges.begin(); it != lChanges.end(); ++it) {
-          ascendingManifold[std::get<0>(*it)] = std::get<1>(*it);
-        }*/
-
-        #pragma omp single
-        {
-          activeVertices->clear();
-        }
-
-        #pragma omp critical
-        activeVertices->insert(activeVertices->end(),
-          lActiveVertices.begin(), lActiveVertices.end());
-
-        lActiveVertices.clear();
-
-        #pragma omp barrier
-
-        #pragma omp single
-        {
-          nActiveVertices = activeVertices->size();
-          iterations += 1;
-        }
-      }
-
-      /*#pragma omp single
-      {
-        this->printMsg("Compressed Paths",
-          0.95, // progress
-          localTimer.getElapsedTime(), this->threadNumber_);
-      }*/
-
-      // set critical point indices
-      #pragma omp for schedule(dynamic, numCacheLineEntries)
-      for(SimplexId i = 0; i < nVertices; i++) {
-        ascendingManifold[i] = minima.at(ascendingManifold[i]);
-      }
-    }
-}
 else {
     const size_t numCacheLineEntries =
       hardware_destructive_interference_size / sizeof(SimplexId);
@@ -1270,14 +725,6 @@ else {
         }
       }
 
-      /*#pragma omp single nowait
-      {
-        std::string msgm =
-          "Computed " + std::to_string(numberOfMinima) + " Minima";
-        this->printMsg(msgm,
-          0.1, localTimer.getElapsedTime(), this->threadNumber_);
-      }*/
-
       #pragma omp critical
       activeVertices->insert(activeVertices->end(),
         lActiveVertices.begin(), lActiveVertices.end());
@@ -1295,15 +742,16 @@ else {
       while(nActiveVertices > 0) {
         #pragma omp barrier
 
-        /*#pragma omp single nowait
+        #pragma omp single nowait
         {
           std::string msgit = "Iteration: " + std::to_string(iterations) +
             "(" + std::to_string(nActiveVertices) + "/" +
             std::to_string(nVertices) + ")";
           double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
           this->printMsg(msgit, prog,
-            localTimer.getElapsedTime(), this->threadNumber_);
-        }*/
+            localTimer.getElapsedTime(), this->threadNumber_,
+            ttk::debug::LineMode::REPLACE);
+        }
 
         /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
 
@@ -1349,12 +797,13 @@ else {
         }
       }
 
-      /*#pragma omp single
+      #pragma omp single nowait
       {
         this->printMsg("Compressed Paths",
           0.95, // progress
-          localTimer.getElapsedTime(), this->threadNumber_);
-      }*/
+          localTimer.getElapsedTime(), this->threadNumber_,
+          ttk::debug::LineMode::REPLACE);
+      }
 
       // set critical point indices
       #pragma omp for schedule(dynamic, numCacheLineEntries)
@@ -1377,15 +826,15 @@ else {
     delete activeVertices;
 
     // print the progress of the current subprocedure with elapsed time
-    /*this->printMsg("Computed Ascending Manifold",
+    this->printMsg("Computed Ascending Manifold",
                    1, // progress
-                   localTimer.getElapsedTime(), this->threadNumber_);*/
+                   localTimer.getElapsedTime(), this->threadNumber_);
   }
 
   // ---------------------------------------------------------------------
   // print global performance
   // ---------------------------------------------------------------------
-  /*{
+  {
     this->printMsg(ttk::debug::Separator::L2); // horizontal '-' separator
 
     const std::string maxMsg = "#Minima: " + std::to_string(numberOfMinima);
@@ -1396,7 +845,7 @@ else {
 
     this->printMsg("Completed", 1, globalTimer.getElapsedTime() );
     this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
-  }*/
+  }
 
   return 1; // return success
 }
@@ -1455,10 +904,11 @@ int ttk::morseSmaleComplexOrder::computeFinalSegmentation(
 }
 
 template <typename triangulationType>
-int ttk::morseSmaleComplexOrder::computeSeparatrices1(
+int ttk::morseSmaleComplexOrder::computeSeparatrices1_2D(
   const SimplexId numMaxima,
   const SimplexId numMinima,
-  std::vector<omsc::CriticalPoint> &criticalPoints,
+  std::vector<omsc::CriticalPoint> &criticalPoints, 
+  std::vector<omsc::Separatrix> &separatrices,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
     
@@ -1476,15 +926,95 @@ int ttk::morseSmaleComplexOrder::computeSeparatrices1(
     }
   }
 
+  SimplexId numSeparatrices = 0;
+
+/*#ifdef TTK_ENABLE_OPENMP
+#pragma omp parallel for num_threads(threadNumber_) schedule(dynamic) \
+        shared(numSeparatrices, separatrices)
+#endif*/
+  // get edges splitting msc labels on their vertices
+  // and the containing triangle
   for(SimplexId i = 0; i < numMaxima; ++i) {
+    SimplexId &maxRef = maxima[i];
 
-    SimplexId numNeigh = triangulation.getVertexNeighborNumber(maxima[i]);
-    for(SimplexId neighId = 0; neighId < numNeigh; ++neighId) {
-    //triangulation.getVertexNeighbor();
-    }
+    // separatrixId, triangleId, edgeId
+    std::stack<std::tuple<int, SimplexId, SimplexId>> s;
   
+    SimplexId numStar = triangulation.getVertexStarNumber(maxRef);
+    for(SimplexId starId = 0; starId < numStar; ++starId) {
 
-  //std::queue<std::tuple<SimplexId, Separatrix> bfs;
+      SimplexId triangleId, edgeId, vertexId0, vertexId1;
+      triangulation.getVertexStar(maxRef, starId, triangleId);
+
+      // get the edge that does not contain the maximum
+      for(int e = 0; e < 3; e++) {
+        triangulation.getTriangleEdge(triangleId, e, edgeId);
+        triangulation.getEdgeVertex(edgeId, 0, vertexId0);
+        triangulation.getEdgeVertex(edgeId, 1, vertexId1);
+
+        if(vertexId0 != maxRef && vertexId1 != maxRef)
+          break;
+      }
+
+      if(morseSmaleManifold[vertexId0] != morseSmaleManifold[vertexId1]) {
+        s.push(std::make_tuple(numSeparatrices++, triangleId, edgeId));
+        separatrices.push_back(omsc::Separatrix(maxRef, edgeId));
+      }
+    }
+
+    while(!s.empty()) {
+      std::tuple<int, SimplexId, SimplexId> sepTup = s.top(); s.pop();
+      int sepId = std::get<0>(sepTup);
+      SimplexId currTriangleId = std::get<1>(sepTup);
+      SimplexId currEdgeId = std::get<2>(sepTup);
+
+      // get next triangle by searching the edge triangles
+      SimplexId nextTriangleId;
+      SimplexId numTriangles = triangulation.getEdgeTriangleNumber(currEdgeId);
+      triangulation.getEdgeTriangle(currEdgeId, 0, nextTriangleId);
+      if(numTriangles > 1 && nextTriangleId == currTriangleId) {
+        triangulation.getEdgeTriangle(currEdgeId, 1, nextTriangleId);
+      }
+      else { // border of the geometry
+      }
+
+      // get triangle edges excluding the current one
+      SimplexId nextEdgeIds[2];
+      int foundEdges = 0;
+      for(int e = 0; e < 3; ++e) {
+        SimplexId edgeId;
+        triangulation.getTriangleEdge(nextTriangleId, e, edgeId);
+
+        if(edgeId != currEdgeId) {
+          nextEdgeIds[foundEdges++] = edgeId;
+        }
+      }
+
+      SimplexId vertexId00, vertexId01, vertexId10, vertexId11;
+      triangulation.getEgdeVertex(nextEdgeIds[0], 0, vertexId00);
+      triangulation.getEgdeVertex(nextEdgeIds[0], 1, vertexId01);
+      triangulation.getEgdeVertex(nextEdgeIds[1], 0, vertexId10);
+      triangulation.getEgdeVertex(nextEdgeIds[1], 1, vertexId11);
+
+      bool isSplittingMSC0 =
+        morseSmaleManifold[vertexId00] == morseSmaleManifold[vertexId01]
+        ? 0 : 1;
+      bool isSplittingMSC1 =
+        morseSmaleManifold[vertexId10] == morseSmaleManifold[vertexId11]
+        ? 0 : 1;
+      
+      if(isSplittingMSC0 != isSplittingMSC1) { // path is extended
+        SimplexId nextEdgeId =
+          isSplittingMSC0 ? nextEdgeIds[0] : nextEdgeIds[1];
+        separatrices[sepId].geometry_.push_back(nextEdgeId);
+        s.push(std::make_tuple(sepId, nextTriangleId, nextEdgeId));
+      }
+      else { // path is splitting
+        
+      }
+    }
+
+    
   }
 
   return 0;

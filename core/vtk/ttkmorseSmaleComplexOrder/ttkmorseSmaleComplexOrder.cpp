@@ -106,34 +106,6 @@ int ttkmorseSmaleComplexOrder::RequestData(vtkInformation *request,
   }
 #endif
 
-  vtkNew<ttkSimplexIdTypeArray> OrderFieldIdMap{};
-
-#ifndef TTK_ENABLE_KAMIKAZE
-  if(!OrderFieldIdMap) {
-    this->printErr("Order Id map vtkDataArray allocation problem.");
-    return -1;
-  }
-#endif
-
-  OrderFieldIdMap->SetNumberOfComponents(1);
-  OrderFieldIdMap->SetNumberOfTuples(numberOfVertices);
-  OrderFieldIdMap->SetName("OrderFieldIdMap");
-
-#ifdef TTK_ENABLE_OPENMP
-#pragma omp parallel for num_threads(threadNumber_) schedule(dynamic, 8)
-#endif
-  for(SimplexId i = 0; i < numberOfVertices; ++i) {
-    double orderIdx;
-    inputArray->GetTuple(i, &orderIdx);
-    OrderFieldIdMap->SetValue((SimplexId)orderIdx, i);
-  }
-
-  void *OrderFieldIdMapPtr = nullptr;
-  if(ComputeAscendingSegmentation)
-    OrderFieldIdMapPtr = ttkUtils::GetVoidPointer(OrderFieldIdMap);
-
-  this->setOrderFieldIdMap(OrderFieldIdMapPtr);
-
   vtkNew<ttkSimplexIdTypeArray> ascendingManifold{};
   vtkNew<ttkSimplexIdTypeArray> descendingManifold{};
   vtkNew<ttkSimplexIdTypeArray> morseSmaleManifold{};
@@ -195,7 +167,7 @@ int ttkmorseSmaleComplexOrder::RequestData(vtkInformation *request,
     vtkPointData *pointData = outputMorseComplexes->GetPointData();
 #ifndef TTK_ENABLE_KAMIKAZE
     if(!pointData) {
-      this->printErr("outputMorseComplexes has no point data.");
+      this->printErr("Segmentation output has no point data.");
       return -1;
     }
 #endif
@@ -242,7 +214,6 @@ int ttkmorseSmaleComplexOrder::dispatch(vtkDataArray *const inputArray,
       nullptr, nullptr, nullptr);
   }
 
-  this->executeSpeedTest<dataType>(triangulation);
   const int ret = this->execute<dataType>(triangulation);
 
 #ifndef TTK_ENABLE_KAMIKAZE
