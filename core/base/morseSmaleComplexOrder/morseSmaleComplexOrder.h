@@ -11,6 +11,7 @@
 #include <map>
 #include <list>
 #include <stack>
+#include <set>
 
 #include <cstddef>
 
@@ -31,30 +32,35 @@ namespace ttk {
 
   namespace omsc {
     /**
-     * Basic concept of critical point representing its vertexid and index of 
-     * criticality
+     * Basic concept of critical point representing its id and index of 
+     * criticality and simplex dimension - default 0 = vertex
      */
     struct CriticalPoint {
       explicit CriticalPoint() = default;
 
-      explicit CriticalPoint(const int index, const SimplexId id)
+      explicit CriticalPoint(const SimplexId id, const int index)
         : index_{index}, id_{id} {
       }
 
-      int index_{-1};
+      explicit CriticalPoint(const SimplexId id, const int index, const int dim)
+        : index_{index}, id_{id}, dim_{dim} {
+      }
+
       SimplexId id_{-1};
+      int index_{-1};
+      int dim_{0};
     };
 
     struct Separatrix {
       // default :
       explicit Separatrix()
-        : isValid_{}, source_{}, destination_{}, geometry_{} {
+        : destIsPointSaddle_{}, source_{}, destination_{}, geometry_{} {
       }
 
       // initialization with only the extrema :
       explicit Separatrix(const SimplexId &extremum,
                           const SimplexId segmentGeometry)
-        : isValid_{true}, source_{extremum} {
+        : source_{extremum} {
           geometry_.push_back(segmentGeometry);
         }
 
@@ -63,7 +69,8 @@ namespace ttk {
                           const SimplexId &saddle,
                           const SimplexId &extremum,
                           const SimplexId segmentGeometry)
-        : isValid_{isValid}, source_{saddle}, destination_{extremum} {
+        : destIsPointSaddle_{destIsPointSaddle_}, source_{saddle},
+          destination_{extremum} {
         geometry_.push_back(segmentGeometry);
       }
 
@@ -72,24 +79,26 @@ namespace ttk {
                           const SimplexId &saddle,
                           const SimplexId &extremum,
                           const std::vector<SimplexId> &geometry)
-        : isValid_{isValid}, source_{saddle}, destination_{extremum},
-          geometry_{geometry} {
+        : destIsPointSaddle_{destIsPointSaddle_}, source_{saddle},
+        destination_{extremum}, geometry_{geometry} {
       }
 
       explicit Separatrix(const Separatrix &separatrix)
-        : isValid_{separatrix.isValid_}, source_{separatrix.source_},
+        : destIsPointSaddle_{separatrix.destIsPointSaddle_},
+        source_{separatrix.source_},
           destination_{separatrix.destination_},
           geometry_{separatrix.geometry_} {
       }
 
       explicit Separatrix(Separatrix &&separatrix) noexcept
-        : isValid_{separatrix.isValid_}, source_{separatrix.source_},
+        : destIsPointSaddle_{separatrix.destIsPointSaddle_},
+          source_{separatrix.source_},
           destination_{separatrix.destination_},
           geometry_{std::move(separatrix.geometry_)} {
       }
 
       Separatrix &operator=(Separatrix &&separatrix) noexcept {
-        isValid_ = separatrix.isValid_;
+        destIsPointSaddle_ = separatrix.destIsPointSaddle_;
         source_ = separatrix.source_;
         destination_ = separatrix.destination_;
         geometry_ = std::move(separatrix.geometry_);
@@ -100,7 +109,7 @@ namespace ttk {
       /**
        * Flag indicating if this separatrix can be processed.
        */
-      bool isValid_;
+      bool destIsPointSaddle_;
 
       /**
        * Source vertex of the separatrix.
@@ -206,6 +215,14 @@ namespace ttk {
       std::vector<omsc::CriticalPoint> &criticalPoints,    
       std::vector<omsc::Separatrix> &separatrices,
       const SimplexId *const morseSmaleManifold,
+      const triangulationType &triangulation) const;
+
+    template <typename triangulationType>
+    bool getNextTriangle(
+      const SimplexId currentTriangle,
+      const SimplexId currentEdge,
+      SimplexId &nextTriangle, 
+      SimplexId *nextEdges,
       const triangulationType &triangulation) const;
       
   protected:
@@ -543,7 +560,7 @@ else {
 
     float x, y, z;
     for (auto& it: maxima) {
-      criticalPoints.push_back(omsc::CriticalPoint(dim, it.first));
+      criticalPoints.push_back(omsc::CriticalPoint(it.first, dim));
       triangulation.getVertexPoint(it.first, x, y, z);
       outputCriticalPoints_points_->push_back({x, y, z});
       outputCriticalPoints_points_cellDimensions_->push_back(dim);
@@ -816,7 +833,7 @@ else {
 
     float x, y, z;
     for (auto& it: minima) {
-      criticalPoints.push_back(omsc::CriticalPoint(0, it.first));
+      criticalPoints.push_back(omsc::CriticalPoint(it.first, 0));
       triangulation.getVertexPoint(it.first, x, y, z);
       outputCriticalPoints_points_->push_back({x, y, z});
       outputCriticalPoints_points_cellDimensions_->push_back(0);
@@ -916,29 +933,26 @@ int ttk::morseSmaleComplexOrder::computeSeparatrices1_2D(
   std::vector<omsc::CriticalPoint> minima;
   const int dim = triangulation.getDimensionality();
 
+  std::set<std::tuple<SimplexId,SimplexId>> saddles;// id, dimension
+
   // retrieve maxima and minima
   for(const auto& c: criticalPoints) {
     if(c.index_ == 0) {
       maxima.push_back(c);
-    }
-    else if(c.index_ == dim) {
+    } else if(c.index_ == dim) {
       minima.push_back(c);
     }
   }
 
   SimplexId numSeparatrices = 0;
 
-/*#ifdef TTK_ENABLE_OPENMP
-#pragma omp parallel for num_threads(threadNumber_) schedule(dynamic) \
-        shared(numSeparatrices, separatrices)
-#endif*/
   // get edges splitting msc labels on their vertices
   // and the containing triangle
   for(SimplexId i = 0; i < numMaxima; ++i) {
     SimplexId &maxRef = maxima[i];
 
-    // separatrixId, triangleId, edgeId
-    std::stack<std::tuple<int, SimplexId, SimplexId>> s;
+    // separatrixId, triangleId, edgeId, edge case
+    std::stack<std::tuple<int, SimplexId, SimplexId, bool>> s;
   
     SimplexId numStar = triangulation.getVertexStarNumber(maxRef);
     for(SimplexId starId = 0; starId < numStar; ++starId) {
@@ -968,26 +982,35 @@ int ttk::morseSmaleComplexOrder::computeSeparatrices1_2D(
       SimplexId currTriangleId = std::get<1>(sepTup);
       SimplexId currEdgeId = std::get<2>(sepTup);
 
-      // get next triangle by searching the edge triangles
-      SimplexId nextTriangleId;
-      SimplexId numTriangles = triangulation.getEdgeTriangleNumber(currEdgeId);
-      triangulation.getEdgeTriangle(currEdgeId, 0, nextTriangleId);
-      if(numTriangles > 1 && nextTriangleId == currTriangleId) {
-        triangulation.getEdgeTriangle(currEdgeId, 1, nextTriangleId);
-      }
-      else { // border of the geometry
-      }
+      SimplexId nextTriangleId, nextEdgeIds[2];
+      bool foundNextTriangle = this->getNextTriangle(
+        currTriangleId, currEdgeId, nextTriangleId, nextEdgeIds, triangulation);
 
-      // get triangle edges excluding the current one
-      SimplexId nextEdgeIds[2];
-      int foundEdges = 0;
-      for(int e = 0; e < 3; ++e) {
-        SimplexId edgeId;
-        triangulation.getTriangleEdge(nextTriangleId, e, edgeId);
+      if(!foundNextTriangle) { // on border of geometry
+        SimplexId currEdgeVertId0, currEdgeVertId1;
+        triangulation.getEgdeVertex(currEdgeId, 0, currEdgeVertId0);
+        triangulation.getEgdeVertex(currEdgeId, 1, currEdgeVertId1);
 
-        if(edgeId != currEdgeId) {
-          nextEdgeIds[foundEdges++] = edgeId;
+        SimplexId vertNN0 = triangulation.getVertexEdgeNumber(currEdgeVertId0);
+        for(int e = 0; e < vertNN0; ++vertNN0) {
+          SimplexId edge;
+          triangulation.getVertexEdge(currentEdgeVertId, e, edge);
+          if(triangulation.getEdgeTriangleNumber(edge)) == 1) {
+            
+            break;
+          }
         }
+
+        omsc::Separatrix newSeperatrix(separatrices[sepId]);
+            newSeperatrix.geometry_.push_back(nextEdgeIds[0]);
+            separatrices.push_back(newSeperatrix);
+            s.push(std::make_tuple(
+              numSeparatrices++, nextTriangleId, nextEdgeIds[0]));
+
+            separatrices[sepId].geometry_.push_back(nextEdgeIds[1]);
+            s.push(std::make_tuple(sepId, nextTriangleId, nextEdgeIds[1]));
+
+        continue;
       }
 
       SimplexId vertexId00, vertexId01, vertexId10, vertexId11;
@@ -1008,15 +1031,146 @@ int ttk::morseSmaleComplexOrder::computeSeparatrices1_2D(
           isSplittingMSC0 ? nextEdgeIds[0] : nextEdgeIds[1];
         separatrices[sepId].geometry_.push_back(nextEdgeId);
         s.push(std::make_tuple(sepId, nextTriangleId, nextEdgeId));
-      }
-      else { // path is splitting
+      } else { // path is splitting or saddle (either edge or vertex saddle)
+
+        SimplexId nnTriId0, nnTriId1, nnEdgeIds0[2], nnEdgeIds1[2];
+        bool foundNextTriangle0 = this->getNextTriangle(
+          nextTriangleId, nextEdgeIds[0],
+          nnTriId0, nnEdgeIds0, triangulation);
+        bool foundNextTriangle1 = this->getNextTriangle(
+          nextTriangleId, nextEdgeIds[1],
+          nnTriId1, nnEdgeIds1, triangulation);
+
+        std::set<SimplexId> triangleSet0;
+        triangleSet0.insert(morseSmaleManifold[vertexId00]);
+        triangleSet0.insert(morseSmaleManifold[vertexId01]);
+        triangleSet0.insert(morseSmaleManifold[vertexId10]);
+        triangleSet0.insert(morseSmaleManifold[vertexId11]);
+        std::set<SimplexId> triangleSet1(triangleSet0);
+
+        if(foundNextTriangle0) {
+          SimplexId nnVertId00, nnVertId01, nnVertId02;
+          triangulation.getTriangleVertex(nnTriId0, 0, nnVertId00);
+          triangulation.getTriangleVertex(nnTriId0, 1, nnVertId01);
+          triangulation.getTriangleVertex(nnTriId0, 2, nnVertId02);
+          triangleSet0.insert(morseSmaleManifold[nnVertId00]);
+          triangleSet0.insert(morseSmaleManifold[nnVertId01]);
+          triangleSet0.insert(morseSmaleManifold[nnVertId02]);
+        }
         
+        if(foundNextTriangle1) {
+          SimplexId nnVertId10, nnVertId11, nnVertId12;
+          triangulation.getTriangleVertex(nnTriId1, 0, nnVertId10);
+          triangulation.getTriangleVertex(nnTriId1, 1, nnVertId11);
+          triangulation.getTriangleVertex(nnTriId1, 2, nnVertId12);
+          triangleSet1.insert(morseSmaleManifold[nnVertId10]);
+          triangleSet1.insert(morseSmaleManifold[nnVertId11]);
+          triangleSet1.insert(morseSmaleManifold[nnVertId12]);
+        }
+
+        bool edge0IsSaddle = triangleSet0.size() > 3;
+        bool edge1IsSaddle = triangleSet1.size() > 3;
+
+        if(edge0IsSaddle && edge1IsSaddle) { // saddle at nextEdgeIds[0] and [1]
+          omsc::Separatrix newSeperatrix(separatrices[sepId]);
+
+          newSeperatrix.destination_ = nextEdgeIds[0];
+          newSeperatrix.destIsPointSaddle_ = false;
+          saddles.insert(std::make_tuple(nextEdgeIds[0], 1));
+
+          separatrices.push_back(newSeperatrix);
+          numSeparatrices += 1;
+
+          separatrices[sepId].destination_ = nextEdgeIds[1];
+          separatrices[sepId].destIsPointSaddle_ = false;
+          saddles.insert(std::make_tuple(nextEdgeIds[1], 1));
+
+        } else if(edge0IsSaddle) { // nextEdgeIds[0] is a saddle
+          separatrices[sepId].destination_ = nextEdgeIds[0];
+          separatrices[sepId].destIsPointSaddle_ = false;
+          saddles.insert(std::make_tuple(nextEdgeIds[0], 1));
+
+        } else if(edge1IsSaddle) { // nextEdgeIds[1] is a saddle
+          separatrices[sepId].destination_ = nextEdgeIds[1];
+          separatrices[sepId].destIsPointSaddle_ = false;
+          saddles.insert(std::make_tuple(nextEdgeIds[1], 1));
+
+        } else { // check for vertex saddle 
+          bool isVertexSaddle = false;
+          SimplexId vertexSaddleId;
+          for(int triVert = 0; triVert < 3; ++triVert) {
+            if(isVertexSaddle) {
+              break;
+            }    
+            triangulation.getTriangleVertex(
+              nextTriangleId, triVert, vertexSaddleId);
+
+            SimplexId triVertNN = triangulation.getVertexNeighborNumber(
+              vertexSaddleId);
+
+            std::set<SimplexId> commonVertexSet;
+            for(int v = 0; v < triVertNN; ++v) {
+              SimplexId vertNeigh;
+              triangulation.getVertexNeighbor(vertexSaddleId, v, vertNeigh);
+              commonVertexSet.insert(morseSmaleManifold[vertNeigh]);
+            }
+            if(commonVertexSet.size() > 3) {
+              isVertexSaddle = true;
+              break;
+            }
+          }
+
+          if(isVertexSaddle) { // vertexSaddleId is a saddle         
+            separatrices[sepId].destIsPointSaddle_ = true;
+            separatrices[sepId].destination_ = vertexSaddleId;
+            saddles.insert(std::make_tuple(vertexSaddleId, 1));
+          } else { // no saddle - split the separatrix
+            omsc::Separatrix newSeperatrix(separatrices[sepId]);
+            newSeperatrix.geometry_.push_back(nextEdgeIds[0]);
+            separatrices.push_back(newSeperatrix);
+            s.push(std::make_tuple(
+              numSeparatrices++, nextTriangleId, nextEdgeIds[0]));
+
+            separatrices[sepId].geometry_.push_back(nextEdgeIds[1]);
+            s.push(std::make_tuple(sepId, nextTriangleId, nextEdgeIds[1]));
+          }
+        }
       }
     }
-
-    
   }
 
   return 0;
+}
+
+template <typename triangulationType>
+bool ttk::morseSmaleComplexOrder::getNextTriangle(
+  const SimplexId currentTriangle,
+  const SimplexId currentEdge,
+  SimplexId &nextTriangle, 
+  SimplexId *nextEdges,
+  const triangulationType &triangulation) const {
   
+  SimplexId numTriangles = triangulation.getEdgeTriangleNumber(currentEdge);
+
+  if(numTriangles <= 1) {
+    return false;
+  }
+  triangulation.getEdgeTriangle(currentEdge, 0, nextTriangle);
+
+  if(nextTriangle == currentTriangle) {
+    triangulation.getEdgeTriangle(currentEdge, 1, nextTriangle);
+  }
+
+  // get triangle edges excluding the current one
+  int foundEdges = 0;
+  for(int e = 0; e < 3; ++e) {
+    SimplexId edgeId;
+    triangulation.getTriangleEdge(nextTriangle, e, edgeId);
+
+    if(edgeId != currentEdge) {
+      nextEdges[foundEdges++] = edgeId;
+    }
+  }
+  
+  return true;
 }
