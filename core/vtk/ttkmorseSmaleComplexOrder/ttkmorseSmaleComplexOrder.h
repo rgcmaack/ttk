@@ -119,4 +119,16 @@ private:
   std::vector<std::array<float, 3>> criticalPoints_points{};
   std::vector<char> criticalPoints_points_cellDimensions{};
   std::vector<ttk::SimplexId> criticalPoints_points_cellIds{};
+
+  // 1-separatrices data
+  std::vector<float> separatrices1_points{};
+  std::vector<char> separatrices1_points_smoothingMask{};
+  std::vector<char> separatrices1_points_cellDimensions{};
+  std::vector<ttk::SimplexId> separatrices1_points_cellIds{};
+  std::vector<ttk::SimplexId> separatrices1_cells_connectivity{};
+  std::vector<ttk::SimplexId> separatrices1_cells_sourceIds{};
+  std::vector<ttk::SimplexId> separatrices1_cells_destinationIds{};
+  std::vector<ttk::SimplexId> separatrices1_cells_separatrixIds{};
+  std::vector<char> separatrices1_cells_separatrixTypes{};
+  std::vector<char> separatrices1_cells_isOnBoundary{};
 };

@@ -5,11 +5,16 @@
 #include <vtkInformation.h>
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
-#include <vtkObjectFactory.h>
 #include <vtkPointData.h>
+#include <vtkCellData.h>
 #include <vtkSmartPointer.h>
 #include <vtkPolyData.h>
 #include <vtkSignedCharArray.h>
+#include <vtkFloatArray.h>
+#include <vtkDoubleArray.h>
+
+//unused?
+#include <vtkObjectFactory.h>
 
 vtkStandardNewMacro(ttkmorseSmaleComplexOrder);
 
@@ -205,6 +210,22 @@ int ttkmorseSmaleComplexOrder::dispatch(vtkDataArray *const inputArray,
   criticalPoints_points_cellDimensions.clear();
   criticalPoints_points_cellIds.clear();
 
+  // 1-separatrices
+  SimplexId s1_numberOfPoints{};
+  SimplexId s1_numberOfCells{};
+  separatrices1_points.clear();
+  separatrices1_points_smoothingMask.clear();
+  separatrices1_points_cellDimensions.clear();
+  separatrices1_points_cellIds.clear();
+  separatrices1_cells_connectivity.clear();
+  separatrices1_cells_sourceIds.clear();
+  separatrices1_cells_destinationIds.clear();
+  separatrices1_cells_separatrixIds.clear();
+  separatrices1_cells_separatrixTypes.clear();
+  separatrices1_cells_isOnBoundary.clear();
+  std::vector<ttk::SimplexId> s1_separatrixFunctionMaxima{};
+  std::vector<ttk::SimplexId> s1_separatrixFunctionMinima{};
+
   if(ComputeCriticalPoints) {
     this->setOutputCriticalPoints(
       &criticalPoints_points, &criticalPoints_points_cellDimensions,
@@ -213,6 +234,15 @@ int ttkmorseSmaleComplexOrder::dispatch(vtkDataArray *const inputArray,
     this->setOutputCriticalPoints(
       nullptr, nullptr, nullptr);
   }
+
+  this->setOutputSeparatrices1(
+    &s1_numberOfPoints, &separatrices1_points,
+    &separatrices1_points_smoothingMask, &separatrices1_points_cellDimensions,
+    &separatrices1_points_cellIds, &s1_numberOfCells,
+    &separatrices1_cells_connectivity, &separatrices1_cells_sourceIds,
+    &separatrices1_cells_destinationIds, &separatrices1_cells_separatrixIds,
+    &separatrices1_cells_separatrixTypes, &s1_separatrixFunctionMaxima,
+    &s1_separatrixFunctionMinima, &separatrices1_cells_isOnBoundary);
 
   const int ret = this->execute<dataType>(triangulation);
 
@@ -290,6 +320,138 @@ int ttkmorseSmaleComplexOrder::dispatch(vtkDataArray *const inputArray,
     pointData->AddArray(cellDimensions);
     pointData->AddArray(cellIds);
     pointData->AddArray(cellScalars);
+  }
+
+  // 1-separatrices
+  {
+    vtkNew<vtkFloatArray> pointsCoords{};
+    vtkNew<vtkSignedCharArray> smoothingMask{};
+    vtkNew<vtkSignedCharArray> cellDimensions{};
+    vtkNew<ttkSimplexIdTypeArray> cellIds{};
+    vtkNew<ttkSimplexIdTypeArray> sourceIds{};
+    vtkNew<ttkSimplexIdTypeArray> destinationIds{};
+    vtkNew<ttkSimplexIdTypeArray> separatrixIds{};
+    vtkNew<vtkSignedCharArray> separatrixTypes{};
+    vtkNew<vtkDoubleArray> separatrixFunctionMaxima{};
+    vtkNew<vtkDoubleArray> separatrixFunctionMinima{};
+    vtkNew<vtkDoubleArray> separatrixFunctionDiffs{};
+    vtkNew<vtkSignedCharArray> isOnBoundary{};
+
+#ifndef TTK_ENABLE_KAMIKAZE
+    if(!pointsCoords || !smoothingMask || !cellDimensions || !cellIds
+       || !sourceIds || !destinationIds || !separatrixIds || !separatrixTypes
+       || !separatrixFunctionMaxima || !separatrixFunctionMinima
+       || !separatrixFunctionDiffs || !isOnBoundary) {
+      this->printErr("1-separatrices vtkDataArray allocation problem.");
+      return -1;
+    }
+#endif
+
+    pointsCoords->SetNumberOfComponents(3);
+    setArray(pointsCoords, separatrices1_points);
+
+    smoothingMask->SetNumberOfComponents(1);
+    smoothingMask->SetName(ttk::MaskScalarFieldName);
+    setArray(smoothingMask, separatrices1_points_smoothingMask);
+
+    cellDimensions->SetNumberOfComponents(1);
+    cellDimensions->SetName("CellDimension");
+    setArray(cellDimensions, separatrices1_points_cellDimensions);
+
+    cellIds->SetNumberOfComponents(1);
+    cellIds->SetName("CellId");
+    setArray(cellIds, separatrices1_points_cellIds);
+
+    sourceIds->SetNumberOfComponents(1);
+    sourceIds->SetName("SourceId");
+    setArray(sourceIds, separatrices1_cells_sourceIds);
+
+    destinationIds->SetNumberOfComponents(1);
+    destinationIds->SetName("DestinationId");
+    setArray(destinationIds, separatrices1_cells_destinationIds);
+
+    separatrixIds->SetNumberOfComponents(1);
+    separatrixIds->SetName("SeparatrixId");
+    setArray(separatrixIds, separatrices1_cells_separatrixIds);
+
+    separatrixTypes->SetNumberOfComponents(1);
+    separatrixTypes->SetName("SeparatrixType");
+    setArray(separatrixTypes, separatrices1_cells_separatrixTypes);
+
+    separatrixFunctionMaxima->SetNumberOfComponents(1);
+    separatrixFunctionMaxima->SetName("SeparatrixFunctionMaximum");
+    separatrixFunctionMaxima->SetNumberOfTuples(s1_numberOfCells);
+
+    separatrixFunctionMinima->SetNumberOfComponents(1);
+    separatrixFunctionMinima->SetName("SeparatrixFunctionMinimum");
+    separatrixFunctionMinima->SetNumberOfTuples(s1_numberOfCells);
+
+    separatrixFunctionDiffs->SetNumberOfComponents(1);
+    separatrixFunctionDiffs->SetName("SeparatrixFunctionDifference");
+    separatrixFunctionDiffs->SetNumberOfTuples(s1_numberOfCells);
+
+//#ifdef TTK_ENABLE_OPENMP
+//#pragma omp parallel for num_threads(this->threadNumber_)
+//#endif // TTK_ENABLE_OPENMP
+/*    for(SimplexId i = 0; i < s1_numberOfCells; ++i) {
+      const auto sepId = separatrices1_cells_separatrixIds[i];
+      // inputScalars->GetTuple1 not thread safe...
+      const auto min = scalars[s1_separatrixFunctionMinima[sepId]];
+      const auto max = scalars[s1_separatrixFunctionMaxima[sepId]];
+      separatrixFunctionMinima->SetTuple1(i, min);
+      separatrixFunctionMaxima->SetTuple1(i, max);
+      separatrixFunctionDiffs->SetTuple1(i, max - min);
+    }*/
+
+    isOnBoundary->SetNumberOfComponents(1);
+    isOnBoundary->SetName("NumberOfCriticalPointsOnBoundary");
+    setArray(isOnBoundary, separatrices1_cells_isOnBoundary);
+
+    vtkNew<ttkSimplexIdTypeArray> offsets{}, connectivity{};
+    offsets->SetNumberOfComponents(1);
+    offsets->SetNumberOfTuples(s1_numberOfCells + 1);
+    connectivity->SetNumberOfComponents(1);
+    setArray(connectivity, separatrices1_cells_connectivity);
+
+#ifdef TTK_ENABLE_OPENMP
+#pragma omp parallel for num_threads(this->threadNumber_)
+#endif // TTK_ENABLE_OPENMP
+    for(SimplexId i = 0; i < s1_numberOfCells + 1; ++i) {
+      offsets->SetTuple1(i, 2 * i);
+    }
+
+    vtkNew<vtkPoints> points{};
+    points->SetData(pointsCoords);
+    outputSeparatrices1->SetPoints(points);
+    vtkNew<vtkCellArray> cells{};
+#ifndef TTK_ENABLE_64BIT_IDS
+    cells->Use32BitStorage();
+#endif // TTK_ENABLE_64BIT_IDS
+    cells->SetData(offsets, connectivity);
+    outputSeparatrices1->SetLines(cells);
+
+    auto pointData = outputSeparatrices1->GetPointData();
+    auto cellData = outputSeparatrices1->GetCellData();
+
+#ifndef TTK_ENABLE_KAMIKAZE
+    if(!pointData || !cellData) {
+      this->printErr("outputSeparatrices1 has no point or no cell data.");
+      return -1;
+    }
+#endif
+
+    //pointData->AddArray(smoothingMask);
+    //pointData->AddArray(cellDimensions);
+    //pointData->AddArray(cellIds);
+
+    //cellData->AddArray(sourceIds);
+    //cellData->AddArray(destinationIds);
+    //cellData->AddArray(separatrixIds);
+    //cellData->AddArray(separatrixTypes);
+    //cellData->AddArray(separatrixFunctionMaxima);
+    //cellData->AddArray(separatrixFunctionMinima);
+    //cellData->AddArray(separatrixFunctionDiffs);
+    //cellData->AddArray(isOnBoundary);
   }
   return 0;
 }
