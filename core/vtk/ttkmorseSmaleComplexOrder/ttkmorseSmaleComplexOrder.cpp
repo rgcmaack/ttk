@@ -12,6 +12,7 @@
 #include <vtkSignedCharArray.h>
 #include <vtkFloatArray.h>
 #include <vtkDoubleArray.h>
+#include <vtkIdTypeArray.h>
 
 //unused?
 #include <vtkObjectFactory.h>
