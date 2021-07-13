@@ -282,6 +282,7 @@ namespace ttk {
       const SimplexId startVertexId,
       const SimplexId startEdgeId,
       const omsc::CriticalPoint critPoint,
+      std::unordered_map<SimplexId, SimplexId>* regSaddles,
       const bool wasSplitted,
       SimplexId &globalSepId,
       omsc::Separatrix **separatrices,
@@ -1073,129 +1074,180 @@ int ttk::morseSmaleComplexOrder::computeSeparatrices1_2D(
 
   this->printMsg("#CritPoints: " + std::to_string(criticalPoints.size()));
 
-  // retrieve maxima and minima
+  std::vector<omsc::CriticalPoint> regCritPts;
+  std::vector<omsc::CriticalPoint> borderRegCritPts;
+  std::vector<omsc::CriticalPoint> singleLabelBorderCritPts;
+  std::vector<omsc::CriticalPoint> singleLabelInnerCritPts;
+
   for(const auto& c: criticalPoints) {
     const bool singleLabel = hasVertexSingleLabelNeighborhood(
       c.id_, morseSmaleManifold, triangulation);
 
     const bool onBorder = isVertexOnBorder(c.id_, triangulation);
 
-    if(!singleLabel && !onBorder) { // regular inner critical point
-      this->printMsg("[0]REG: " + std::to_string(c.id_));
-      SimplexId numStar = triangulation.getVertexStarNumber(c.id_);
-      for(SimplexId starId = 0; starId < numStar; ++starId) {
-
-        SimplexId triangleId, edgeId, vertexId0, vertexId1;
-        triangulation.getVertexStar(c.id_, starId, triangleId);
-
-        for(int e = 0; e < 3; e++) {
-          triangulation.getTriangleEdge(triangleId, e, edgeId);
-          triangulation.getEdgeVertex(edgeId, 0, vertexId0);
-          triangulation.getEdgeVertex(edgeId, 1, vertexId1);
-
-          if(vertexId0 != c.id_ && vertexId1 != c.id_) {
-            if(morseSmaleManifold[vertexId0] != morseSmaleManifold[vertexId1]) {
-            SimplexId newSepId = globalSepId++;
-            auto newSep = new omsc::Separatrix(c.id_, edgeId);
-            newSep->geometry_.push_back(edgeId);
-            separatrices[newSepId] = newSep;
-
-            separatrixInnerPath(newSepId, triangleId, edgeId,
-              c, false, globalSepId, separatrices, saddles,
-              morseSmaleManifold, triangulation);
-            }
-            break;
-          }     
-        }
-      }
+    if(!singleLabel) { // all multi label inner paths
+      regCritPts.push_back(c);
+    } else if(singleLabel && onBorder) { // single label on border
+      singleLabelBorderCritPts.push_back(c);
+    } else { //single label not on border
+      singleLabelInnerCritPts.push_back(c);
     }
-    else if(!singleLabel && onBorder) { // regular border critical point
-    this->printMsg("[1]ROB: " + std::to_string(c.id_));
-      SimplexId numStar = triangulation.getVertexStarNumber(c.id_);
-      for(SimplexId starId = 0; starId < numStar; ++starId) {
 
-        SimplexId triangleId, edgeId, vertexId0, vertexId1;
-        triangulation.getVertexStar(c.id_, starId, triangleId);
+    if(!singleLabel && onBorder) { // handle border paths
+      borderRegCritPts.push_back(c);
+    }
+  }
 
-        for(int e = 0; e < 3; e++) {
-          triangulation.getTriangleEdge(triangleId, e, edgeId);
-          triangulation.getEdgeVertex(edgeId, 0, vertexId0);
-          triangulation.getEdgeVertex(edgeId, 1, vertexId1);
+  for(const auto& c: regCritPts) { // regular inner critical point
+    this->printMsg("[0]REG: " + std::to_string(c.id_));
+    SimplexId numStar = triangulation.getVertexStarNumber(c.id_);
+    for(SimplexId starId = 0; starId < numStar; ++starId) {
 
-          if(vertexId0 != c.id_ && vertexId1 != c.id_) { // inner path
-            if(morseSmaleManifold[vertexId0] != morseSmaleManifold[vertexId1]) {
-              SimplexId newSepId = globalSepId++;
-              auto newSep = new omsc::Separatrix(c.id_, edgeId);
-              newSep->geometry_.push_back(edgeId);
-              separatrices[newSepId] = newSep;
+      SimplexId triangleId, edgeId, vertexId0, vertexId1;
+      triangulation.getVertexStar(c.id_, starId, triangleId);
 
-              this->printMsg("-Inner Path " + std::to_string(newSepId) +
-              "- T:" + std::to_string(triangleId) +
-              " E: " + std::to_string(edgeId));
-              separatrixInnerPath(newSepId, triangleId, edgeId,
-                c, false, globalSepId, separatrices, saddles,
-                morseSmaleManifold, triangulation);
-            }
+      for(int e = 0; e < 3; e++) {
+        triangulation.getTriangleEdge(triangleId, e, edgeId);
+        triangulation.getEdgeVertex(edgeId, 0, vertexId0);
+        triangulation.getEdgeVertex(edgeId, 1, vertexId1);
+
+        if(vertexId0 != c.id_ && vertexId1 != c.id_) {
+          if(morseSmaleManifold[vertexId0] != morseSmaleManifold[vertexId1]) {
+          SimplexId newSepId = globalSepId++;
+          auto newSep = new omsc::Separatrix(c.id_, edgeId);
+          newSep->geometry_.push_back(edgeId);
+          separatrices[newSepId] = newSep;
+
+          separatrixInnerPath(newSepId, triangleId, edgeId,
+            c, false, globalSepId, separatrices, saddles,
+            morseSmaleManifold, triangulation);
           }
-          else { // border paths
-            if(triangulation.getEdgeTriangleNumber(edgeId) < 2) {
-              SimplexId newSepId0 = globalSepId++;
-              auto newSep0 = new omsc::Separatrix(c.id_, edgeId);
-              separatrices[newSepId0] = newSep0;
-
-              this->printMsg("-Border Path " + std::to_string(newSepId0) +
-            "- V:" + std::to_string(vertexId0) +
-            " E: " + std::to_string(edgeId));
-              separatrixBorderPath(newSepId0, vertexId0, edgeId,
-                c, false, globalSepId, separatrices, saddles,
-                morseSmaleManifold, triangulation);
-              
-              SimplexId newSepId1 = globalSepId++;
-              auto newSep = new omsc::Separatrix(c.id_, edgeId);
-              separatrices[newSepId1] = newSep;
-
-              this->printMsg("-Border Path " + std::to_string(newSepId1) +
-            "- V:" + std::to_string(vertexId1) +
-            " E: " + std::to_string(edgeId));
-              separatrixBorderPath(newSepId1, vertexId1, edgeId,
-                c, false, globalSepId, separatrices, saddles,
-                morseSmaleManifold, triangulation);
-            }
-          } 
-        }
+          break;
+        }     
       }
     }
-    else if(singleLabel && onBorder) { // single label on border
-      this->printMsg("[2]SOB: " + std::to_string(c.id_));
-      SimplexId numStar = triangulation.getVertexStarNumber(c.id_);
-      for(SimplexId starId = 0; starId < numStar; ++starId) {
+  }
 
-        SimplexId triangleId, edgeId, vertexId0, vertexId1;
-        triangulation.getVertexStar(c.id_, starId, triangleId);
-       
-        for(int e = 0; e < 3; e++) {
-          triangulation.getTriangleEdge(triangleId, e, edgeId);
-          
+  SimplexId regMaxSepId = globalSepId;
+
+  // get unique regular critical points
+  std::set<std::tuple<SimplexId, int>> critPointSet;
+  std::vector<std::tuple<SimplexId, SimplexId>> borderRegPaths;
+  {
+    for(int c = 0; c < regMaxSepId; ++c) {
+      if(saddles[c]->index_ == -1) {
+        borderRegPaths.push_back(
+          // edgeId and separatrixID to handle corner cases
+          std::make_tuple(saddles[c]->id_, saddles[c]->dim_));
+      } else {
+        critPointSet.insert(
+          std::make_tuple(saddles[c]->id_, saddles[c]->dim_));
+      }
+    }
+  }
+  std::unordered_map<SimplexId, SimplexId> regSaddles;
+  {
+    int i = 0;
+    for (auto &c : critPointSet) {
+      regSaddles.insert( {std::get<0>(c), 1});
+    }
+  }
+
+  for(const auto sepInfo : borderRegPaths) {
+    SimplexId currEdgeId = std::get<0>(sepInfo);
+    SimplexId sepId = std::get<1>(sepInfo);
+
+    SimplexId verts[2];
+    triangulation.getEdgeVertex(currEdgeId, 0, verts[0]);
+    triangulation.getEdgeVertex(currEdgeId, 1, verts[1]);
+
+    SimplexId newSepId = globalSepId++;
+    auto newSep = new omsc::Separatrix(*separatrices[sepId]);
+    separatrices[newSepId] = newSep;
+
+    omsc::CriticalPoint pseudoCritPoint(-1, 0, 0);
+
+    separatrixBorderPath(sepId, verts[0], currEdgeId, pseudoCritPoint,
+      &regSaddles, true, globalSepId, separatrices, saddles,
+      morseSmaleManifold, triangulation);
+    
+    separatrixBorderPath(newSepId, verts[1], currEdgeId, pseudoCritPoint,
+      &regSaddles, true, globalSepId, separatrices, saddles,
+      morseSmaleManifold, triangulation);
+  }
+
+  for(const auto& c: borderRegCritPts) {
+    this->printMsg("[1]ROB: " + std::to_string(c.id_) + " - " + std::to_string(borderRegCritPts.size()));
+    SimplexId numStar = triangulation.getVertexStarNumber(c.id_);
+    for(SimplexId starId = 0; starId < numStar; ++starId) {
+
+      SimplexId triangleId, edgeId, vertexId0, vertexId1;
+      triangulation.getVertexStar(c.id_, starId, triangleId);
+
+      for(int e = 0; e < 3; e++) {
+        triangulation.getTriangleEdge(triangleId, e, edgeId);
+        triangulation.getEdgeVertex(edgeId, 0, vertexId0);
+        triangulation.getEdgeVertex(edgeId, 1, vertexId1);
+
+        if(vertexId0 == c.id_ || vertexId1 == c.id_) { // border paths
           if(triangulation.getEdgeTriangleNumber(edgeId) < 2) {
-            triangulation.getEdgeVertex(edgeId, 0, vertexId0);
-            triangulation.getEdgeVertex(edgeId, 1, vertexId1);
+            SimplexId newSepId0 = globalSepId++;
+            auto newSep0 = new omsc::Separatrix(c.id_, edgeId);
+            separatrices[newSepId0] = newSep0;
 
-            SimplexId newSepId = globalSepId++;
-              auto newSep = new omsc::Separatrix(c.id_, edgeId);
-            separatrices[newSepId] = newSep;
-
-            separatrixBorderPath(newSepId, c.id_, edgeId,
-              c, false, globalSepId, separatrices, saddles,
+            this->printMsg("-Border Path " + std::to_string(newSepId0) +
+          "- V:" + std::to_string(vertexId0) +
+          " E: " + std::to_string(edgeId));
+            separatrixBorderPath(newSepId0, vertexId0, edgeId,
+              c, &regSaddles, false, globalSepId, separatrices, saddles,
               morseSmaleManifold, triangulation);
             
-            break;
+            SimplexId newSepId1 = globalSepId++;
+            auto newSep = new omsc::Separatrix(c.id_, edgeId);
+            separatrices[newSepId1] = newSep;
+
+            this->printMsg("-Border Path " + std::to_string(newSepId1) +
+          "- V:" + std::to_string(vertexId1) +
+          " E: " + std::to_string(edgeId));
+            separatrixBorderPath(newSepId1, vertexId1, edgeId,
+              c, &regSaddles, false, globalSepId, separatrices, saddles,
+              morseSmaleManifold, triangulation);
           }
+        } 
+      }
+    }
+  }
+
+  for(const auto& c: singleLabelBorderCritPts) { // single label on border
+    this->printMsg("[2]SOB: " + std::to_string(c.id_));
+    SimplexId numStar = triangulation.getVertexStarNumber(c.id_);
+    for(SimplexId starId = 0; starId < numStar; ++starId) {
+
+      SimplexId triangleId, edgeId, vertexId0, vertexId1;
+      triangulation.getVertexStar(c.id_, starId, triangleId);
+     
+      for(int e = 0; e < 3; e++) {
+        triangulation.getTriangleEdge(triangleId, e, edgeId);
+        
+        if(triangulation.getEdgeTriangleNumber(edgeId) < 2) {
+          triangulation.getEdgeVertex(edgeId, 0, vertexId0);
+          triangulation.getEdgeVertex(edgeId, 1, vertexId1);
+
+          SimplexId newSepId = globalSepId++;
+            auto newSep = new omsc::Separatrix(c.id_, edgeId);
+          separatrices[newSepId] = newSep;
+
+          separatrixBorderPath(newSepId, c.id_, edgeId,
+            c, &regSaddles, false, globalSepId, separatrices, saddles,
+            morseSmaleManifold, triangulation);
+          
+          break;
         }
       }
     }
-    else { //single label not on border
-      this->printMsg("[3]SNB: " + std::to_string(c.id_));
-    }
+  }
+  for(const auto& c: singleLabelInnerCritPts) { //single label not on border
+    this->printMsg("[3]SNB: " + std::to_string(c.id_));
   }
 
   this->printMsg("write existing separatrices");
@@ -1210,14 +1262,11 @@ int ttk::morseSmaleComplexOrder::computeSeparatrices1_2D(
 
   this->printMsg("get unique critical points");
 
-  // get unique critical points
-  std::set<std::tuple<SimplexId, int>> critPointSet;
-  {
-    for(int c = 0; c < maxSepNumber; ++c) {
-      if(saddles[c]) {
-        critPointSet.insert(
-          std::make_tuple(saddles[c]->id_, saddles[c]->dim_));
-      }
+  // get remaining unique critical points
+  for(int c = regMaxSepId; c < globalSepId; ++c) {
+    if(saddles[c]) {
+      critPointSet.insert(
+        std::make_tuple(saddles[c]->id_, saddles[c]->dim_));
     }
   }
 
@@ -1270,21 +1319,8 @@ void ttk::morseSmaleComplexOrder::separatrixInnerPath(
     if(!foundNextTriangle) { // on border of geometry
       this->printMsg("--geometry border");
       if(critPoint.index_ == 0) { // minima - split path
-        SimplexId verts[2];
-        triangulation.getEdgeVertex(currEdgeId, 0, verts[0]);
-        triangulation.getEdgeVertex(currEdgeId, 1, verts[1]);
-
-        SimplexId newSepId = globalSepId++;
-        auto newSep = new omsc::Separatrix(*separatrices[separatrixId]);
-        separatrices[newSepId] = newSep;
-
-        separatrixBorderPath(separatrixId, verts[0], currEdgeId, critPoint,
-          true, globalSepId, separatrices, saddles,
-          morseSmaleManifold, triangulation);
-        
-        separatrixBorderPath(newSepId, verts[1], currEdgeId, critPoint,
-          true, globalSepId, separatrices, saddles,
-          morseSmaleManifold, triangulation);
+        auto newSaddle = new omsc::CriticalPoint(currEdgeId, -1, separatrixId);
+        saddles[separatrixId] = newSaddle;
       }
       else { // maxima - create saddle
         separatrices[separatrixId]->geometry_.pop_back();
@@ -1452,6 +1488,7 @@ void ttk::morseSmaleComplexOrder::separatrixBorderPath(
   const SimplexId startVertexId,
   const SimplexId startEdgeId,
   const omsc::CriticalPoint critPoint,
+  std::unordered_map<SimplexId, SimplexId>* regSaddles,
   const bool wasSplitted,
   SimplexId &globalSepId,
   omsc::Separatrix **separatrices,
@@ -1478,6 +1515,41 @@ void ttk::morseSmaleComplexOrder::separatrixBorderPath(
     currentEdge = nextEdge;
     nextBorderEdge(
       currentVertex, currentEdge, nextVertex, nextEdge, triangulation);
+  }
+
+  separatrices[separatrixId]->geometry_.push_back(nextEdge);
+
+  if(regSaddles->find(nextEdge) == regSaddles->end()) {
+    // edge is not a regular saddle
+    auto newSaddle = new omsc::CriticalPoint(nextEdge, 1, 1);
+    saddles[separatrixId] = newSaddle;
+
+    SimplexId triId;
+    triangulation.getEdgeTriangle(nextEdge, 0, triId);
+
+    SimplexId newEdgeId;
+    for(int e = 0; e <3; e++) {
+      triangulation.getTriangleEdge(triId, e, newEdgeId);
+
+      if(newEdgeId == nextEdge) {
+        continue;
+      }
+
+      SimplexId v0, v1;
+      triangulation.getEdgeVertex(newEdgeId, 0, v0);
+      triangulation.getEdgeVertex(newEdgeId, 1, v1);
+
+      if(morseSmaleManifold[v0] != morseSmaleManifold[v1]) {
+        SimplexId newSepId = globalSepId++;
+        auto newSep = new omsc::Separatrix(*separatrices[separatrixId]);
+        separatrices[newSepId] = newSep;
+
+        this->printMsg("InnerPath from border" + std::to_string(triId));
+        separatrixInnerPath(newSepId, triId, newEdgeId,
+          critPoint, true, globalSepId, separatrices, saddles,
+          morseSmaleManifold, triangulation);
+      }
+    }
   }
 
   separatrices[separatrixId]->onBoundary_ = true;
