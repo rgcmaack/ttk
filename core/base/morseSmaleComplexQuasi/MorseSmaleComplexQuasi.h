@@ -1,5 +1,5 @@
 /// \ingroup base
-/// \class ttk::morseSmaleComplexOrder
+/// \class ttk::MorseSmaleComplexQuasi
 /// \author Robin G. C. Maack <maack@rhrk.uni-kl.de>
 /// \date June 2021.
 
@@ -29,7 +29,7 @@ using ttk::SimplexId;
 
 namespace ttk {
 
-  namespace omsc {
+  namespace mscq {
     /**
      * Basic concept of critical point representing its id and index of 
      * criticality and simplex dimension - default 0 = vertex
@@ -137,13 +137,13 @@ namespace ttk {
   }
 
   /**
-   * The morseSmaleComplexOrder class provides methods to compute a
+   * The MorseSmaleComplexQuasi class provides methods to compute a
    * MSC variant that only uses the input field and its order field.
    */
-  class morseSmaleComplexOrder : virtual public Debug {
+  class MorseSmaleComplexQuasi : virtual public Debug {
 
   public:
-    morseSmaleComplexOrder();
+    MorseSmaleComplexQuasi();
 
     int preconditionTriangulation(
       ttk::AbstractTriangulation *triangulation) const {
@@ -236,14 +236,14 @@ namespace ttk {
     template <class dataType, class triangulationType>
     int computeDescendingManifold(
       SimplexId *const descendingManifold,
-      std::vector<omsc::CriticalPoint> &criticalPoints,
+      std::vector<mscq::CriticalPoint> &criticalPoints,
       SimplexId &numberOfMaxima,
       const triangulationType &triangulation) const;
 
     template <class dataType, class triangulationType>
     int computeAscendingManifold(
       SimplexId *const ascendingManifold,
-      std::vector<omsc::CriticalPoint> &criticalPoints,
+      std::vector<mscq::CriticalPoint> &criticalPoints,
       SimplexId &numberOfMinima,
       const triangulationType &triangulation) const;
 
@@ -258,75 +258,14 @@ namespace ttk {
 
     template <typename triangulationType>
     int computeSeparatrices1_2D(
-      std::vector<omsc::CriticalPoint> &criticalPoints,    
-      std::vector<omsc::Separatrix> &separatrices,
+      std::vector<mscq::CriticalPoint> &criticalPoints,    
+      std::vector<mscq::Separatrix> &separatrices,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
-
-    template <typename triangulationType>
-    void separatrixInnerPath(
-      const SimplexId separatrixId,
-      const SimplexId startTriangleId,
-      const SimplexId startEdgeId,
-      const omsc::CriticalPoint critPoint,
-      const bool wasSplitted,
-      SimplexId &globalSepId,
-      omsc::Separatrix **separatrices,
-      omsc::CriticalPoint **saddles,
-      const SimplexId *const morseSmaleManifold,
-      const triangulationType &triangulation) const;
-
-    template <typename triangulationType>
-    void separatrixBorderPath(
-      const SimplexId separatrixId,
-      const SimplexId startVertexId,
-      const SimplexId startEdgeId,
-      const omsc::CriticalPoint critPoint,
-      std::unordered_map<SimplexId, SimplexId>* regSaddles,
-      const bool wasSplitted,
-      SimplexId &globalSepId,
-      omsc::Separatrix **separatrices,
-      omsc::CriticalPoint **saddles,
-      const SimplexId *const morseSmaleManifold,
-      const triangulationType &triangulation) const;
-
-    template <typename triangulationType>
-    bool getNextTriangle(
-      const SimplexId currentTriangle,
-      const SimplexId currentEdge,
-      SimplexId &nextTriangle, 
-      SimplexId *nextEdges,
-      const triangulationType &triangulation) const;
-
-    template <typename triangulationType>
-    bool hasVertexSingleLabelNeighborhood(
-      const SimplexId currentVertex,
-      const SimplexId *const morseSmaleManifold,
-      const triangulationType &triangulation) const;
-
-    template <typename triangulationType>
-    bool isVertexOnBorder(
-      const SimplexId currentVertex,
-      const triangulationType &triangulation) const;
-
-    template <typename triangulationType>
-    bool nextBorderEdge(
-      const SimplexId currentVertex,
-      const SimplexId currentEdge,
-      SimplexId &nextVertex,
-      SimplexId &nextEdge,
-      const triangulationType &triangulation) const;
-    
-    template <typename triangulationType>
-    bool getExtremaBorderVertex(
-      const omsc::CriticalPoint extrema,
-      const SimplexId *const morseSmaleManifold,
-      const triangulationType &triangulation,
-      SimplexId &borderVertex) const;
 
     template <typename triangulationType>
     int setSeparatrices1(
-      const std::vector<omsc::Separatrix> &separatrices,
+      const std::vector<mscq::Separatrix> &separatrices,
       const triangulationType &triangulation) const;
       
   protected:
@@ -368,12 +307,12 @@ namespace ttk {
 
     bool db_omp = true;
 
-  }; // morseSmaleComplexOrder class
+  }; // MorseSmaleComplexQuasi class
 
 } // namespace ttk
 
 template <typename dataType, typename triangulationType>
-int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
+int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
 {
 
 #ifndef TTK_ENABLE_KAMIKAZE
@@ -402,8 +341,8 @@ int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
   SimplexId *morseSmaleManifold
     = static_cast<SimplexId *>(outputMorseSmaleManifold_);
 
-  std::vector<omsc::CriticalPoint> criticalPoints;
-  std::vector<omsc::Separatrix> separatrices1;
+  std::vector<mscq::CriticalPoint> criticalPoints;
+  std::vector<mscq::Separatrix> separatrices1;
   {
     Timer tmp;
 
@@ -433,8 +372,6 @@ int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
                      this->threadNumber_);
     }
 
-    this->printMsg("!!!Dim = " + std::to_string(dim));
-
     if(dim == 2) {
       computeSeparatrices1_2D<triangulationType>(
                                 criticalPoints, separatrices1,
@@ -455,9 +392,9 @@ int ttk::morseSmaleComplexOrder::execute(const triangulationType &triangulation)
 }
 
 template <class dataType, class triangulationType>
-int ttk::morseSmaleComplexOrder::computeDescendingManifold(
+int ttk::MorseSmaleComplexQuasi::computeDescendingManifold(
   SimplexId *const descendingManifold,
-  std::vector<omsc::CriticalPoint> &criticalPoints,
+  std::vector<mscq::CriticalPoint> &criticalPoints,
   SimplexId &numberOfMaxima,
   const triangulationType &triangulation) const {
 
@@ -696,7 +633,7 @@ else {
 
     float x, y, z;
     for (auto& it: maxima) {
-      criticalPoints.push_back(omsc::CriticalPoint(it.first, dim));
+      criticalPoints.push_back(mscq::CriticalPoint(it.first, dim));
       triangulation.getVertexPoint(it.first, x, y, z);
       outputCriticalPoints_points_->push_back({x, y, z});
       outputCriticalPoints_points_cellDimensions_->push_back(dim);
@@ -732,9 +669,9 @@ else {
 
 
 template <class dataType, class triangulationType>
-int ttk::morseSmaleComplexOrder::computeAscendingManifold(
+int ttk::MorseSmaleComplexQuasi::computeAscendingManifold(
   SimplexId *const ascendingManifold,
-  std::vector<omsc::CriticalPoint> &criticalPoints,
+  std::vector<mscq::CriticalPoint> &criticalPoints,
   SimplexId &numberOfMinima,
   const triangulationType &triangulation) const {
 
@@ -969,7 +906,7 @@ else {
 
     float x, y, z;
     for (auto& it: minima) {
-      criticalPoints.push_back(omsc::CriticalPoint(it.first, 0));
+      criticalPoints.push_back(mscq::CriticalPoint(it.first, 0));
       triangulation.getVertexPoint(it.first, x, y, z);
       outputCriticalPoints_points_->push_back({x, y, z});
       outputCriticalPoints_points_cellDimensions_->push_back(0);
@@ -1004,7 +941,7 @@ else {
 }
 
 template <typename triangulationType>
-int ttk::morseSmaleComplexOrder::computeFinalSegmentation(
+int ttk::MorseSmaleComplexQuasi::computeFinalSegmentation(
   const SimplexId numberOfMaxima,
   const SimplexId numberOfMinima,
   const SimplexId *const ascendingManifold,
@@ -1057,9 +994,9 @@ int ttk::morseSmaleComplexOrder::computeFinalSegmentation(
 }
 
 template <typename triangulationType>
-int ttk::morseSmaleComplexOrder::computeSeparatrices1_2D(
-  std::vector<omsc::CriticalPoint> &criticalPoints, 
-  std::vector<omsc::Separatrix> &separatrixVector,
+int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
+  std::vector<mscq::CriticalPoint> &criticalPoints, 
+  std::vector<mscq::Separatrix> &separatrixVector,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
 
@@ -1072,675 +1009,13 @@ int ttk::morseSmaleComplexOrder::computeSeparatrices1_2D(
                  0, // progress form 0-1
                  0, // elapsed time so far
                  this->threadNumber_);//, ttk::debug::LineMode::REPLACE);
-
-  const size_t maxSepNumber = criticalPoints.size() * 4;
-  omsc::Separatrix **separatrices = new omsc::Separatrix*[maxSepNumber]();
-  omsc::CriticalPoint **saddles = new omsc::CriticalPoint*[maxSepNumber]();
-
-  SimplexId globalSepId = 0;
-
-  this->printMsg("#CritPoints: " + std::to_string(criticalPoints.size()));
-
-  std::vector<omsc::CriticalPoint> regCritPts;
-  std::vector<omsc::CriticalPoint> borderRegCritPts;
-  std::vector<omsc::CriticalPoint> singleLabelBorderCritPts;
-  std::vector<omsc::CriticalPoint> singleLabelInnerCritPts;
-
-  for(const auto& c: criticalPoints) {
-    const bool singleLabel = hasVertexSingleLabelNeighborhood(
-      c.id_, morseSmaleManifold, triangulation);
-
-    const bool onBorder = isVertexOnBorder(c.id_, triangulation);
-
-    if(!singleLabel) { // all multi label inner paths
-      regCritPts.push_back(c);
-    } else if(singleLabel && onBorder) { // single label on border
-      singleLabelBorderCritPts.push_back(c);
-    } else { //single label not on border
-      singleLabelInnerCritPts.push_back(c);
-    }
-
-    if(!singleLabel && onBorder) { // handle border paths
-      borderRegCritPts.push_back(c);
-    }
-  }
-
-  for(const auto& c: singleLabelInnerCritPts) { //single label not on border
-    
-    SimplexId borderVertex;
-    if(getExtremaBorderVertex(
-      c, morseSmaleManifold, triangulation, borderVertex)) {
-
-      singleLabelBorderCritPts.push_back(
-      omsc::CriticalPoint(borderVertex, c.index_, c.dim_));
-      this->printMsg("[3]-" + std::to_string(borderVertex));
-    }
-  }
-
-  for(const auto& c: regCritPts) { // regular inner critical point
-    this->printMsg("[0]REG: " + std::to_string(c.id_));
-    SimplexId numStar = triangulation.getVertexStarNumber(c.id_);
-    for(SimplexId starId = 0; starId < numStar; ++starId) {
-
-      SimplexId triangleId, edgeId, vertexId0, vertexId1;
-      triangulation.getVertexStar(c.id_, starId, triangleId);
-
-      for(int e = 0; e < 3; e++) {
-        triangulation.getTriangleEdge(triangleId, e, edgeId);
-        triangulation.getEdgeVertex(edgeId, 0, vertexId0);
-        triangulation.getEdgeVertex(edgeId, 1, vertexId1);
-
-        if(vertexId0 != c.id_ && vertexId1 != c.id_) {
-          if(morseSmaleManifold[vertexId0] != morseSmaleManifold[vertexId1]) {
-          SimplexId newSepId = globalSepId++;
-          auto newSep = new omsc::Separatrix(c.id_, edgeId);
-          newSep->geometry_.push_back(edgeId);
-          separatrices[newSepId] = newSep;
-
-          separatrixInnerPath(newSepId, triangleId, edgeId,
-            c, false, globalSepId, separatrices, saddles,
-            morseSmaleManifold, triangulation);
-          }
-          break;
-        }     
-      }
-    }
-  }
-
-  SimplexId regMaxSepId = globalSepId;
-
-  // get unique regular critical points
-  std::set<std::tuple<SimplexId, int>> critPointSet;
-  std::vector<std::tuple<SimplexId, SimplexId>> borderRegPaths;
-  {
-    for(int c = 0; c < regMaxSepId; ++c) {
-      if(saddles[c]->index_ == -1) {
-        borderRegPaths.push_back(
-          // edgeId and separatrixID to handle corner cases
-          std::make_tuple(saddles[c]->id_, saddles[c]->dim_));
-      } else {
-        critPointSet.insert(
-          std::make_tuple(saddles[c]->id_, saddles[c]->dim_));
-      }
-    }
-  }
-  std::unordered_map<SimplexId, SimplexId> regSaddles;
-  {
-    int i = 0;
-    for (auto &c : critPointSet) {
-      regSaddles.insert( {std::get<0>(c), 1});
-    }
-  }
-
-  for(const auto sepInfo : borderRegPaths) {
-    SimplexId currEdgeId = std::get<0>(sepInfo);
-    SimplexId sepId = std::get<1>(sepInfo);
-
-    SimplexId verts[2];
-    triangulation.getEdgeVertex(currEdgeId, 0, verts[0]);
-    triangulation.getEdgeVertex(currEdgeId, 1, verts[1]);
-
-    SimplexId newSepId = globalSepId++;
-    auto newSep = new omsc::Separatrix(*separatrices[sepId]);
-    separatrices[newSepId] = newSep;
-
-    omsc::CriticalPoint pseudoCritPoint(-1, 0, 0);
-
-    separatrixBorderPath(sepId, verts[0], currEdgeId, pseudoCritPoint,
-      &regSaddles, true, globalSepId, separatrices, saddles,
-      morseSmaleManifold, triangulation);
-    
-    separatrixBorderPath(newSepId, verts[1], currEdgeId, pseudoCritPoint,
-      &regSaddles, true, globalSepId, separatrices, saddles,
-      morseSmaleManifold, triangulation);
-  }
-
-  for(const auto& c: borderRegCritPts) {
-    this->printMsg("[1]ROB: " + std::to_string(c.id_) + " - " + std::to_string(borderRegCritPts.size()));
-    SimplexId numStar = triangulation.getVertexStarNumber(c.id_);
-    for(SimplexId starId = 0; starId < numStar; ++starId) {
-
-      SimplexId triangleId, edgeId, vertexId0, vertexId1;
-      triangulation.getVertexStar(c.id_, starId, triangleId);
-
-      for(int e = 0; e < 3; e++) {
-        triangulation.getTriangleEdge(triangleId, e, edgeId);
-        triangulation.getEdgeVertex(edgeId, 0, vertexId0);
-        triangulation.getEdgeVertex(edgeId, 1, vertexId1);
-
-        if(vertexId0 == c.id_ || vertexId1 == c.id_) { // border paths
-          if(triangulation.getEdgeTriangleNumber(edgeId) < 2) {
-            SimplexId newSepId0 = globalSepId++;
-            auto newSep0 = new omsc::Separatrix(c.id_, edgeId);
-            separatrices[newSepId0] = newSep0;
-
-            this->printMsg("-Border Path " + std::to_string(newSepId0) +
-          "- V:" + std::to_string(vertexId0) +
-          " E: " + std::to_string(edgeId));
-            separatrixBorderPath(newSepId0, vertexId0, edgeId,
-              c, &regSaddles, false, globalSepId, separatrices, saddles,
-              morseSmaleManifold, triangulation);
-            
-            SimplexId newSepId1 = globalSepId++;
-            auto newSep = new omsc::Separatrix(c.id_, edgeId);
-            separatrices[newSepId1] = newSep;
-
-            this->printMsg("-Border Path " + std::to_string(newSepId1) +
-          "- V:" + std::to_string(vertexId1) +
-          " E: " + std::to_string(edgeId));
-            separatrixBorderPath(newSepId1, vertexId1, edgeId,
-              c, &regSaddles, false, globalSepId, separatrices, saddles,
-              morseSmaleManifold, triangulation);
-          }
-        } 
-      }
-    }
-  }
-
-  for(const auto& c: singleLabelBorderCritPts) { // single label on border
-    this->printMsg("[2]SOB: " + std::to_string(c.id_));
-    SimplexId numStar = triangulation.getVertexStarNumber(c.id_);
-    for(SimplexId starId = 0; starId < numStar; ++starId) {
-
-      SimplexId triangleId, edgeId, vertexId0, vertexId1;
-      triangulation.getVertexStar(c.id_, starId, triangleId);
-     
-      for(int e = 0; e < 3; e++) {
-        triangulation.getTriangleEdge(triangleId, e, edgeId);
-        
-        if(triangulation.getEdgeTriangleNumber(edgeId) < 2) {
-          triangulation.getEdgeVertex(edgeId, 0, vertexId0);
-          triangulation.getEdgeVertex(edgeId, 1, vertexId1);
-
-          SimplexId newSepId = globalSepId++;
-            auto newSep = new omsc::Separatrix(c.id_, edgeId);
-          separatrices[newSepId] = newSep;
-
-          separatrixBorderPath(newSepId, c.id_, edgeId,
-            c, &regSaddles, false, globalSepId, separatrices, saddles,
-            morseSmaleManifold, triangulation);
-          
-          break;
-        }
-      }
-    }
-  }
-
-  this->printMsg("write existing separatrices");
-  // write existing separatrices
-  for(int s = 0; s < globalSepId; ++s) {
-    if(separatrices[s]) {
-      separatrixVector.push_back(*separatrices[s]);
-    }
-  }
-
-  this->printMsg("get unique critical points");
-
-  // get remaining unique critical points
-  for(int c = regMaxSepId; c < globalSepId; ++c) {
-    if(saddles[c]) {
-      critPointSet.insert(
-        std::make_tuple(saddles[c]->id_, saddles[c]->dim_));
-    }
-  }
-
-  this->printMsg("write critical points");
-
-  // write critical points
-  std::array<float, 3UL> pos;
-  for (auto it: critPointSet) {
-    this->printMsg("ID: " + std::to_string(std::get<0>(it)) +
-     "Dim: " + std::to_string(std::get<1>(it)));
-    criticalPoints.push_back(
-      omsc::CriticalPoint(std::get<0>(it), 1, std::get<1>(it)));
-
-    if(std::get<1>(it) == 0) { // vertex
-      triangulation.getVertexPoint(std::get<0>(it), pos[0], pos[1], pos[2]);
-    } else { // edge
-      triangulation.getEdgeIncenter(std::get<0>(it), pos.data());
-    }
-    
-    outputCriticalPoints_points_->push_back(pos);
-    outputCriticalPoints_points_cellDimensions_->push_back(1);
-    outputCriticalPoints_points_cellIds_->push_back(std::get<0>(it));
-  }
-  this->printMsg("Test2");
+  
   return 0;
 }
 
 template <typename triangulationType>
-void ttk::morseSmaleComplexOrder::separatrixInnerPath(
-  const SimplexId separatrixId,
-  const SimplexId startTriangleId,
-  const SimplexId startEdgeId,
-  const omsc::CriticalPoint critPoint,
-  const bool wasSplitted,
-  SimplexId &globalSepId,
-  omsc::Separatrix **separatrices,
-  omsc::CriticalPoint **saddles,
-  const SimplexId *const morseSmaleManifold,
-  const triangulationType &triangulation) const {
-  
-  SimplexId currTriangleId = startTriangleId;
-  SimplexId currEdgeId = startEdgeId;
-
-  while(true) {
-
-    SimplexId nextTriangleId, nextEdgeIds[2];
-    bool foundNextTriangle = this->getNextTriangle(
-      currTriangleId, currEdgeId, nextTriangleId, nextEdgeIds, triangulation);
-
-    if(!foundNextTriangle) { // on border of geometry
-      this->printMsg("--geometry border");
-      if(critPoint.index_ == 0) { // minima - split path
-        auto newSaddle = new omsc::CriticalPoint(currEdgeId, -1, separatrixId);
-        saddles[separatrixId] = newSaddle;
-      }
-      else { // maxima - create saddle
-        separatrices[separatrixId]->geometry_.pop_back();
-        separatrices[separatrixId]->destination_ = currEdgeId;
-        separatrices[separatrixId]->destIsVertex_ = false;
-
-        auto newSaddle = new omsc::CriticalPoint(currEdgeId, 1, 1);
-        saddles[separatrixId] = newSaddle;
-      }
-      return;
-    }
-
-    SimplexId vertexId00, vertexId01, vertexId10, vertexId11;
-    triangulation.getEdgeVertex(nextEdgeIds[0], 0, vertexId00);
-    triangulation.getEdgeVertex(nextEdgeIds[0], 1, vertexId01);
-    triangulation.getEdgeVertex(nextEdgeIds[1], 0, vertexId10);
-    triangulation.getEdgeVertex(nextEdgeIds[1], 1, vertexId11);
-
-    bool isSplittingMSC0 =
-      morseSmaleManifold[vertexId00] == morseSmaleManifold[vertexId01]
-      ? 0 : 1;
-    bool isSplittingMSC1 =
-      morseSmaleManifold[vertexId10] == morseSmaleManifold[vertexId11]
-      ? 0 : 1;
-
-    if(isSplittingMSC0 != isSplittingMSC1) { // path is extended
-      //this->printMsg("--extend path");
-      SimplexId nextEdgeId =
-        isSplittingMSC0 ? nextEdgeIds[0] : nextEdgeIds[1];
-      separatrices[separatrixId]->geometry_.push_back(nextEdgeId);
-      currTriangleId = nextTriangleId;
-      currEdgeId = nextEdgeId;
-      continue;
-    } else { // path is splitting or saddle (either edge or vertex saddle)
-
-      SimplexId nnTriId0, nnTriId1, nnEdgeIds0[2], nnEdgeIds1[2];
-      bool foundNextTriangle0 = this->getNextTriangle(
-        nextTriangleId, nextEdgeIds[0],
-        nnTriId0, nnEdgeIds0, triangulation);
-      bool foundNextTriangle1 = this->getNextTriangle(
-        nextTriangleId, nextEdgeIds[1],
-        nnTriId1, nnEdgeIds1, triangulation);
-
-      std::set<SimplexId> triangleSet0;
-      triangleSet0.insert(morseSmaleManifold[vertexId00]);
-      triangleSet0.insert(morseSmaleManifold[vertexId01]);
-      triangleSet0.insert(morseSmaleManifold[vertexId10]);
-      triangleSet0.insert(morseSmaleManifold[vertexId11]);
-      std::set<SimplexId> triangleSet1(triangleSet0);
-
-      if(foundNextTriangle0) {
-        SimplexId nnVertId00, nnVertId01, nnVertId02;
-        triangulation.getTriangleVertex(nnTriId0, 0, nnVertId00);
-        triangulation.getTriangleVertex(nnTriId0, 1, nnVertId01);
-        triangulation.getTriangleVertex(nnTriId0, 2, nnVertId02);
-        triangleSet0.insert(morseSmaleManifold[nnVertId00]);
-        triangleSet0.insert(morseSmaleManifold[nnVertId01]);
-        triangleSet0.insert(morseSmaleManifold[nnVertId02]);
-      }
-
-      if(foundNextTriangle1) {
-        SimplexId nnVertId10, nnVertId11, nnVertId12;
-        triangulation.getTriangleVertex(nnTriId1, 0, nnVertId10);
-        triangulation.getTriangleVertex(nnTriId1, 1, nnVertId11);
-        triangulation.getTriangleVertex(nnTriId1, 2, nnVertId12);
-        triangleSet1.insert(morseSmaleManifold[nnVertId10]);
-        triangleSet1.insert(morseSmaleManifold[nnVertId11]);
-        triangleSet1.insert(morseSmaleManifold[nnVertId12]);
-      }
-
-      bool edge0IsSaddle = triangleSet0.size() > 3;
-      bool edge1IsSaddle = triangleSet1.size() > 3;
-
-      if(edge0IsSaddle && edge1IsSaddle) { // saddle at nextEdgeIds[0] and [1]
-        separatrices[separatrixId]->destination_ = nextEdgeIds[0];
-        separatrices[separatrixId]->destIsVertex_ = false;
-        auto newSaddle0 = new omsc::CriticalPoint(nextEdgeIds[0], 1, 1);
-        saddles[separatrixId] = newSaddle0;
-
-        const SimplexId newSepId = globalSepId++;
-        auto newSeperatrix = new omsc::Separatrix(*separatrices[separatrixId]);
-        separatrices[newSepId] = newSeperatrix;
-        separatrices[newSepId]->destination_ = nextEdgeIds[1];
-        separatrices[newSepId]->destIsVertex_ = false;
-        auto newSaddle1 = new omsc::CriticalPoint(nextEdgeIds[1], 1, 1);
-        saddles[newSepId] = newSaddle1;
-        this->printMsg("--double edge saddle");
-      } else if(edge0IsSaddle) { // nextEdgeIds[0] is a saddle
-        separatrices[separatrixId]->destination_ = nextEdgeIds[0];
-        separatrices[separatrixId]->destIsVertex_ = false;
-
-        auto newSaddle = new omsc::CriticalPoint(nextEdgeIds[0], 1, 1);
-        saddles[separatrixId] = newSaddle;
-        this->printMsg("--0 single edge saddle");
-      } else if(edge1IsSaddle) { // nextEdgeIds[1] is a saddle
-        separatrices[separatrixId]->destination_ = nextEdgeIds[1];
-        separatrices[separatrixId]->destIsVertex_ = false;
-
-        auto newSaddle = new omsc::CriticalPoint(nextEdgeIds[1], 1, 1);
-        saddles[separatrixId] = newSaddle;
-        this->printMsg("--1 single edge saddle");
-      } else { // check for vertex saddle 
-        bool isVertexSaddle = false;
-        SimplexId vertexSaddleId;
-        for(int triVert = 0; triVert < 3; ++triVert) {
-
-          if(isVertexSaddle) {
-            break;
-          }    
-          triangulation.getTriangleVertex(
-            nextTriangleId, triVert, vertexSaddleId);
-
-          SimplexId triVertNN = triangulation.getVertexNeighborNumber(
-            vertexSaddleId);
-
-          std::set<SimplexId> commonVertexSet;
-          for(int v = 0; v < triVertNN; ++v) {
-            SimplexId vertNeigh;
-            triangulation.getVertexNeighbor(vertexSaddleId, v, vertNeigh);
-            if(vertNeigh == critPoint.id_) {
-              commonVertexSet.clear();
-              break;
-            }
-            commonVertexSet.insert(morseSmaleManifold[vertNeigh]);
-          }
-          if(commonVertexSet.size() > 3) {
-            isVertexSaddle = true;
-            break;
-          }
-        }
-
-        if(isVertexSaddle) { // vertexSaddleId is a saddle         
-          separatrices[separatrixId]->destination_ = vertexSaddleId;
-          separatrices[separatrixId]->destIsVertex_ = true;
-
-          auto newSaddle = new omsc::CriticalPoint(vertexSaddleId, 1, 0);
-          saddles[separatrixId] = newSaddle;
-          this->printMsg("--vertex saddle");
-        } else { // no saddle - split the separatrix
-          this->printMsg("--split");
-          separatrices[separatrixId]->geometry_.push_back(nextEdgeIds[0]);
-
-          SimplexId newSepId = globalSepId++;
-          auto newSep = new omsc::Separatrix(*separatrices[separatrixId]);
-          newSep->geometry_.push_back(nextEdgeIds[0]);
-          separatrices[newSepId] = newSep;
-
-          separatrixInnerPath(newSepId, nextTriangleId, nextEdgeIds[0],
-            critPoint, false, globalSepId, separatrices, saddles,
-            morseSmaleManifold, triangulation);
-
-          separatrixInnerPath(separatrixId, nextTriangleId, nextEdgeIds[1],
-            critPoint, false, globalSepId, separatrices, saddles,
-            morseSmaleManifold, triangulation);
-        }
-      }
-    }
-    return;
-  }
-}
-
-template <typename triangulationType>
-void ttk::morseSmaleComplexOrder::separatrixBorderPath(
-  const SimplexId separatrixId,
-  const SimplexId startVertexId,
-  const SimplexId startEdgeId,
-  const omsc::CriticalPoint critPoint,
-  std::unordered_map<SimplexId, SimplexId>* regSaddles,
-  const bool wasSplitted,
-  SimplexId &globalSepId,
-  omsc::Separatrix **separatrices,
-  omsc::CriticalPoint **saddles,
-  const SimplexId *const morseSmaleManifold,
-  const triangulationType &triangulation) const {
-
-  SimplexId currentEdge = startEdgeId, currentVertex = startVertexId;
-  SimplexId nextVertex, nextEdge;
-
-  nextBorderEdge(
-    currentVertex, currentEdge, nextVertex, nextEdge, triangulation);
-  
-  separatrices[separatrixId]->geometry_.push_back(nextEdge);
-  currentVertex = nextVertex;
-  currentEdge = nextEdge;
-  nextBorderEdge(
-    currentVertex, currentEdge, nextVertex, nextEdge, triangulation);
-
-  while(
-    morseSmaleManifold[currentVertex] == morseSmaleManifold[nextVertex]) {
-    separatrices[separatrixId]->geometry_.push_back(nextEdge);
-    currentVertex = nextVertex;
-    currentEdge = nextEdge;
-    nextBorderEdge(
-      currentVertex, currentEdge, nextVertex, nextEdge, triangulation);
-  }
-
-  SimplexId splittingEdge = nextEdge;
-  separatrices[separatrixId]->geometry_.push_back(splittingEdge);
-
-  if(regSaddles->find(nextEdge) == regSaddles->end() && !wasSplitted) {
-    // edge is not a regular saddle
-    auto newSaddle = new omsc::CriticalPoint(nextEdge, 1, 1);
-    saddles[separatrixId] = newSaddle;
-
-    SimplexId triId;
-    triangulation.getEdgeTriangle(nextEdge, 0, triId);
-
-    SimplexId newEdgeId;
-    for(int e = 0; e <3; e++) {
-      triangulation.getTriangleEdge(triId, e, newEdgeId);
-
-      if(newEdgeId == nextEdge) {
-        continue;
-      }
-
-      SimplexId v0, v1;
-      triangulation.getEdgeVertex(newEdgeId, 0, v0);
-      triangulation.getEdgeVertex(newEdgeId, 1, v1);
-
-      if(morseSmaleManifold[v0] != morseSmaleManifold[v1]) {
-        SimplexId newSepId = globalSepId++;
-        auto newSep = new omsc::Separatrix(*separatrices[separatrixId]);
-        separatrices[newSepId] = newSep;
-
-        this->printMsg("InnerPath from border" + std::to_string(triId));
-        separatrixInnerPath(newSepId, triId, newEdgeId,
-          critPoint, true, globalSepId, separatrices, saddles,
-          morseSmaleManifold, triangulation);
-      }
-    }
-    
-    currentVertex = nextVertex;
-    currentEdge = nextEdge;
-    nextBorderEdge(
-      currentVertex, currentEdge, nextVertex, nextEdge, triangulation);
-
-    SimplexId newSepId = globalSepId++;
-
-    auto newSep = new omsc::Separatrix(*separatrices[separatrixId]);
-    separatrices[newSepId] = newSep;
-
-    separatrixBorderPath(newSepId, nextVertex, nextEdge,
-      critPoint, regSaddles, true, globalSepId, separatrices, saddles,
-      morseSmaleManifold, triangulation);
-  }
-
-  separatrices[separatrixId]->onBoundary_ = true;
-  separatrices[separatrixId]->destination_ = splittingEdge;
-  separatrices[separatrixId]->destIsVertex_ = false;
-}
-
-template <typename triangulationType>
-bool ttk::morseSmaleComplexOrder::getNextTriangle(
-  const SimplexId currentTriangle,
-  const SimplexId currentEdge,
-  SimplexId &nextTriangle, 
-  SimplexId *nextEdges,
-  const triangulationType &triangulation) const {
-  
-  SimplexId numTriangles = triangulation.getEdgeTriangleNumber(currentEdge);
-
-  if(numTriangles <= 1) {
-    return false;
-  }
-  triangulation.getEdgeTriangle(currentEdge, 0, nextTriangle);
-
-  if(nextTriangle == currentTriangle) {
-    triangulation.getEdgeTriangle(currentEdge, 1, nextTriangle);
-  }
-
-  // get triangle edges excluding the current one
-  int foundEdges = 0;
-  for(int e = 0; e < 3; ++e) {
-    SimplexId edgeId;
-    triangulation.getTriangleEdge(nextTriangle, e, edgeId);
-
-    if(edgeId != currentEdge) {
-      nextEdges[foundEdges++] = edgeId;
-    }
-  }
-  
-  return true;
-}
-
-template <typename triangulationType>
-bool ttk::morseSmaleComplexOrder::hasVertexSingleLabelNeighborhood(
-  const SimplexId currentVertex,
-  const SimplexId *const morseSmaleManifold,
-  const triangulationType &triangulation) const {
-  
-  SimplexId mSM = morseSmaleManifold[currentVertex];
-  const SimplexId neighborNumber =
-    triangulation.getVertexNeighborNumber(currentVertex);
-
-  for(SimplexId n = 0; n < neighborNumber; ++n) {
-    SimplexId neighbor;
-    triangulation.getVertexNeighbor(currentVertex, n, neighbor);
-
-    if(morseSmaleManifold[neighbor] != mSM) {
-      return false;
-    }
-  }
-  return true;
-}
-
-template <typename triangulationType>
-bool ttk::morseSmaleComplexOrder::isVertexOnBorder(
-  const SimplexId currentVertex,
-  const triangulationType &triangulation) const {
-
-  const SimplexId edgeNumber =
-  triangulation.getVertexEdgeNumber(currentVertex);
-  for(SimplexId e = 0; e < edgeNumber; ++e) {
-    SimplexId edge;
-    triangulation.getVertexEdge(currentVertex, e, edge);
-    
-    if(triangulation.getEdgeTriangleNumber(edge) < 2) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-template <typename triangulationType>
-bool ttk::morseSmaleComplexOrder::nextBorderEdge(
-  const SimplexId currentVertex,
-  const SimplexId currentEdge,
-  SimplexId &nextVertex,
-  SimplexId &nextEdge,
-  const triangulationType &triangulation) const {
-
-  SimplexId edgeNumber =
-    triangulation.getVertexEdgeNumber(currentVertex);
-
-  for(SimplexId e = 0; e < edgeNumber; ++e) {
-    triangulation.getVertexEdge(currentVertex, e, nextEdge);
-
-    SimplexId edgeTriangleNumber =
-      triangulation.getEdgeTriangleNumber(nextEdge);
-    
-    if(currentEdge != nextEdge && edgeTriangleNumber < 2) {
-      triangulation.getEdgeVertex(nextEdge, 0, nextVertex);
-      if(nextVertex == currentVertex) {
-        triangulation.getEdgeVertex(nextEdge, 1, nextVertex);
-      }
-      return true;
-    }
-  }
-  return false;
-}
-
-template <typename triangulationType>
-bool ttk::morseSmaleComplexOrder::getExtremaBorderVertex(
-  const omsc::CriticalPoint extrema,
-  const SimplexId *const morseSmaleManifold,
-  const triangulationType &triangulation,
-  SimplexId &borderVertex) const {
-
-  const SimplexId label = morseSmaleManifold[extrema.id_];
-  
-  std::queue<SimplexId> q;
-  q.push(extrema.id_);
-  
-  std::unordered_map<SimplexId, bool> visited;
-  visited.insert({extrema.id_, false});
-
-  int iterations = 0;
-
-  while(!q.empty()) {
-    iterations++;
-    SimplexId currentVertex = q.front();
-    q.pop();
-
-    //visited[currentVertex] = true;
-    SimplexId numNeigbors = triangulation.getVertexEdgeNumber(currentVertex);
-    for(int i = 0; i < numNeigbors; ++i) {
-      SimplexId neighborEdge, vert;
-      triangulation.getVertexEdge(currentVertex, i, neighborEdge);
-      triangulation.getEdgeVertex(neighborEdge, 0, vert);
-
-      if(vert == currentVertex) {
-        triangulation.getEdgeVertex(neighborEdge, 1, vert);
-      }
-
-      if(triangulation.getEdgeTriangleNumber(neighborEdge) < 2) {
-        this->printMsg("Iterations:" + std::to_string(iterations));
-        borderVertex = currentVertex;
-        return true;
-      }
-
-      if(morseSmaleManifold[vert] == label &&
-        visited.find(vert) == visited.end()) { // same label + not visited
-        
-        q.push(vert);
-        visited.insert({vert, false});
-      }
-    }
-  }
-  
-  return false;
-}
-
-template <typename triangulationType>
-int ttk::morseSmaleComplexOrder::setSeparatrices1(
-  const std::vector<omsc::Separatrix> &separatrices,
+int ttk::MorseSmaleComplexQuasi::setSeparatrices1(
+  const std::vector<mscq::Separatrix> &separatrices,
   const triangulationType &triangulation) const {
 
 #ifndef TTK_ENABLE_KAMIKAZE
@@ -1765,12 +1040,7 @@ int ttk::morseSmaleComplexOrder::setSeparatrices1(
       " 1-separatrices pointer to the input scalar field is null.");
     return -1;
   }
-#endif
-
-  this->printMsg("T0");
-
-  //auto separatrixFunctionMaxima = outputS1_cells_separatrixFunctionMaximaId_;
-  //auto separatrixFunctionMinima = outputS1_cells_separatrixFunctionMinimaId_;  
+#endif 
 
   // total number of separatrices points
   auto npoints{static_cast<size_t>(*outputSeparatrices1_numberOfPoints_)};
@@ -1780,18 +1050,12 @@ int ttk::morseSmaleComplexOrder::setSeparatrices1(
   size_t numSep = separatrices.size();
   size_t numCells = 0;
 
-  this->printMsg("T1");
-
   // count total number of points and cells, flatten geometryId loops
   for(size_t i = 0; i < numSep; ++i) {
     const auto &sep = separatrices[i];
     npoints += sep.geometry_.size() + 2;
     numCells += sep.geometry_.size() + 1;
   }
-
-  this->printMsg("T2");
-
-  const int dimensionality = triangulation.getDimensionality();
 
   // resize arrays
   outputSeparatrices1_points_->resize(3 * npoints);
@@ -1808,7 +1072,6 @@ int ttk::morseSmaleComplexOrder::setSeparatrices1(
     outputSeparatrices1_cells_isOnBoundary_->resize(numSep);
 
   SimplexId currPId = 0, currCId = 0;
-  this->printMsg("T3");
   for(size_t i = 0; i < numSep; ++i) {
 
     const auto &sep = separatrices[i];
@@ -1878,8 +1141,6 @@ int ttk::morseSmaleComplexOrder::setSeparatrices1(
     if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
       (*outputSeparatrices1_cells_isOnBoundary_)[i] = onBoundary;
   }
-
-  this->printMsg("T4");
 
   // update pointers
   *outputSeparatrices1_numberOfPoints_ = npoints;

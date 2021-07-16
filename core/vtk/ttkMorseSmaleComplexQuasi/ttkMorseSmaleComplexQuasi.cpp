@@ -1,4 +1,4 @@
-#include <ttkmorseSmaleComplexOrder.h>
+#include <ttkMorseSmaleComplexQuasi.h>
 #include <ttkMacros.h>
 #include <ttkUtils.h>
 
@@ -17,18 +17,18 @@
 //unused?
 #include <vtkObjectFactory.h>
 
-vtkStandardNewMacro(ttkmorseSmaleComplexOrder);
+vtkStandardNewMacro(ttkMorseSmaleComplexQuasi);
 
-ttkmorseSmaleComplexOrder::ttkmorseSmaleComplexOrder() {
+ttkMorseSmaleComplexQuasi::ttkMorseSmaleComplexQuasi() {
   this->setDebugMsgPrefix("OrderMorseSmaleComplex");
   this->SetNumberOfInputPorts(1);
   this->SetNumberOfOutputPorts(4);
 }
 
-ttkmorseSmaleComplexOrder::~ttkmorseSmaleComplexOrder() {
+ttkMorseSmaleComplexQuasi::~ttkMorseSmaleComplexQuasi() {
 }
 
-int ttkmorseSmaleComplexOrder::FillInputPortInformation(int port, vtkInformation *info) {
+int ttkMorseSmaleComplexQuasi::FillInputPortInformation(int port, vtkInformation *info) {
   if(port == 0) {
     info->Set(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkDataSet");
     return 1;
@@ -36,7 +36,7 @@ int ttkmorseSmaleComplexOrder::FillInputPortInformation(int port, vtkInformation
   return 0;
 }
 
-int ttkmorseSmaleComplexOrder::FillOutputPortInformation(int port,
+int ttkMorseSmaleComplexQuasi::FillOutputPortInformation(int port,
                                                          vtkInformation *info) {
   if(port == 0 || port == 1 || port == 2) {
     info->Set(vtkDataObject::DATA_TYPE_NAME(), "vtkPolyData");
@@ -48,7 +48,7 @@ int ttkmorseSmaleComplexOrder::FillOutputPortInformation(int port,
   return 0;
 }
 
-int ttkmorseSmaleComplexOrder::RequestData(vtkInformation *request,
+int ttkMorseSmaleComplexQuasi::RequestData(vtkInformation *request,
                                vtkInformationVector **inputVector,
                                vtkInformationVector *outputVector) {
 
@@ -197,7 +197,7 @@ void setArray(vtkArrayType &vtkArray, vectorType &vector) {
 }
 
 template <typename dataType, typename triangulationType>
-int ttkmorseSmaleComplexOrder::dispatch(vtkDataArray *const inputArray,
+int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
                                         vtkPolyData *const outputCriticalPoints,
                                         vtkPolyData *const outputSeparatrices1,
                                         vtkPolyData *const outputSeparatrices2,

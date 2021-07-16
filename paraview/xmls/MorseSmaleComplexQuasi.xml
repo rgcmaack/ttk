@@ -3,8 +3,8 @@
 <ServerManagerConfiguration>
   <ProxyGroup name="filters">
     <SourceProxy
-      name="ttkmorseSmaleComplexOrder" class="ttkmorseSmaleComplexOrder"
-      label="TTK morseSmaleComplexOrder">
+      name="ttkMorseSmaleComplexQuasi" class="ttkMorseSmaleComplexQuasi"
+      label="TTK MorseSmaleComplexQuasi">
       <Documentation 
         long_help="TTK order morseSmaleComplex plugin."
         short_help="TTK order morseSmaleComplex plugin.">

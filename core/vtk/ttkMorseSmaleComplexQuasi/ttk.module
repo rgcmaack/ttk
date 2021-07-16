@@ -1,0 +1,9 @@
+NAME
+  ttkMorseSmaleComplexQuasi
+SOURCES
+  ttkMorseSmaleComplexQuasi.cpp
+HEADERS
+  ttkMorseSmaleComplexQuasi.h
+DEPENDS
+  morseSmaleComplexQuasi
+  ttkAlgorithm

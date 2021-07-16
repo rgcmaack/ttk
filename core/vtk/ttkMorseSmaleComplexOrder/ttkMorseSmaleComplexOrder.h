@@ -1,5 +1,5 @@
 /// \ingroup vtk
-/// \class ttkmorseSmaleComplexOrder
+/// \class ttkMorseSmaleComplexOrder
 /// \author Robin G. C. Maack <maack@rhrk.uni-kl.de>
 /// \date June 2021.
 ///
@@ -33,32 +33,32 @@
 #pragma once
 
 // VTK Module
-#include <ttkmorseSmaleComplexOrderModule.h>
+#include <ttkMorseSmaleComplexOrderModule.h>
 
 // VTK Includes
 #include <ttkAlgorithm.h>
 
 /* NAME
- *   ttkmorseSmaleComplexOrder
+ *   ttkMorseSmaleComplexOrder
  * DEPENDS
  *   ttkAlgorithm
  *   VTK::FiltersSources
  */
 
 // TTK Base Includes
-#include <morseSmaleComplexOrder.h>
+#include <MorseSmaleComplexOrder.h>
 
 class vtkPolyData;
 
 using namespace ttk;
 
-class TTKMORSESMALECOMPLEXORDER_EXPORT ttkmorseSmaleComplexOrder
+class TTKMORSESMALECOMPLEXORDER_EXPORT ttkMorseSmaleComplexOrder
   : public ttkAlgorithm,
-    protected ttk::morseSmaleComplexOrder
+    protected ttk::MorseSmaleComplexOrder
 {
 public:
-  static ttkmorseSmaleComplexOrder *New();
-  vtkTypeMacro(ttkmorseSmaleComplexOrder, ttkAlgorithm);
+  static ttkMorseSmaleComplexOrder *New();
+  vtkTypeMacro(ttkMorseSmaleComplexOrder, ttkAlgorithm);
 
   vtkSetMacro(ComputeCriticalPoints, bool);
   vtkGetMacro(ComputeCriticalPoints, bool);
@@ -88,8 +88,8 @@ public:
   vtkGetMacro(ComputeFinalSegmentation, bool);
 
 protected:
-  ttkmorseSmaleComplexOrder();
-  ~ttkmorseSmaleComplexOrder() override;
+  ttkMorseSmaleComplexOrder();
+  ~ttkMorseSmaleComplexOrder() override;
 
   int FillInputPortInformation(int port, vtkInformation *info) override;
   int FillOutputPortInformation(int port, vtkInformation *info) override;

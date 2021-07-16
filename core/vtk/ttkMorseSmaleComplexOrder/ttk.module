@@ -1,0 +1,9 @@
+NAME
+  ttkMorseSmaleComplexOrder
+SOURCES
+  ttkMorseSmaleComplexOrder.cpp
+HEADERS
+  ttkMorseSmaleComplexOrder.h
+DEPENDS
+  morseSmaleComplexOrder
+  ttkAlgorithm

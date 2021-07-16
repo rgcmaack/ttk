@@ -1,8 +1,8 @@
 ttk_add_base_library(morseSmaleComplexOrder
   SOURCES
-    morseSmaleComplexOrder.cpp
+    MorseSmaleComplexOrder.cpp
   HEADERS
-    morseSmaleComplexOrder.h
+    MorseSmaleComplexOrder.h
   DEPENDS
     triangulation
 )
