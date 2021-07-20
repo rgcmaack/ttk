@@ -1133,9 +1133,9 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     // find a starting edge
     SimplexId startEdge{-1};
     {
-      for (SimplexId edg = 0; edg < (vecSize+1); ++edg) {
-        if(!linkedEdges[edg].hasTwoNeighbors) {
-          startEdge = linkedEdges[edg].neighbors_[0];
+      for (auto& it: edgeIdToArrIndex) {
+        if(!linkedEdges[it.second].hasTwoNeighbors) {
+          startEdge = it.first;
           break;
         }
       }
@@ -1145,6 +1145,10 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     SimplexId previousId = startEdge;
     SimplexId nextId = linkedEdges[edgeIdToArrIndex[startEdge]].neighbors_[0];
     newSep.geometry_.push_back(nextId);
+
+    if((linkedEdges[edgeIdToArrIndex[nextId]].hasTwoNeighbors)) {
+      this->printMsg("Bullshit");
+    }
 
     while(linkedEdges[edgeIdToArrIndex[nextId]].hasTwoNeighbors) {
       SimplexId tempPreviousId = nextId;
