@@ -20,7 +20,7 @@
 vtkStandardNewMacro(ttkMorseSmaleComplexQuasi);
 
 ttkMorseSmaleComplexQuasi::ttkMorseSmaleComplexQuasi() {
-  this->setDebugMsgPrefix("OrderMorseSmaleComplex");
+  this->setDebugMsgPrefix("MorseSmaleComplexQuasi");
   this->SetNumberOfInputPorts(1);
   this->SetNumberOfOutputPorts(4);
 }
