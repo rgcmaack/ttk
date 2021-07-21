@@ -287,7 +287,7 @@ namespace ttk {
       SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
-    template <typename triangulationType>
+    template <class dataType, class triangulationType>
     int computeSeparatrices1_2D(
       std::vector<mscq::CriticalPoint> &criticalPoints,    
       std::vector<mscq::Separatrix> &separatrices,
@@ -300,6 +300,11 @@ namespace ttk {
       const SimplexId currentEdge,
       SimplexId &nextVertex,
       SimplexId &nextEdge,
+      const triangulationType &triangulation) const;
+
+    template <class dataType, class triangulationType>
+    bool isEdgeSaddle(
+      const SimplexId edgeID,
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
@@ -417,7 +422,7 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
     }
 
     if(dim == 2) {
-      computeSeparatrices1_2D<triangulationType>(
+      computeSeparatrices1_2D<dataType, triangulationType>(
                                 criticalPoints, separatrices1,
                                 morseSmaleManifold, triangulation);
 
@@ -1038,7 +1043,7 @@ int ttk::MorseSmaleComplexQuasi::computeFinalSegmentation(
   return 0;
 }
 
-template <typename triangulationType>
+template <class dataType, class triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
   std::vector<mscq::CriticalPoint> &criticalPoints, 
   std::vector<mscq::Separatrix> &separatrixVector,
@@ -1236,12 +1241,14 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
       triangulation.getEdgeVertex(borderEdge, 0, v0);
       triangulation.getEdgeVertex(borderEdge, 1, v1);
 
-      std::array<float, 3> pt{};
-      triangulation.getEdgeIncenter(borderEdge, pt.data());
-      outputCriticalPoints_points_->push_back(pt);
-      outputCriticalPoints_points_cellDimensions_->push_back(1);
-      outputCriticalPoints_points_cellIds_->push_back(borderEdge);
-      criticalPoints.push_back(mscq::CriticalPoint(borderEdge, 1, 1));
+      if(isEdgeSaddle<dataType, triangulationType>(borderEdge, triangulation)) {
+        std::array<float, 3> pt{};
+        triangulation.getEdgeIncenter(borderEdge, pt.data());
+        outputCriticalPoints_points_->push_back(pt);
+        outputCriticalPoints_points_cellDimensions_->push_back(1);
+        outputCriticalPoints_points_cellIds_->push_back(borderEdge);
+        criticalPoints.push_back(mscq::CriticalPoint(borderEdge, 1, 1));
+      }
 
       if(borderSepSeeds.find(morseSmaleManifold[v0]) == borderSepSeeds.end()) {
         borderSepSeeds.insert({
@@ -1294,7 +1301,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
       currentVertex, currentEdge, nextVertex, nextEdge, triangulation);
     }
 
-    newSep.destination_ = currentEdge;
+    newSep.destination_ = nextEdge;
     newSep.onBoundary_ = true;
     separatrixVector.push_back(newSep);
   }
@@ -1328,6 +1335,49 @@ bool ttk::MorseSmaleComplexQuasi::nextBorderEdge(
     }
   }
   return false;
+}
+
+template <class dataType, class triangulationType>
+bool ttk::MorseSmaleComplexQuasi::isEdgeSaddle(
+  const SimplexId edgeID,
+  const triangulationType &triangulation) const {
+  
+  const dataType *inputField = static_cast<const dataType *>(inputOrderField_);
+
+  SimplexId v0, v1;
+  triangulation.getEdgeVertex(edgeID, 0, v0);
+  triangulation.getEdgeVertex(edgeID, 1, v1);
+
+  bool hasBiggerNeighbor0 = false;
+  bool hasSmallerNeigbor0 = false;
+
+  SimplexId numNeigborsV0 = triangulation.getVertexNeighborNumber(v0);
+  for(int i = 0; i < numNeigborsV0; ++i) {
+    SimplexId neighbor;
+    triangulation.getVertexNeighbor(v0, i, neighbor);
+
+    if(neighbor != v1) {
+      hasBiggerNeighbor0 |= (inputField[v0] < inputField[neighbor]);
+      hasSmallerNeigbor0 |= (inputField[v0] > inputField[neighbor]);
+    }
+  }
+
+  bool hasBiggerNeighbor1 = false;
+  bool hasSmallerNeigbor1 = false;
+
+  SimplexId numNeigborsV1 = triangulation.getVertexNeighborNumber(v1);
+  for(int i = 0; i < numNeigborsV1; ++i) {
+    SimplexId neighbor;
+    triangulation.getVertexNeighbor(v1, i, neighbor);
+
+    if(neighbor != v0) {
+      hasBiggerNeighbor1 |= (inputField[v1] < inputField[neighbor]);
+      hasSmallerNeigbor1 |= (inputField[v1] > inputField[neighbor]);
+    }
+  }
+  
+  return hasBiggerNeighbor0 && hasSmallerNeigbor0 &&
+         hasBiggerNeighbor1 && hasSmallerNeigbor1;
 }
 
 template <typename triangulationType>
