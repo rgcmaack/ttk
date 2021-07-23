@@ -13,6 +13,7 @@
 #include <stack>
 #include <set>
 #include <unordered_set>
+#include <bitset>
 
 #include <cstddef>
 
@@ -27,6 +28,37 @@ using ttk::SimplexId;
     constexpr std::size_t hardware_destructive_interference_size
         = 2 * sizeof(std::max_align_t);
 #endif
+
+int tetraederLookup[28][6] = {
+  {-1, -1, -1, -1, -1, -1}, // 0,0,0
+  {-1, -1, -1, -1, -1, -1}, // 0,0,1
+  {-1, -1, -1, -1, -1, -1}, // 0,0,2
+  { 2,  4,  5, -1, -1, -1}, // 0,0,3
+  {-1, -1, -1, -1, -1, -1}, // 0,1,0
+  {-1, -1, -1, -1, -1, -1}, // 0,1,1
+  {-1, -1, -1, -1, -1, -1}, // 0,1,2
+  {-1, -1, -1, -1, -1, -1}, // 0,1,3
+  { 1,  3,  5, -1, -1, -1}, // 0,2,0
+  {-1, -1, -1, -1, -1, -1}, // 0,2,1
+  { 1,  2,  3,  2,  3,  4}, // 0,2,2
+  { 1,  2,  3,  2,  4,  5}, // 0,2,3
+  {-1, -1, -1, -1, -1, -1}, // 0,3,0
+  {-1, -1, -1, -1, -1, -1}, // 0,3,1
+  {-1, -1, -1, -1, -1, -1}, // 0,3,2
+  {-1, -1, -1, -1, -1, -1}, // 0,3,3
+  { 0,  4,  3, -1, -1, -1}, // 1,0,0 
+  { 0,  2,  3,  2,  5,  3}, // 1,0,1
+  {-1, -1, -1, -1, -1, -1}, // 1,0,2
+  { 0,  3,  4,  4,  2,  5}, // 1,0,3
+  { 0,  1,  4,  1,  4,  5}, // 1,1,0
+  { 0,  1,  2, -1, -1, -1}, // 1,1,1
+  {-1, -1, -1, -1, -1, -1}, // 1,1,2
+  { 0,  1,  2,  2,  4,  5}, // 1,1,3
+  { 1,  3,  5,  0,  3,  4}, // 1,2,0
+  { 0,  1,  2,  1,  3,  5}, // 1,2,1
+  { 0,  3,  4,  0,  1,  2}, // 1,2,2
+  { 6,  6,  6,  6,  6,  6}  // 1,2,3
+};
 
 namespace ttk {
 
@@ -173,6 +205,8 @@ namespace ttk {
         success += triangulation->preconditionEdgeTriangles();
         success += triangulation->preconditionTriangleEdges();
         success += triangulation->preconditionVertexEdges();
+        success += triangulation->preconditionCellEdges();
+        success += triangulation->preconditionCellTriangles();
       return success;
     };
 
@@ -251,6 +285,19 @@ namespace ttk {
       return 0;
     }
 
+    inline int setOutputSeparatrices2(
+      SimplexId *const separatrices2_numberOfPoints,
+      std::vector<float> *const separatrices2_points,
+      SimplexId *const separatrices2_numberOfCells,
+      std::vector<SimplexId> *const separatrices2_cells_connectivity) {
+      outputSeparatrices2_numberOfPoints_ = separatrices2_numberOfPoints;
+      outputSeparatrices2_points_ = separatrices2_points;
+      outputSeparatrices2_numberOfCells_ = separatrices2_numberOfCells;
+      outputSeparatrices2_cells_connectivity_
+        = separatrices2_cells_connectivity;
+      return 0;
+    }
+
     inline long long getSparseId(
       const SimplexId edgeId0, const SimplexId edgeId1) const {
       if(edgeId0 < edgeId1) {
@@ -311,6 +358,31 @@ namespace ttk {
     int setSeparatrices1(
       const std::vector<mscq::Separatrix> &separatrices,
       const triangulationType &triangulation) const;
+
+    template <class dataType, class triangulationType>
+    int computeSeparatrices1_3D(
+      std::vector<std::array<float, 9>> &trianglePos,    
+      std::vector<mscq::Separatrix> &separatrices,
+      const SimplexId *const morseSmaleManifold,
+      const triangulationType &triangulation) const;
+
+    int setSeparatrices2(
+      std::vector<std::array<float, 9>> trianglePos) const;
+
+    template <class triangulationType>
+    inline int getEdgeIncenter(
+      SimplexId vertexId0, SimplexId vertexId1, float incenter[3],
+      const triangulationType &triangulation) const {
+      float p[6];
+      triangulation.getVertexPoint(vertexId0, p[0], p[1], p[2]);
+      triangulation.getVertexPoint(vertexId1, p[3], p[4], p[5]);
+
+      incenter[0] = 0.5 * p[0] + 0.5 * p[3];
+      incenter[1] = 0.5 * p[1] + 0.5 * p[4];
+      incenter[2] = 0.5 * p[2] + 0.5 * p[5];
+
+      return 0;
+    }
       
   protected:
     bool ComputeAscendingSeparatrices1{false};
@@ -348,6 +420,12 @@ namespace ttk {
     std::vector<SimplexId> *outputS1_cells_separatrixFunctionMaximaId_{};
     std::vector<SimplexId> *outputS1_cells_separatrixFunctionMinimaId_{};
     std::vector<char> *outputSeparatrices1_cells_isOnBoundary_{};
+
+    // 2-separatrices
+    SimplexId *outputSeparatrices2_numberOfPoints_{};
+    std::vector<float> *outputSeparatrices2_points_{};
+    SimplexId *outputSeparatrices2_numberOfCells_{};
+    std::vector<SimplexId> *outputSeparatrices2_cells_connectivity_{};
 
     // Misc
     SimplexId num_MSC_regions_{};
@@ -428,7 +506,15 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
 
       this->printMsg("Write 1-seps");
       setSeparatrices1<triangulationType>(separatrices1, triangulation);
-    }    
+    } else if (dim == 3) {
+    std::vector<std::array<float, 9>> trianglePos;
+
+      computeSeparatrices1_3D<dataType, triangulationType>(
+                              trianglePos, separatrices1,
+                              morseSmaleManifold, triangulation);
+
+      setSeparatrices2(trianglePos);
+    }
   }
 
   this->printMsg( std::to_string(triangulation.getNumberOfVertices())
@@ -1189,7 +1275,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
 
     unhandledTriConnectors.erase(sparseID); // remove handled IDs
 
-    bool endsOnBorder = false;
+    //bool endsOnBorder = false;
     bool splitAtStart = false;
  
     if(triConnectors.find(sparseID) != triConnectors.end()) {
@@ -1214,7 +1300,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
          newSep.source_ = splitTriangle;
         }
       } else { //ends at border edge
-        endsOnBorder = true;
+        //endsOnBorder = true;
       }
     }
     
@@ -1232,13 +1318,13 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     separatrixVector.push_back(newSep);
 
     // add border seedpoints for border separatrices
-    if(endsOnBorder) {
+    /*if(endsOnBorder) {
       SimplexId borderEdge = newSep.geometry_.front();
       if(splitAtStart) {
         borderEdge = newSep.geometry_.back();
       }
 
-      triangulation.getEdgeVertex(borderEdge, 0, v0);
+      /*triangulation.getEdgeVertex(borderEdge, 0, v0);
       triangulation.getEdgeVertex(borderEdge, 1, v1);
 
       if(isEdgeSaddle<dataType, triangulationType>(borderEdge, triangulation)) {
@@ -1248,9 +1334,9 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
         outputCriticalPoints_points_cellDimensions_->push_back(1);
         outputCriticalPoints_points_cellIds_->push_back(borderEdge);
         criticalPoints.push_back(mscq::CriticalPoint(borderEdge, 1, 1));
-      }
+      }*/
 
-      if(borderSepSeeds.find(morseSmaleManifold[v0]) == borderSepSeeds.end()) {
+      /*if(borderSepSeeds.find(morseSmaleManifold[v0]) == borderSepSeeds.end()) {
         borderSepSeeds.insert({
           morseSmaleManifold[v0], std::make_tuple(borderEdge, v0)});
       }
@@ -1258,7 +1344,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
         borderSepSeeds.insert({
           morseSmaleManifold[v1], std::make_tuple(borderEdge, v1)});
       }
-    }
+    }*/
   }
 
   // merge two splitting triangles into a saddle
@@ -1281,7 +1367,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     criticalPoints.push_back(mscq::CriticalPoint(splitEdge0, 1, 1));
   }
 
-  for(auto b : borderSepSeeds) {
+  /*for(auto b : borderSepSeeds) {
     SimplexId currentEdge = std::get<0>(b.second);
     SimplexId currentVertex = std::get<1>(b.second);
 
@@ -1304,7 +1390,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     newSep.destination_ = nextEdge;
     newSep.onBoundary_ = true;
     separatrixVector.push_back(newSep);
-  }
+  }*/
 
   return 0;
 }
@@ -1425,9 +1511,6 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1(
     numCells += sep.geometry_.size() + 1;
   }
 
-  this->printMsg("#Points: " + std::to_string(npoints));
-  this->printMsg("#Cells: " + std::to_string(numCells));
-
   // resize arrays
   outputSeparatrices1_points_->resize(3 * npoints);
   auto &points = *outputSeparatrices1_points_;
@@ -1448,23 +1531,13 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1(
     const auto &sep = separatrices[i];
     const auto &src = sep.source_;
     const auto &dst = sep.destination_;
-    const auto onBoundary = sep.onBoundary_;
 
     std::array<float, 3> pt{};
 
-    if(!onBoundary) {
-      if(src != -1) {
-        triangulation.getTriangleIncenter(src, pt.data());   
-      } else {
-        triangulation.getEdgeIncenter(sep.geometry_.front(), pt.data());
-      }
+    if(src != -1) {
+      triangulation.getTriangleIncenter(src, pt.data());   
     } else {
-      if(src != -1) {
-        triangulation.getEdgeIncenter(src, pt.data());  
-      } else {
-        triangulation.getVertexPoint(
-          sep.geometry_.front(), pt[0], pt[1], pt[2]);
-      }
+      triangulation.getEdgeIncenter(sep.geometry_.front(), pt.data());
     }
 
     points[3 * currPId + 0] = pt[0];
@@ -1474,11 +1547,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1(
     currPId += 1;
 
     for(const auto geom : sep.geometry_) {
-      if(!onBoundary) {
-        triangulation.getEdgeIncenter(geom, pt.data());
-      } else {
-        triangulation.getVertexPoint(geom, pt[0], pt[1], pt[2]);
-      }
+      triangulation.getEdgeIncenter(geom, pt.data());
 
       points[3 * currPId + 0] = pt[0];
       points[3 * currPId + 1] = pt[1];
@@ -1491,19 +1560,10 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1(
       currCId += 1;
     }
 
-    if(!onBoundary) {
-      if(dst != -1) {
-        triangulation.getTriangleIncenter(dst, pt.data());   
-      } else {
-        triangulation.getEdgeIncenter(sep.geometry_.back(), pt.data());
-      }
+    if(dst != -1) {
+      triangulation.getTriangleIncenter(dst, pt.data());   
     } else {
-      if(dst != -1) {
-        triangulation.getEdgeIncenter(dst, pt.data());  
-      } else {
-        triangulation.getVertexPoint(
-          sep.geometry_.back(), pt[0], pt[1], pt[2]);
-      }
+      triangulation.getEdgeIncenter(sep.geometry_.back(), pt.data());
     }
 
     points[3 * currPId + 0] = pt[0];
@@ -1521,15 +1581,229 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1(
     if(outputSeparatrices1_cells_destinationIds_ != nullptr)
       (*outputSeparatrices1_cells_destinationIds_)[i] = dst;
     if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
-      (*outputSeparatrices1_cells_isOnBoundary_)[i] = onBoundary;
+      (*outputSeparatrices1_cells_isOnBoundary_)[i] = false;
   }
-
-  this->printMsg("PID: " + std::to_string(currPId));
-  this->printMsg("CID: " + std::to_string(currCId));
 
   // update pointers
   *outputSeparatrices1_numberOfPoints_ = npoints;
   *outputSeparatrices1_numberOfCells_ = numCells;
 
   return 0;
+}
+
+template <class dataType, class triangulationType>
+int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
+  std::vector<std::array<float, 9>> &trianglePos,    
+  std::vector<mscq::Separatrix> &separatrices,
+  const SimplexId *const morseSmaleManifold,
+  const triangulationType &triangulation) const {
+
+  if(outputSeparatrices2_numberOfPoints_ == nullptr) {
+    this->printErr("2-separatrices pointer to numberOfPoints is null.");
+    return -1;
+  }
+  if(outputSeparatrices2_points_ == nullptr) {
+    this->printErr("2-separatrices pointer to points is null.");
+    return -1;
+  }
+  if(outputSeparatrices2_numberOfCells_ == nullptr) {
+    this->printErr("2-separatrices pointer to numberOfCells is null.");
+    return -1;
+  }
+  if(outputSeparatrices2_cells_connectivity_ == nullptr) {
+    this->printErr("2-separatrices pointer to cells is null.");
+    return -1;
+  }
+  
+  const SimplexId numTetra = triangulation.getNumberOfCells();
+
+  this->printMsg("Start tri calculation");
+
+  for(SimplexId tet = 0; tet < numTetra; tet++) {
+    SimplexId vertices[4];
+    triangulation.getCellVertex(tet, 0, vertices[0]);
+    triangulation.getCellVertex(tet, 1, vertices[1]);
+    triangulation.getCellVertex(tet, 2, vertices[2]);
+    triangulation.getCellVertex(tet, 3, vertices[3]);
+
+    const SimplexId &msmV0 = morseSmaleManifold[vertices[0]];
+    const SimplexId &msmV1 = morseSmaleManifold[vertices[1]];
+    const SimplexId &msmV2 = morseSmaleManifold[vertices[2]];
+    const SimplexId &msmV3 = morseSmaleManifold[vertices[3]];
+
+    unsigned char index1 = (msmV0 == msmV1) ? 0x00 : 0x10; // 0 : 1
+    unsigned char index2 = (msmV0 == msmV2) ? 0x00 :       // 0 :
+                           (msmV1 == msmV2) ? 0x04 : 0x08; // 1 : 2
+    unsigned char index3 = (msmV0 == msmV3) ? 0x00 :       // 0
+                           (msmV1 == msmV3) ? 0x01 :       // 1
+                           (msmV2 == msmV3) ? 0x02 : 0x03; // 2 : 3
+
+    unsigned char lookupIndex = index1 | index2 | index3;
+    int *tetEdgeIndices = tetraederLookup[lookupIndex];
+
+    //this->printMsg("Index computed");
+
+    //std::bitset<8> x(lookupIndex);
+    //this->printMsg(std::to_string(lookupIndex));
+    //std::cout << x;
+
+    if(tetEdgeIndices[0] == -1) { // 1 label on tetraeder
+      //this->printMsg("Case -1");
+      continue;
+    } else {
+      //this->printMsg("Case 0");
+      float edgeCenters[6][3];
+      getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
+      getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
+      getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
+      getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
+      getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
+      getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);    
+
+      if(tetEdgeIndices[0] == 6) { // 4 labels on tetraeder
+      //this->printMsg("Case 1");
+        float tetCenter[3];
+        triangulation.getCellIncenter(tet, 3, tetCenter);
+
+        // vertex 0
+        trianglePos.push_back({
+          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+        trianglePos.push_back({
+          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+        trianglePos.push_back({
+          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2], 
+          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+
+        // vertex 1
+        trianglePos.push_back({
+          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2], 
+          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+        trianglePos.push_back({
+          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
+          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+        trianglePos.push_back({
+          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2], 
+          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+
+        // vertex 2
+        trianglePos.push_back({
+          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+        trianglePos.push_back({
+          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
+          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+        trianglePos.push_back({
+          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+
+        // vertex 3 - 0,2 and 2,4 already exist
+        trianglePos.push_back({
+          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+      } else { // 2 or 3 labels on tetraeder
+        //this->printMsg("Case 2");
+        trianglePos.push_back({
+          edgeCenters[tetEdgeIndices[0]][0],
+          edgeCenters[tetEdgeIndices[0]][1],
+          edgeCenters[tetEdgeIndices[0]][2], 
+          edgeCenters[tetEdgeIndices[1]][0],
+          edgeCenters[tetEdgeIndices[1]][1],
+          edgeCenters[tetEdgeIndices[1]][2], 
+          edgeCenters[tetEdgeIndices[2]][0],
+          edgeCenters[tetEdgeIndices[2]][1],
+          edgeCenters[tetEdgeIndices[2]][2]
+        });
+
+        if(tetEdgeIndices[3] != -1) {
+          trianglePos.push_back({
+            edgeCenters[tetEdgeIndices[3]][0],
+            edgeCenters[tetEdgeIndices[3]][1],
+            edgeCenters[tetEdgeIndices[3]][2], 
+            edgeCenters[tetEdgeIndices[4]][0],
+            edgeCenters[tetEdgeIndices[4]][1],
+            edgeCenters[tetEdgeIndices[4]][2], 
+            edgeCenters[tetEdgeIndices[5]][0],
+            edgeCenters[tetEdgeIndices[5]][1],
+            edgeCenters[tetEdgeIndices[5]][2]
+          });
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+int ttk::MorseSmaleComplexQuasi::setSeparatrices2(
+  std::vector<std::array<float, 9>> trianglePos) const {
+
+  const int numTriangles = trianglePos.size();
+
+  size_t npoints = numTriangles * 3;
+  size_t numCells = numTriangles;
+
+  // resize arrays
+  outputSeparatrices2_points_->resize(3 * npoints);
+  auto &points = *outputSeparatrices2_points_;
+  outputSeparatrices2_cells_connectivity_->resize(3 * numCells);
+  auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+
+  this->printMsg("Start writing tris" + std::to_string(numTriangles));
+
+  int lastPtId = 0;
+  int lastCellId = 0;
+
+  for(int tri = 0; tri < numTriangles; ++tri) {
+    points[9 * tri + 0] = trianglePos[tri][0];
+    points[9 * tri + 1] = trianglePos[tri][1];
+    points[9 * tri + 2] = trianglePos[tri][2];
+
+    points[9 * tri + 3] = trianglePos[tri][3];
+    points[9 * tri + 4] = trianglePos[tri][4];
+    points[9 * tri + 5] = trianglePos[tri][5];
+
+    points[9 * tri + 6] = trianglePos[tri][6];
+    points[9 * tri + 7] = trianglePos[tri][7];
+    points[9 * tri + 8] = trianglePos[tri][8];
+
+    cellsConn[3 * tri]     = 3 * tri;
+    cellsConn[3 * tri + 1] = 3 * tri + 1;
+    cellsConn[3 * tri + 2] = 3 * tri + 2;
+
+    lastPtId = 9 * tri + 8;
+    lastCellId = 3 * tri + 2;
+  }
+
+  this->printMsg(std::to_string(lastPtId) + " - " + std::to_string(3 * npoints));
+  this->printMsg(std::to_string(lastCellId) + " - " + std::to_string(3 * numCells));
+  this->printMsg("Done writing" + std::to_string(numTriangles));
+
+  // update pointers
+  *outputSeparatrices2_numberOfPoints_ = npoints;
+  *outputSeparatrices2_numberOfCells_ = numCells;
+  this->printMsg("End writing 2-seps");
+
+  return 1;
 }

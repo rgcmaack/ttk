@@ -227,6 +227,12 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
   std::vector<ttk::SimplexId> s1_separatrixFunctionMaxima{};
   std::vector<ttk::SimplexId> s1_separatrixFunctionMinima{};
 
+  // 2-separatrices
+  SimplexId s2_numberOfPoints{};
+  SimplexId s2_numberOfCells{};
+  separatrices2_points.clear();
+  separatrices2_cells_connectivity.clear();
+
   if(ComputeCriticalPoints) {
     this->setOutputCriticalPoints(
       &criticalPoints_points, &criticalPoints_points_cellDimensions,
@@ -244,6 +250,10 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     &separatrices1_cells_destinationIds, &separatrices1_cells_separatrixIds,
     &separatrices1_cells_separatrixTypes, &s1_separatrixFunctionMaxima,
     &s1_separatrixFunctionMinima, &separatrices1_cells_isOnBoundary);
+
+  this->setOutputSeparatrices2(
+    &s2_numberOfPoints, &separatrices2_points,
+    &s2_numberOfCells, &separatrices2_cells_connectivity);
 
   const int ret = this->execute<dataType>(triangulation);
 
@@ -440,19 +450,44 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
       return -1;
     }
 #endif
-
-    //pointData->AddArray(smoothingMask);
-    //pointData->AddArray(cellDimensions);
-    //pointData->AddArray(cellIds);
-
-    //cellData->AddArray(sourceIds);
-    //cellData->AddArray(destinationIds);
-    //cellData->AddArray(separatrixIds);
-    //cellData->AddArray(separatrixTypes);
-    //cellData->AddArray(separatrixFunctionMaxima);
-    //cellData->AddArray(separatrixFunctionMinima);
-    //cellData->AddArray(separatrixFunctionDiffs);
-    //cellData->AddArray(isOnBoundary);
   }
+
+  // 2-separatrices
+  {
+    vtkNew<vtkFloatArray> pointsCoords{};
+    pointsCoords->SetNumberOfComponents(3);
+    setArray(pointsCoords, separatrices2_points);
+
+#ifndef TTK_ENABLE_KAMIKAZE
+    if(!pointsCoords) {
+      this->printErr("2-separatrices vtkDataArray allocation problem.");
+      return -1;
+    }
+#endif
+
+    vtkNew<ttkSimplexIdTypeArray> offsets{}, connectivity{};
+    offsets->SetNumberOfComponents(1);
+    offsets->SetNumberOfTuples(s2_numberOfCells + 1);
+    connectivity->SetNumberOfComponents(1);
+    setArray(connectivity, separatrices2_cells_connectivity);
+
+    #ifdef TTK_ENABLE_OPENMP
+#pragma omp parallel for num_threads(this->threadNumber_)
+#endif // TTK_ENABLE_OPENMP
+    for(SimplexId i = 0; i < s2_numberOfCells + 1; ++i) {
+      offsets->SetTuple1(i, 3 * i);
+    }
+
+    vtkNew<vtkPoints> points{};
+    points->SetData(pointsCoords);
+    outputSeparatrices2->SetPoints(points);
+    vtkNew<vtkCellArray> cells{};
+#ifndef TTK_ENABLE_64BIT_IDS
+    cells->Use32BitStorage();
+#endif // TTK_ENABLE_64BIT_IDS
+    cells->SetData(offsets, connectivity);
+    outputSeparatrices2->SetPolys(cells);
+  }
+
   return 0;
 }
