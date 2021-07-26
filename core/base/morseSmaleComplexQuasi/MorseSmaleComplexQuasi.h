@@ -1687,56 +1687,55 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
 
         // vertex 1
         trianglePos.push_back({
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2], 
+          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
           edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
         trianglePos.push_back({
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
-          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
         trianglePos.push_back({
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2], 
-          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
+          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
 
         // vertex 2
         trianglePos.push_back({
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
+          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2], 
+          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
         trianglePos.push_back({
-          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
+          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2], 
           edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
         trianglePos.push_back({
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
           edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
 
-        // vertex 3 - 0,2 and 2,4 already exist
+        // vertex 3
         trianglePos.push_back({
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
           edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
         trianglePos.push_back({
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
           edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
+          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
         trianglePos.push_back({
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
+          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
       } else { // 2 or 3 labels on tetraeder
-        //this->printMsg("Case 2");
         trianglePos.push_back({
           edgeCenters[tetEdgeIndices[0]][0],
           edgeCenters[tetEdgeIndices[0]][1],
@@ -1749,7 +1748,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
           edgeCenters[tetEdgeIndices[2]][2]
         });
 
-        if(tetEdgeIndices[3] != -1) {
+        if(tetEdgeIndices[3] != -1) { // 3 labels on tetraeder
           trianglePos.push_back({
             edgeCenters[tetEdgeIndices[3]][0],
             edgeCenters[tetEdgeIndices[3]][1],
