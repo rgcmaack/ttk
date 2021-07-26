@@ -29,35 +29,35 @@ using ttk::SimplexId;
         = 2 * sizeof(std::max_align_t);
 #endif
 
-int tetraederLookup[28][6] = {
-  {-1, -1, -1, -1, -1, -1}, // 0,0,0
-  {-1, -1, -1, -1, -1, -1}, // 0,0,1
-  {-1, -1, -1, -1, -1, -1}, // 0,0,2
-  { 2,  4,  5, -1, -1, -1}, // 0,0,3
-  {-1, -1, -1, -1, -1, -1}, // 0,1,0
-  {-1, -1, -1, -1, -1, -1}, // 0,1,1
-  {-1, -1, -1, -1, -1, -1}, // 0,1,2
-  {-1, -1, -1, -1, -1, -1}, // 0,1,3
-  { 1,  3,  5, -1, -1, -1}, // 0,2,0
-  {-1, -1, -1, -1, -1, -1}, // 0,2,1
-  { 1,  2,  3,  2,  3,  4}, // 0,2,2
-  { 1,  2,  3,  2,  4,  5}, // 0,2,3
-  {-1, -1, -1, -1, -1, -1}, // 0,3,0
-  {-1, -1, -1, -1, -1, -1}, // 0,3,1
-  {-1, -1, -1, -1, -1, -1}, // 0,3,2
-  {-1, -1, -1, -1, -1, -1}, // 0,3,3
-  { 0,  4,  3, -1, -1, -1}, // 1,0,0 
-  { 0,  2,  3,  2,  5,  3}, // 1,0,1
-  {-1, -1, -1, -1, -1, -1}, // 1,0,2
-  { 0,  3,  4,  4,  2,  5}, // 1,0,3
-  { 0,  1,  4,  1,  4,  5}, // 1,1,0
-  { 0,  1,  2, -1, -1, -1}, // 1,1,1
-  {-1, -1, -1, -1, -1, -1}, // 1,1,2
-  { 0,  1,  2,  2,  4,  5}, // 1,1,3
-  { 1,  3,  5,  0,  3,  4}, // 1,2,0
-  { 0,  1,  2,  1,  3,  5}, // 1,2,1
-  { 0,  3,  4,  0,  1,  2}, // 1,2,2
-  { 6,  6,  6,  6,  6,  6}  // 1,2,3
+int tetraederLookup[28][12] = {
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,0,0
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,0,1
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,0,2
+  { 2,  4,  5, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,0,3
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,1,0
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,1,1
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,1,2
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,1,3
+  { 1,  3,  5, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,2,0
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,2,1
+  { 1,  2,  4,  1,  3,  4, -1, -1, -1, -1, -1, -1}, // 0,2,2
+  { 1,  3,  5,  2,  4,  5,  3,  4,  5,  1,  2,  5}, // 0,2,3
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,3,0
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,3,1
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,3,2
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,3,3
+  { 0,  3,  4, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 1,0,0
+  { 0,  2,  3,  2,  3,  5, -1, -1, -1, -1, -1, -1}, // 1,0,1
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 1,0,2
+  { 0,  3,  4,  2,  4,  5,  0,  2,  4,  3,  4,  5}, // 1,0,3
+  { 0,  1,  4,  1,  4,  5, -1, -1, -1, -1, -1, -1}, // 1,1,0
+  { 0,  1,  2, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 1,1,1
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 1,1,2
+  { 0,  1,  2,  2,  4,  5,  1,  2,  5,  0,  2,  4}, // 1,1,3
+  { 0,  3,  4,  1,  3,  5,  0,  1,  3,  3,  4,  5}, // 1,2,0
+  { 0,  1,  2,  1,  3,  5, -1, -1, -1, -1, -1, -1}, // 1,2,1
+  { 0,  1,  2,  0,  3,  4,  0,  2,  4,  0,  1,  3}, // 1,2,2
+  { 6,  6,  6,  6,  6,  6, -1, -1, -1, -1, -1, -1}  // 1,2,3
 };
 
 namespace ttk {
@@ -1615,6 +1615,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
     return -1;
   }
   
+  int caseStatistics[28] = {0};
   const SimplexId numTetra = triangulation.getNumberOfCells();
 
   this->printMsg("Start tri calculation");
@@ -1640,6 +1641,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
 
     unsigned char lookupIndex = index1 | index2 | index3;
     int *tetEdgeIndices = tetraederLookup[lookupIndex];
+
+    caseStatistics[lookupIndex] += 1;
 
     //this->printMsg("Index computed");
 
@@ -1722,6 +1725,16 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
           edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
+        trianglePos.push_back({
+          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
+          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
+        trianglePos.push_back({
+          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
+          tetCenter[0], tetCenter[1], tetCenter[2]
+        });
       } else { // 2 or 3 labels on tetraeder
         //this->printMsg("Case 2");
         trianglePos.push_back({
@@ -1748,10 +1761,52 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
             edgeCenters[tetEdgeIndices[5]][1],
             edgeCenters[tetEdgeIndices[5]][2]
           });
+          if(tetEdgeIndices[6] != -1) {
+            trianglePos.push_back({
+              edgeCenters[tetEdgeIndices[6]][0],
+              edgeCenters[tetEdgeIndices[6]][1],
+              edgeCenters[tetEdgeIndices[6]][2], 
+              edgeCenters[tetEdgeIndices[7]][0],
+              edgeCenters[tetEdgeIndices[7]][1],
+              edgeCenters[tetEdgeIndices[7]][2], 
+              edgeCenters[tetEdgeIndices[8]][0],
+              edgeCenters[tetEdgeIndices[8]][1],
+              edgeCenters[tetEdgeIndices[8]][2]
+            });
+            trianglePos.push_back({
+              edgeCenters[tetEdgeIndices[9]][0],
+              edgeCenters[tetEdgeIndices[9]][1],
+              edgeCenters[tetEdgeIndices[9]][2], 
+              edgeCenters[tetEdgeIndices[10]][0],
+              edgeCenters[tetEdgeIndices[10]][1],
+              edgeCenters[tetEdgeIndices[10]][2], 
+              edgeCenters[tetEdgeIndices[11]][0],
+              edgeCenters[tetEdgeIndices[11]][1],
+              edgeCenters[tetEdgeIndices[11]][2]
+            });
+          }
         }
       }
     }
   }
+
+  this->printMsg("Case AAAA: " + std::to_string(caseStatistics[0]));
+  this->printMsg("Case AAAD: " + std::to_string(caseStatistics[3]));
+  this->printMsg("Case AACA: " + std::to_string(caseStatistics[8]));
+  this->printMsg("Case AACC: " + std::to_string(caseStatistics[10]));
+  this->printMsg("Case AACD: " + std::to_string(caseStatistics[11]));
+  this->printMsg("Case ABAA: " + std::to_string(caseStatistics[16]));
+  this->printMsg("Case ABAB: " + std::to_string(caseStatistics[17]));
+  this->printMsg("Case ABAD: " + std::to_string(caseStatistics[19]));
+  this->printMsg("Case ABBA: " + std::to_string(caseStatistics[20]));
+  this->printMsg("Case ABBB: " + std::to_string(caseStatistics[21]));
+  this->printMsg("Case ABBD: " + std::to_string(caseStatistics[23]));
+  this->printMsg("Case ABCA: " + std::to_string(caseStatistics[24]));
+  this->printMsg("Case ABCB: " + std::to_string(caseStatistics[25]));
+  this->printMsg("Case ABCC: " + std::to_string(caseStatistics[26]));
+  this->printMsg("Case ABCD: " + std::to_string(caseStatistics[27]));
+  
+
 
   return 0;
 }
