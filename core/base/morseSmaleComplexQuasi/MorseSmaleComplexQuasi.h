@@ -30,34 +30,34 @@ using ttk::SimplexId;
 #endif
 
 int tetraederLookup[28][12] = {
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,0,0
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,0,1
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,0,2
-  { 2,  4,  5, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,0,3
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,1,0
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,1,1
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,1,2
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,1,3
-  { 1,  3,  5, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,2,0
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,2,1
-  { 1,  2,  4,  1,  3,  4, -1, -1, -1, -1, -1, -1}, // 0,2,2
-  { 1,  3,  5,  2,  4,  5,  3,  4,  5,  1,  2,  5}, // 0,2,3
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,3,0
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,3,1
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,3,2
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0,3,3
-  { 0,  3,  4, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 1,0,0
-  { 0,  2,  3,  2,  3,  5, -1, -1, -1, -1, -1, -1}, // 1,0,1
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 1,0,2
-  { 0,  3,  4,  2,  4,  5,  0,  2,  4,  3,  4,  5}, // 1,0,3
-  { 0,  1,  4,  1,  4,  5, -1, -1, -1, -1, -1, -1}, // 1,1,0
-  { 0,  1,  2, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 1,1,1
-  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 1,1,2
-  { 0,  1,  2,  2,  4,  5,  1,  2,  5,  0,  2,  4}, // 1,1,3
-  { 0,  3,  4,  1,  3,  5,  0,  1,  3,  3,  4,  5}, // 1,2,0
-  { 0,  1,  2,  1,  3,  5, -1, -1, -1, -1, -1, -1}, // 1,2,1
-  { 0,  1,  2,  0,  3,  4,  0,  2,  4,  0,  1,  3}, // 1,2,2
-  { 6,  6,  6,  6,  6,  6, -1, -1, -1, -1, -1, -1}  // 1,2,3
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (1) 0,0,0 - 0
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,1 - 1
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,2 - 2 
+  { 2,  4,  5, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 0,0,3 - 3
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,0 - 4
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,1 - 5 
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,2 - 6
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,3 - 7
+  { 1,  3,  5, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 0,2,0 - 8
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,2,1 - 9
+  { 1,  2,  4,  1,  3,  4, -1, -1, -1, -1, -1, -1}, // (2) 0,2,2 - 10
+  { 2,  4,  5,  1,  2,  3,  2,  3,  4, -1, -1, -1}, // (3) 0,2,3 - 11
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,0 - 12
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,1 - 13
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,2 - 14
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,3 - 15
+  { 0,  3,  4, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 1,0,0 - 16
+  { 0,  2,  3,  2,  3,  5, -1, -1, -1, -1, -1, -1}, // (2) 1,0,1 - 17
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 1,0,2 - 18
+  { 2,  4,  5,  0,  3,  4,  0,  2,  4, -1, -1, -1}, // (3) 1,0,3 - 19
+  { 0,  1,  4,  1,  4,  5, -1, -1, -1, -1, -1, -1}, // (2) 1,1,0 - 20
+  { 0,  1,  2, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 1,1,1 - 21
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 1,1,2 - 22
+  { 0,  1,  2,  2,  4,  5, -1, -1, -1, -1, -1, -1}, // (3) 1,1,3 - 23
+  { 1,  3,  5,  0,  3,  4,  3,  4,  5,  0,  1,  3}, // (3) 1,2,0 - 24
+  { 1,  3,  5,  0,  1,  2,  1,  2,  5, -1, -1, -1}, // (3) 1,2,1 - 25
+  { 0,  1,  2,  1,  2,  3,  2,  3,  4, -1, -1, -1}, // (3) 1,2,2 - 26
+  { 6,  6,  6,  6,  6,  6, -1, -1, -1, -1, -1, -1}  // (4) 1,2,3 - 27
 };
 
 namespace ttk {
@@ -289,12 +289,14 @@ namespace ttk {
       SimplexId *const separatrices2_numberOfPoints,
       std::vector<float> *const separatrices2_points,
       SimplexId *const separatrices2_numberOfCells,
-      std::vector<SimplexId> *const separatrices2_cells_connectivity) {
+      std::vector<SimplexId> *const separatrices2_cells_connectivity,
+      std::vector<SimplexId> *const separatrices2_cells_cases) {
       outputSeparatrices2_numberOfPoints_ = separatrices2_numberOfPoints;
       outputSeparatrices2_points_ = separatrices2_points;
       outputSeparatrices2_numberOfCells_ = separatrices2_numberOfCells;
       outputSeparatrices2_cells_connectivity_
         = separatrices2_cells_connectivity;
+      outputSeparatrices2_cells_cases = separatrices2_cells_cases;
       return 0;
     }
 
@@ -303,7 +305,6 @@ namespace ttk {
       if(edgeId0 < edgeId1) {
         return edgeId0 * num_MSC_regions_ + edgeId1;
       }
-
       return edgeId1 * num_MSC_regions_ + edgeId0;
     }
 
@@ -362,12 +363,13 @@ namespace ttk {
     template <class dataType, class triangulationType>
     int computeSeparatrices1_3D(
       std::vector<std::array<float, 9>> &trianglePos,    
-      std::vector<mscq::Separatrix> &separatrices,
+      std::vector<SimplexId> &caseData,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
     int setSeparatrices2(
-      std::vector<std::array<float, 9>> trianglePos) const;
+      std::vector<std::array<float, 9>> &trianglePos,
+      std::vector<SimplexId> &caseData) const;
 
     template <class triangulationType>
     inline int getEdgeIncenter(
@@ -426,6 +428,7 @@ namespace ttk {
     std::vector<float> *outputSeparatrices2_points_{};
     SimplexId *outputSeparatrices2_numberOfCells_{};
     std::vector<SimplexId> *outputSeparatrices2_cells_connectivity_{};
+    std::vector<SimplexId> *outputSeparatrices2_cells_cases{};
 
     // Misc
     SimplexId num_MSC_regions_{};
@@ -507,13 +510,14 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
       this->printMsg("Write 1-seps");
       setSeparatrices1<triangulationType>(separatrices1, triangulation);
     } else if (dim == 3) {
-    std::vector<std::array<float, 9>> trianglePos;
+      std::vector<std::array<float, 9>> trianglePos;
+      std::vector<SimplexId> caseData;
 
       computeSeparatrices1_3D<dataType, triangulationType>(
-                              trianglePos, separatrices1,
+                              trianglePos, caseData,
                               morseSmaleManifold, triangulation);
 
-      setSeparatrices2(trianglePos);
+      setSeparatrices2(trianglePos, caseData);
     }
   }
 
@@ -1594,7 +1598,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1(
 template <class dataType, class triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
   std::vector<std::array<float, 9>> &trianglePos,    
-  std::vector<mscq::Separatrix> &separatrices,
+  std::vector<SimplexId> &caseData,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
 
@@ -1735,6 +1739,12 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
           edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
           tetCenter[0], tetCenter[1], tetCenter[2]
         });
+        caseData.insert(caseData.end(),{
+          lookupIndex, lookupIndex, lookupIndex,
+          lookupIndex, lookupIndex, lookupIndex,
+          lookupIndex, lookupIndex, lookupIndex,
+          lookupIndex, lookupIndex, lookupIndex}
+        );
       } else { // 2 or 3 labels on tetraeder
         trianglePos.push_back({
           edgeCenters[tetEdgeIndices[0]][0],
@@ -1748,7 +1758,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
           edgeCenters[tetEdgeIndices[2]][2]
         });
 
-        if(tetEdgeIndices[3] != -1) { // 3 labels on tetraeder
+        if(tetEdgeIndices[3] != -1) { 
           trianglePos.push_back({
             edgeCenters[tetEdgeIndices[3]][0],
             edgeCenters[tetEdgeIndices[3]][1],
@@ -1760,7 +1770,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
             edgeCenters[tetEdgeIndices[5]][1],
             edgeCenters[tetEdgeIndices[5]][2]
           });
-          if(tetEdgeIndices[6] != -1) {
+          if(tetEdgeIndices[6] != -1) { // 3 labels on tetraeder
             trianglePos.push_back({
               edgeCenters[tetEdgeIndices[6]][0],
               edgeCenters[tetEdgeIndices[6]][1],
@@ -1772,7 +1782,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
               edgeCenters[tetEdgeIndices[8]][1],
               edgeCenters[tetEdgeIndices[8]][2]
             });
-            trianglePos.push_back({
+            if(tetEdgeIndices[9] != -1) {
+              trianglePos.push_back({
               edgeCenters[tetEdgeIndices[9]][0],
               edgeCenters[tetEdgeIndices[9]][1],
               edgeCenters[tetEdgeIndices[9]][2], 
@@ -1783,7 +1794,17 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
               edgeCenters[tetEdgeIndices[11]][1],
               edgeCenters[tetEdgeIndices[11]][2]
             });
+              caseData.insert(caseData.end(),
+              {lookupIndex, lookupIndex, lookupIndex, lookupIndex});
+            } else {
+              caseData.insert(caseData.end(),
+                {lookupIndex, lookupIndex, lookupIndex});
+            }
+          } else {
+            caseData.insert(caseData.end(), {lookupIndex, lookupIndex});
           }
+        } else {
+          caseData.push_back(lookupIndex);
         }
       }
     }
@@ -1811,7 +1832,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_3D(
 }
 
 int ttk::MorseSmaleComplexQuasi::setSeparatrices2(
-  std::vector<std::array<float, 9>> trianglePos) const {
+  std::vector<std::array<float, 9>> &trianglePos,
+  std::vector<SimplexId> &caseData) const {
 
   const int numTriangles = trianglePos.size();
 
@@ -1823,6 +1845,9 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices2(
   auto &points = *outputSeparatrices2_points_;
   outputSeparatrices2_cells_connectivity_->resize(3 * numCells);
   auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+  outputSeparatrices2_cells_cases->resize(numTriangles);
+  auto &cellCase = *outputSeparatrices2_cells_cases;
+  cellCase = caseData;
 
   this->printMsg("Start writing tris" + std::to_string(numTriangles));
 
