@@ -262,6 +262,7 @@ namespace ttk {
       SimplexId neighbors_[2];
       bool hasTwoNeighbors{false};
       bool is4LabelTet{false};
+      bool visited{false};
     };
   }
 
@@ -1796,10 +1797,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
       triangulation.getVertexPoint(
         vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-      //getCenter(edgeCenters[0], edgeCenters[1], edgeCenters[3], edgeCenters[6]);
-      //getCenter(edgeCenters[0], edgeCenters[2], edgeCenters[4], edgeCenters[7]);
-      //getCenter(edgeCenters[1], edgeCenters[2], edgeCenters[5], edgeCenters[8]);
-      //getCenter(edgeCenters[3], edgeCenters[4], edgeCenters[5], edgeCenters[9]);
       getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
       getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
       getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
@@ -2046,8 +2043,9 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
             newIndex = maxIndex++;
             triIdToArrIndex.insert({secondTri + numTris, newIndex});
             linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
+
           } else {
-            linkedTris[triIdToArrIndex[secondTri]].insert(firstTri);
+            linkedTris[triIdToArrIndex[firstTri]].insert(secondTri  + numTris);
 
             SimplexId newIndex = maxIndex++;
             triIdToArrIndex.insert({(secondTri + numTris), newIndex});
@@ -2058,6 +2056,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
             SimplexId newIndex = maxIndex++;
             triIdToArrIndex.insert({firstTri, newIndex});
             linkedTris[newIndex] = mscq::DoublyLinkedElement(secondTri);
+
           } else {
             linkedTris[triIdToArrIndex[firstTri]].insert(secondTri);
           }
@@ -2066,12 +2065,15 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
             SimplexId newIndex = maxIndex++;
             triIdToArrIndex.insert({secondTri, newIndex});
             linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
+
           } else {
             linkedTris[triIdToArrIndex[secondTri]].insert(firstTri);
           }
         }
       }
     }
+
+    this->printMsg("Counting starts");
 
     int countStarts = 0;
     std::unordered_map<SimplexId, bool> startIds;
@@ -2083,6 +2085,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
       }
     }
 
+    this->printMsg("Writing Ids: " + std::to_string(startIds.size()));
+
     for (const auto& it_starts: startIds) {
       if(it_starts.second) { // Is simplex already part of a separatrix?
         continue;
@@ -2093,14 +2097,18 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
       
       SimplexId previousId = startTri;
       SimplexId nextId = linkedTris[triIdToArrIndex[startTri]].neighbors_[0];
-      
+      linkedTris[triIdToArrIndex[previousId]].visited = true;
       newSep.geometry_.push_back(nextId);
 
-      while(linkedTris[triIdToArrIndex[nextId]].hasTwoNeighbors) {
+      while(linkedTris[triIdToArrIndex[nextId]].hasTwoNeighbors &&
+        !linkedTris[triIdToArrIndex[nextId]].visited) {
+        this->printMsg(std::to_string(nextId) + " + " +
+          std::to_string(previousId));
         SimplexId tempPreviousId = nextId;
         nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
         previousId = tempPreviousId;
         newSep.geometry_.push_back(nextId);
+        linkedTris[triIdToArrIndex[previousId]].visited = true;
       }
       
       startIds[nextId] = true;
@@ -2152,6 +2160,8 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   size_t npoints = 0;
   size_t numCells = 0;
 
+  int countTri = 0, countTet = 0;
+
   // count total number of points and cells, flatten geometryId loops
   for(size_t i = 0; i < numSep; ++i) {
     const auto &sep = separatrices[i];
@@ -2197,18 +2207,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
     currPId += 1;
 
     for(const auto geom : sep.geometry_) {
-      if(sep.geometry_.front() < numTris){
-        /*SimplexId v[3];
-        triangulation.getTriangleVertex(geom, 0, v[0]);
-        triangulation.getTriangleVertex(geom, 1, v[1]);
-        triangulation.getTriangleVertex(geom, 2, v[2]);
-
-        float vPt[3][3];
-        triangulation.getVertexPoint(v[0], vPt[0][0], vPt[0][1], vPt[0][2]);
-        triangulation.getVertexPoint(v[1], vPt[1][0], vPt[1][1], vPt[1][2]);
-        triangulation.getVertexPoint(v[2], vPt[2][0], vPt[2][1], vPt[2][2]);
-
-        getCenter(vPt[0], vPt[1], vPt[2], pt.data());*/
+      if(geom < numTris){
         triangulation.getTriangleIncenter(geom, pt.data());
       } else {
         triangulation.getTetraIncenter(geom - numTris, pt.data());
