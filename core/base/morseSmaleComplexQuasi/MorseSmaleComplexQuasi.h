@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <cstddef>
+#include <bits/stdc++.h> 
 
 using ttk::SimplexId;
 
@@ -60,78 +61,6 @@ int tetraederLookup[28][15] = {
   { 1,  6,  8,  2,  6,  8,  2,  6,  0,  3,  8,  5,  3,  8,  6}, // (3) 1,2,1 -25
   { 0,  6,  7,  2,  6,  1,  2,  6,  7,  3,  7,  4,  3,  7,  6}, // (3) 1,2,2 -26
   {10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10}  // (4) 1,2,3 -27
-};
-
-int lookupLabelNum[28] = {
-  1, 0, 0, 2, // 0  - 3
-  0, 0, 0, 0, // 4  - 7
-  2, 0, 2, 3, // 8  - 11
-  0, 0, 0, 0, // 12 - 15
-  2, 2, 0, 3, // 16 - 19
-  2, 2, 0, 3, // 20 - 23
-  3, 3, 3, 4  // 24 - 27
-};
-
-int lookupUniqueLabelVertices[28][2] = {
-  {-1, -1}, // 0
-  {-1, -1}, // 1
-  {-1, -1}, // 2 
-  {-1, -1}, // 3
-  {-1, -1}, // 4
-  {-1, -1}, // 5
-  {-1, -1}, // 6
-  {-1, -1}, // 7
-  {-1, -1}, // 8
-  {-1, -1}, // 9
-  {-1, -1}, // 10
-  { 2,  3}, // 11
-  {-1, -1}, // 12
-  {-1, -1}, // 13
-  {-1, -1}, // 14
-  {-1, -1}, // 15
-  {-1, -1}, // 16
-  {-1, -1}, // 17
-  {-1, -1}, // 18
-  { 1,  3}, // 19
-  {-1, -1}, // 20
-  {-1, -1}, // 21
-  {-1, -1}, // 22
-  { 1,  3}, // 23
-  { 1,  2}, // 24
-  { 1,  2}, // 25
-  { 1,  2}, // 26
-  {-1, -1}  // 27
-};
-
-int lookupSeparatrix1Edge[28][2] = {
-  {-1, -1}, // 0
-  {-1, -1}, // 1
-  {-1, -1}, // 2 
-  {-1, -1}, // 3
-  {-1, -1}, // 4
-  {-1, -1}, // 5
-  {-1, -1}, // 6
-  {-1, -1}, // 7
-  {-1, -1}, // 8
-  {-1, -1}, // 9
-  {-1, -1}, // 10
-  { 8,  9}, // 11
-  {-1, -1}, // 12
-  {-1, -1}, // 13
-  {-1, -1}, // 14
-  {-1, -1}, // 15
-  {-1, -1}, // 16
-  {-1, -1}, // 17
-  {-1, -1}, // 18
-  { 7,  9}, // 19
-  {-1, -1}, // 20
-  {-1, -1}, // 21
-  {-1, -1}, // 22
-  { 7,  8}, // 23
-  { 6,  9}, // 24
-  { 6,  8}, // 25
-  { 6,  7}, // 26
-  {10, 10}  // 27
 };
 
 namespace ttk {
@@ -236,10 +165,8 @@ namespace ttk {
       explicit DoublyLinkedElement() {
       }
 
-      // default :
-      explicit DoublyLinkedElement(SimplexId newEdge, bool is4Label = false) {
-        neighbors_[0] = newEdge;
-        is4LabelTet = is4Label;
+      explicit DoublyLinkedElement(SimplexId neighbor) {
+        neighbors_[0] = neighbor;
       }
 
       void insert(SimplexId newEdge) {
@@ -261,7 +188,6 @@ namespace ttk {
 
       SimplexId neighbors_[2];
       bool hasTwoNeighbors{false};
-      bool is4LabelTet{false};
       bool visited{false};
     };
   }
@@ -278,11 +204,7 @@ namespace ttk {
     int preconditionTriangulation(
       ttk::AbstractTriangulation *triangulation) const {
         int success = triangulation->preconditionVertexNeighbors();
-        success += triangulation->preconditionVertexStars();
-        success += triangulation->preconditionEdgeTriangles();
         success += triangulation->preconditionTriangleEdges();
-        success += triangulation->preconditionVertexEdges();
-        success += triangulation->preconditionCellEdges();
         success += triangulation->preconditionCellTriangles();
       return success;
     };
@@ -378,90 +300,42 @@ namespace ttk {
     }
 
     inline long long getSparseId(
-      const SimplexId edgeId0, const SimplexId edgeId1) const {
-      if(edgeId0 < edgeId1) {
-        return edgeId0 * num_MSC_regions_ + edgeId1;
+      const SimplexId simID0, const SimplexId simID1) const {
+      if(simID0 < simID1) {
+        return simID0 * num_MSC_regions_ + simID1;
       }
-      return edgeId1 * num_MSC_regions_ + edgeId0;
+      return simID1 * num_MSC_regions_ + simID0;
     }
 
     inline long long getSparseId(
-      const SimplexId edgeId0, const SimplexId edgeId1,
-      const SimplexId edgeId2) const {
-      if(edgeId0 < edgeId1) {
-        if(edgeId1 < edgeId2) {
-          return edgeId0 * num_MSC_regions_ * num_MSC_regions_ +
-          edgeId1 * num_MSC_regions_ + edgeId2;
+      const SimplexId simID0, const SimplexId simID1,
+      const SimplexId simID2) const {
+      if(simID0 < simID1) {
+        if(simID1 < simID2) {
+          return simID0 * num_MSC_regions_ * num_MSC_regions_ +
+          simID1 * num_MSC_regions_ + simID2;
         } else {
-          if(edgeId0 < edgeId2) {
-            return edgeId0 * num_MSC_regions_ * num_MSC_regions_ +
-            edgeId2 * num_MSC_regions_ + edgeId1;
+          if(simID0 < simID2) {
+            return simID0 * num_MSC_regions_ * num_MSC_regions_ +
+            simID2 * num_MSC_regions_ + simID1;
           } else {
-            return edgeId2 * num_MSC_regions_ * num_MSC_regions_ +
-            edgeId0 * num_MSC_regions_ + edgeId1;
+            return simID2 * num_MSC_regions_ * num_MSC_regions_ +
+            simID0 * num_MSC_regions_ + simID1;
           }
         }
       } else {
-        if(edgeId0 < edgeId2) {
-          return edgeId1 * num_MSC_regions_ * num_MSC_regions_ +
-          edgeId0 * num_MSC_regions_ + edgeId2;
+        if(simID0 < simID2) {
+          return simID1 * num_MSC_regions_ * num_MSC_regions_ +
+          simID0 * num_MSC_regions_ + simID2;
         } else {
-          if(edgeId1 < edgeId2) {
-            return edgeId1 * num_MSC_regions_ * num_MSC_regions_ +
-            edgeId2 * num_MSC_regions_ + edgeId0;
+          if(simID1 < simID2) {
+            return simID1 * num_MSC_regions_ * num_MSC_regions_ +
+            simID2 * num_MSC_regions_ + simID0;
           } else {
-            return edgeId2 * num_MSC_regions_ * num_MSC_regions_ +
-            edgeId1 * num_MSC_regions_ + edgeId0;
+            return simID2 * num_MSC_regions_ * num_MSC_regions_ +
+            simID1 * num_MSC_regions_ + simID0;
           }
         }
-      }
-    }
-
-    inline void sortIds(
-      SimplexId &id0, SimplexId &id1, SimplexId &id2, SimplexId &id3) {
-      SimplexId l0, l1, h0, h1; // compare 0,1 and 2,3
-      SimplexId low, mid0, mid1, high; //compare l0,l1 and h0,h1
-      if(id0 < id1) {
-        l0 = id0;
-        h0 = id1;
-      } else {
-        l0 = id1;
-        h0 = id0;
-      }
-
-      if(id2 < id3) {
-        l1 = id2;
-        h1 = id3;
-      } else {
-        l1 = id3;
-        h1 = id2;
-      }
-
-      if(l0 < l1) {
-        low = l0;
-        mid0 = l1;
-      } else {
-        low = l1;
-        mid0 = l0;
-      }
-
-      if(h0 > h1) {
-        high = h0;
-        mid1 = h1;
-      } else {
-        high = h1;
-        mid1 = h0;
-      }
-
-      id0 = low;
-      id3 = high;
-
-      if(mid0 < mid1) {
-        id1 = mid0;
-        id2 = mid1;
-      } else {
-        id1 = mid1;
-        id2 = mid0;
       }
     }
 
@@ -469,18 +343,12 @@ namespace ttk {
     int execute(const triangulationType &triangulation);
 
     template <class dataType, class triangulationType>
-    int computeDescendingManifold(
-      SimplexId *const descendingManifold,
+    int computeManifold(
+      SimplexId *const manifold,
       std::vector<mscq::CriticalPoint> &criticalPoints,
       SimplexId &numberOfMaxima,
-      const triangulationType &triangulation) const;
-
-    template <class dataType, class triangulationType>
-    int computeAscendingManifold(
-      SimplexId *const ascendingManifold,
-      std::vector<mscq::CriticalPoint> &criticalPoints,
-      SimplexId &numberOfMinima,
-      const triangulationType &triangulation) const;
+      const triangulationType &triangulation,
+      const bool ascending) const;
 
     template <typename triangulationType>
     int computeFinalSegmentation(
@@ -500,25 +368,7 @@ namespace ttk {
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
-    bool nextBorderEdge(
-      const SimplexId currentVertex,
-      const SimplexId currentEdge,
-      SimplexId &nextVertex,
-      SimplexId &nextEdge,
-      const triangulationType &triangulation) const;
-
-    template <class dataType, class triangulationType>
-    bool isEdgeSaddle(
-      const SimplexId edgeID,
-      const triangulationType &triangulation) const;
-
-    template <typename triangulationType>
     int setSeparatrices1_2D(
-      const std::vector<mscq::Separatrix> &separatrices,
-      const triangulationType &triangulation) const;
-
-    template <typename triangulationType>
-    int setSeparatrices1_3D(
       const std::vector<mscq::Separatrix> &separatrices,
       const triangulationType &triangulation) const;
 
@@ -530,7 +380,12 @@ namespace ttk {
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
-    int setSeparatrices2(
+    template <typename triangulationType>
+    int setSeparatrices1_3D(
+      const std::vector<mscq::Separatrix> &separatrices,
+      const triangulationType &triangulation) const;
+
+    int setSeparatrices2_3D(
       std::vector<std::array<float, 9>> &trianglePos,
       std::vector<SimplexId> &caseData) const;
 
@@ -663,14 +518,14 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
     SimplexId numberOfMinima{};
 
     if(ascendingManifold)
-      computeAscendingManifold<dataType, triangulationType>(
+      computeManifold<dataType, triangulationType>(
                                 ascendingManifold, criticalPoints,
-                                numberOfMinima, triangulation);
+                                numberOfMinima, triangulation, true);
 
-    if(descendingManifold)
-      computeDescendingManifold<dataType, triangulationType>(
+    if(descendingManifold)                            
+      computeManifold<dataType, triangulationType>(
                                 descendingManifold, criticalPoints,
-                                numberOfMaxima, triangulation);
+                                numberOfMaxima, triangulation, false);
 
     if(ascendingManifold and descendingManifold and morseSmaleManifold)
       computeFinalSegmentation<triangulationType>(
@@ -700,9 +555,7 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
                               morseSmaleManifold, triangulation);
 
       setSeparatrices1_3D<triangulationType>(separatrices1, triangulation);
-      this->printMsg("sep1(3D) done");
-      setSeparatrices2(trianglePos, caseData);
-      this->printMsg("sep2(3D) done");
+      setSeparatrices2_3D(trianglePos, caseData);
     }
   }
 
@@ -713,12 +566,14 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
   return 0;
 }
 
+
 template <class dataType, class triangulationType>
-int ttk::MorseSmaleComplexQuasi::computeDescendingManifold(
+int ttk::MorseSmaleComplexQuasi::computeManifold(
   SimplexId *const descendingManifold,
   std::vector<mscq::CriticalPoint> &criticalPoints,
   SimplexId &numberOfMaxima,
-  const triangulationType &triangulation) const {
+  const triangulationType &triangulation,
+  const bool ascending) const {
 
   const dataType *inputField = static_cast<const dataType *>(inputOrderField_);
 
@@ -754,7 +609,7 @@ int ttk::MorseSmaleComplexQuasi::computeDescendingManifold(
 //#ifndef TTK_ENABLE_OPENMP
 if(!db_omp) {
     // find maxima and intialize vector of not fully compressed vertices
-    for(SimplexId i = nVertices - 1; i >= 0; i--) {
+    for(SimplexId i = 0; i < nVertices; i++) {
       const SimplexId numNeighbors =
         triangulation.getVertexNeighborNumber(i);
 
@@ -767,9 +622,16 @@ if(!db_omp) {
       // check all neighbors
       for(SimplexId n = 0; n < numNeighbors; n++) {
         triangulation.getVertexNeighbor(i, n, neighborId);
-        if(inputField[neighborId] > inputField[dmi]) {
-          dmi = neighborId;
-          hasBiggerNeighbor = true;
+        if(ascending) {
+          if(inputField[neighborId] < inputField[dmi]) {
+            dmi = neighborId;
+            hasBiggerNeighbor = true;
+          }
+        } else {
+          if(inputField[neighborId] > inputField[dmi]) {
+            dmi = neighborId;
+            hasBiggerNeighbor = true;
+          }
         }
       }
       if(hasBiggerNeighbor) {
@@ -832,7 +694,7 @@ else {
 
       // find the biggest neighbor for each vertex
       #pragma omp for schedule(dynamic, numCacheLineEntries)
-      for(SimplexId i = nVertices - 1; i >= 0; i--) {
+      for(SimplexId i = 0; i < nVertices; i++) {
         SimplexId neighborId;
         SimplexId numNeighbors =
           triangulation.getVertexNeighborNumber(i);
@@ -844,9 +706,16 @@ else {
         // check all neighbors
         for(SimplexId n = 0; n < numNeighbors; n++) {
           triangulation.getVertexNeighbor(i, n, neighborId);
-          if(inputField[neighborId] > inputField[dmi]) {
-            dmi = neighborId;
-            hasBiggerNeighbor = true;
+          if(ascending) {
+            if(inputField[neighborId] < inputField[dmi]) {
+              dmi = neighborId;
+              hasBiggerNeighbor = true;
+            }
+          } else {
+            if(inputField[neighborId] > inputField[dmi]) {
+              dmi = neighborId;
+              hasBiggerNeighbor = true;
+            }
           }
         }
 
@@ -989,278 +858,6 @@ else {
   return 1; // return success
 }
 
-
-template <class dataType, class triangulationType>
-int ttk::MorseSmaleComplexQuasi::computeAscendingManifold(
-  SimplexId *const ascendingManifold,
-  std::vector<mscq::CriticalPoint> &criticalPoints,
-  SimplexId &numberOfMinima,
-  const triangulationType &triangulation) const {
-
-  const dataType *inputField = static_cast<const dataType *>(inputOrderField_);
-
-  // start global timer
-  ttk::Timer globalTimer;
-  int iterations = 1;
-
-  // -----------------------------------------------------------------------
-  // Compute MSC variant
-  // -----------------------------------------------------------------------
-  {
-    // start a local timer for this subprocedure
-    ttk::Timer localTimer;
-
-    // print the progress of the current subprocedure (currently 0%)
-    this->printMsg("Computing Ascending Manifold",
-                   0, // progress form 0-1
-                   0, // elapsed time so far
-                   this->threadNumber_, ttk::debug::LineMode::REPLACE);
-
-    /* compute the Descending Maifold iterating over each vertex, searching
-     * the biggest neighbor and compressing its path to its maximum */
-
-    SimplexId nVertices = triangulation.getNumberOfVertices();
-    std::unordered_map<SimplexId, SimplexId> minima;
-
-    numberOfMinima = 0;
-
-    // vertices that may still be compressed
-    std::vector<SimplexId>* activeVertices
-      = new std::vector<SimplexId>();
-    SimplexId nActiveVertices;
-
-//#ifndef TTK_ENABLE_OPENMP
-if(!db_omp) {
-    // find minima and intialize vector of not fully compressed vertices
-    for(SimplexId i = 0; i < nVertices; i++) {
-      const SimplexId numNeighbors =
-        triangulation.getVertexNeighborNumber(i);
-
-      SimplexId neighborId;
-      bool hasSmallerNeighbor = false;
-
-      SimplexId &ami = ascendingManifold[i];
-      ami = i;
-
-      // check all neighbors
-      for(SimplexId n = 0; n < numNeighbors; n++) {
-        triangulation.getVertexNeighbor(i, n, neighborId);
-        if(inputField[neighborId] < inputField[ami]) {
-          ami = neighborId;
-          hasSmallerNeighbor = true;
-        }
-      }
-      if(hasSmallerNeighbor) {
-        activeVertices->push_back(i);
-      }
-      else {
-        minima.insert( {i, numberOfMinima++} );
-      }
-    }
-
-    nActiveVertices = activeVertices->size();
-    std::vector<SimplexId>* newActiveVert;
-
-    // compress paths until no changes occur
-    while(nActiveVertices > 0) {
-      newActiveVert = new std::vector<SimplexId>();
-
-      std::string msgit = "Iteration: " + std::to_string(iterations) +
-        "(" + std::to_string(nActiveVertices) + "/" +
-        std::to_string(nVertices) + ")";
-      this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
-        localTimer.getElapsedTime(), this->threadNumber_,
-        ttk::debug::LineMode::REPLACE);
-        
-      for(SimplexId i = 0; i < nActiveVertices; i++) {
-        SimplexId v = activeVertices->at(i);
-        SimplexId &vo = ascendingManifold[v];
-
-        // compress path
-        vo = ascendingManifold[vo];
-
-        if(vo != ascendingManifold[vo]) {
-          newActiveVert->push_back(v);
-        }
-      }
-
-      iterations += 1;
-      delete activeVertices;
-      activeVertices = newActiveVert;
-
-      nActiveVertices = activeVertices->size();
-    }
-
-    for(SimplexId i = 0; i < nVertices; i++) {
-      ascendingManifold[i] = minima[ascendingManifold[i]];
-    }
-}
-//#else // TTK_ENABLE_OPENMP
-else {
-    const size_t numCacheLineEntries =
-      hardware_destructive_interference_size / sizeof(SimplexId);
-
-    #pragma omp parallel num_threads(this->threadNumber_) \
-            shared(iterations, minima, numberOfMinima, \
-            activeVertices, nActiveVertices)
-    {
-      std::vector<SimplexId> lActiveVertices; //active verticies per thread
-
-      #pragma omp for schedule(dynamic, numCacheLineEntries)
-      // find the biggest neighbor for each vertex
-      for(SimplexId i = 0; i < nVertices; i++) {
-        SimplexId neighborId;
-        SimplexId numNeighbors =
-          triangulation.getVertexNeighborNumber(i);
-        bool hasSmallerNeighbor = false;
-
-        ascendingManifold[i] = i;
-
-        // check all neighbors
-        for(SimplexId n = 0; n < numNeighbors; n++) {
-          triangulation.getVertexNeighbor(i, n, neighborId);
-          if(inputField[neighborId] < inputField[ascendingManifold[i]]) {
-            ascendingManifold[i] = neighborId;
-            hasSmallerNeighbor = true;
-          }
-        }
-
-        if(hasSmallerNeighbor) {
-            lActiveVertices.push_back(i);
-        }
-        else {
-          #pragma omp critical
-          minima.insert( {i, numberOfMinima} );
-
-          #pragma omp atomic update
-          numberOfMinima += 1;
-        }
-      }
-
-      #pragma omp critical
-      activeVertices->insert(activeVertices->end(),
-        lActiveVertices.begin(), lActiveVertices.end());
-
-      lActiveVertices.clear();
-
-      #pragma omp barrier
-
-      #pragma omp single
-      {
-        nActiveVertices = activeVertices->size();
-      }
-
-      // compress paths until no changes occur
-      while(nActiveVertices > 0) {
-        #pragma omp barrier
-
-        #pragma omp single nowait
-        {
-          std::string msgit = "Iteration: " + std::to_string(iterations) +
-            "(" + std::to_string(nActiveVertices) + "/" +
-            std::to_string(nVertices) + ")";
-          double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
-          this->printMsg(msgit, prog,
-            localTimer.getElapsedTime(), this->threadNumber_,
-            ttk::debug::LineMode::REPLACE);
-        }
-
-        /* std::list< std::tuple<SimplexId, SimplexId> > lChanges; */
-
-        #pragma omp for schedule(guided)
-        for(SimplexId i = 0; i < nActiveVertices; i++) {
-          SimplexId v = activeVertices->at(i);
-          SimplexId &vo = ascendingManifold[v];
-
-          /* // save changes
-          lChanges.push_front(
-            std::make_tuple(v, ascendingManifold[ascendingManifold[v]]));*/
-          vo = ascendingManifold[vo];
-
-          // check if fully compressed
-          if(vo != ascendingManifold[vo]) {
-            lActiveVertices.push_back(v);
-          }
-        }
-        #pragma omp barrier
-
-        /* // apply changes
-        for(auto it = lChanges.begin(); it != lChanges.end(); ++it) {
-          ascendingManifold[std::get<0>(*it)] = std::get<1>(*it);
-        }*/
-
-        #pragma omp single
-        {
-          activeVertices->clear();
-        }
-
-        #pragma omp critical
-        activeVertices->insert(activeVertices->end(),
-          lActiveVertices.begin(), lActiveVertices.end());
-
-        lActiveVertices.clear();
-
-        #pragma omp barrier
-
-        #pragma omp single
-        {
-          nActiveVertices = activeVertices->size();
-          iterations += 1;
-        }
-      }
-
-      #pragma omp single nowait
-      {
-        this->printMsg("Compressed Paths",
-          0.95, // progress
-          localTimer.getElapsedTime(), this->threadNumber_,
-          ttk::debug::LineMode::REPLACE);
-      }
-
-      // set critical point indices
-      #pragma omp for schedule(dynamic, numCacheLineEntries)
-      for(SimplexId i = 0; i < nVertices; i++) {
-        ascendingManifold[i] = minima.at(ascendingManifold[i]);
-      }
-    }
-}
-//#endif // TTK_ENABLE_OPENMP
-
-    float x, y, z;
-    for (auto& it: minima) {
-      criticalPoints.push_back(mscq::CriticalPoint(it.first, 0));
-      triangulation.getVertexPoint(it.first, x, y, z);
-      outputCriticalPoints_points_->push_back({x, y, z});
-      outputCriticalPoints_points_cellDimensions_->push_back(0);
-      outputCriticalPoints_points_cellIds_->push_back(it.first);
-    }
-
-    delete activeVertices;
-
-    // print the progress of the current subprocedure with elapsed time
-    this->printMsg("Computed Ascending Manifold",
-                   1, // progress
-                   localTimer.getElapsedTime(), this->threadNumber_);
-  }
-
-  // ---------------------------------------------------------------------
-  // print global performance
-  // ---------------------------------------------------------------------
-  {
-    this->printMsg(ttk::debug::Separator::L2); // horizontal '-' separator
-
-    const std::string maxMsg = "#Minima: " + std::to_string(numberOfMinima);
-    this->printMsg(maxMsg, 1, globalTimer.getElapsedTime() );
-
-    const std::string itMsg = "#Iterations: " + std::to_string(iterations);
-    this->printMsg(itMsg, 1, globalTimer.getElapsedTime() );
-
-    this->printMsg("Completed", 1, globalTimer.getElapsedTime() );
-    this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
-  }
-
-  return 1; // return success
-}
 
 template <typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeFinalSegmentation(
@@ -1526,77 +1123,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
 }
 
 template <typename triangulationType>
-bool ttk::MorseSmaleComplexQuasi::nextBorderEdge(
-  const SimplexId currentVertex,
-  const SimplexId currentEdge,
-  SimplexId &nextVertex,
-  SimplexId &nextEdge,
-  const triangulationType &triangulation) const {
-
-  SimplexId edgeNumber =
-    triangulation.getVertexEdgeNumber(currentVertex);
-
-  for(SimplexId e = 0; e < edgeNumber; ++e) {
-    triangulation.getVertexEdge(currentVertex, e, nextEdge);
-
-    SimplexId edgeTriangleNumber =
-      triangulation.getEdgeTriangleNumber(nextEdge);
-    
-    if(currentEdge != nextEdge && edgeTriangleNumber < 2) {
-      triangulation.getEdgeVertex(nextEdge, 0, nextVertex);
-      if(nextVertex == currentVertex) {
-        triangulation.getEdgeVertex(nextEdge, 1, nextVertex);
-      }
-      return true;
-    }
-  }
-  return false;
-}
-
-template <class dataType, class triangulationType>
-bool ttk::MorseSmaleComplexQuasi::isEdgeSaddle(
-  const SimplexId edgeID,
-  const triangulationType &triangulation) const {
-  
-  const dataType *inputField = static_cast<const dataType *>(inputOrderField_);
-
-  SimplexId v0, v1;
-  triangulation.getEdgeVertex(edgeID, 0, v0);
-  triangulation.getEdgeVertex(edgeID, 1, v1);
-
-  bool hasBiggerNeighbor0 = false;
-  bool hasSmallerNeigbor0 = false;
-
-  SimplexId numNeigborsV0 = triangulation.getVertexNeighborNumber(v0);
-  for(int i = 0; i < numNeigborsV0; ++i) {
-    SimplexId neighbor;
-    triangulation.getVertexNeighbor(v0, i, neighbor);
-
-    if(neighbor != v1) {
-      hasBiggerNeighbor0 |= (inputField[v0] < inputField[neighbor]);
-      hasSmallerNeigbor0 |= (inputField[v0] > inputField[neighbor]);
-    }
-  }
-
-  bool hasBiggerNeighbor1 = false;
-  bool hasSmallerNeigbor1 = false;
-
-  SimplexId numNeigborsV1 = triangulation.getVertexNeighborNumber(v1);
-  for(int i = 0; i < numNeigborsV1; ++i) {
-    SimplexId neighbor;
-    triangulation.getVertexNeighbor(v1, i, neighbor);
-
-    if(neighbor != v0) {
-      hasBiggerNeighbor1 |= (inputField[v1] < inputField[neighbor]);
-      hasSmallerNeigbor1 |= (inputField[v1] > inputField[neighbor]);
-    }
-  }
-  
-  return hasBiggerNeighbor0 && hasSmallerNeigbor0 &&
-         hasBiggerNeighbor1 && hasSmallerNeigbor1;
-}
-
-template <typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
   const std::vector<mscq::Separatrix> &separatrices,
   const triangulationType &triangulation) const {
@@ -1752,7 +1278,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
 
-  this->printMsg("Start tri calculation");
+  this->printMsg("Start 3D separatrices calculation");
 
   for(SimplexId tet = 0; tet < numTetra; tet++) {
     SimplexId vertices[4];
@@ -2014,8 +1540,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
       }
     }
   }
-
-  this->printMsg("Start 1-sep calculation");
   
   const auto numTris = triangulation.getNumberOfTriangles();
   for (auto& it_seps: sepPieces1) { // put the sepPieces in sequence
@@ -2073,8 +1597,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
       }
     }
 
-    this->printMsg("Counting starts");
-
     int countStarts = 0;
     std::unordered_map<SimplexId, bool> startIds;
     // find a starting Tri
@@ -2084,8 +1606,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
         countStarts += 1;
       }
     }
-
-    this->printMsg("Writing Ids: " + std::to_string(startIds.size()));
 
     for (const auto& it_starts: startIds) {
       if(it_starts.second) { // Is simplex already part of a separatrix?
@@ -2102,8 +1622,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
 
       while(linkedTris[triIdToArrIndex[nextId]].hasTwoNeighbors &&
         !linkedTris[triIdToArrIndex[nextId]].visited) {
-        this->printMsg(std::to_string(nextId) + " + " +
-          std::to_string(previousId));
         SimplexId tempPreviousId = nextId;
         nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
         previousId = tempPreviousId;
@@ -2160,14 +1678,12 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   size_t npoints = 0;
   size_t numCells = 0;
 
-  int countTri = 0, countTet = 0;
-
   // count total number of points and cells, flatten geometryId loops
   for(size_t i = 0; i < numSep; ++i) {
     const auto &sep = separatrices[i];
 
-    npoints += sep.geometry_.size() + 2;
-    numCells += sep.geometry_.size() + 1;
+    npoints += sep.geometry_.size() + 1;
+    numCells += sep.geometry_.size();
   }
 
   // resize arrays
@@ -2232,14 +1748,12 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   *outputSeparatrices1_numberOfPoints_ = npoints;
   *outputSeparatrices1_numberOfCells_ = numCells;
 
-  this->printMsg("Done writing 1-seps(3D) " +
-    std::to_string(currPId) + "/" + std::to_string(npoints) +
-    " - " + std::to_string(currCId)  + "/" + std::to_string(numCells));
+  this->printMsg("Done writing 1-seps(3D)");
 
   return 0;
 }
 
-int ttk::MorseSmaleComplexQuasi::setSeparatrices2(
+int ttk::MorseSmaleComplexQuasi::setSeparatrices2_3D(
   std::vector<std::array<float, 9>> &trianglePos,
   std::vector<SimplexId> &caseData) const {
 
@@ -2259,11 +1773,6 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices2(
   auto &cellCase = *outputSeparatrices2_cells_cases;
   cellCase = caseData;
 
-  this->printMsg("Start writing tris" + std::to_string(numTriangles));
-
-  int lastPtId = 0;
-  int lastCellId = 0;
-
   for(int tri = 0; tri < numTriangles; ++tri) {
     points[9 * tri + 0] = trianglePos[tri][0];
     points[9 * tri + 1] = trianglePos[tri][1];
@@ -2280,14 +1789,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices2(
     cellsConn[3 * tri]     = 3 * tri;
     cellsConn[3 * tri + 1] = 3 * tri + 1;
     cellsConn[3 * tri + 2] = 3 * tri + 2;
-
-    lastPtId = 9 * tri + 8;
-    lastCellId = 3 * tri + 2;
   }
-
-  this->printMsg(std::to_string(lastPtId) + " - " + std::to_string(3 * npoints));
-  this->printMsg(std::to_string(lastCellId) + " - " + std::to_string(3 * numCells));
-  this->printMsg("Done writing" + std::to_string(numTriangles));
 
   // update pointers
   *outputSeparatrices2_numberOfPoints_ = npoints;
