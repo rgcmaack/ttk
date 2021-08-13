@@ -46,15 +46,19 @@
         </Documentation>
       </StringVectorProperty>
 
-      <IntVectorProperty name="ComputeCriticalPoints"
-        label="Critical Points"
-        command="SetComputeCriticalPoints"
+      <IntVectorProperty
+        name="SeparatricesManifold"
+        label="Separatrices Manifold"
+        command="SetSeparatricesManifold"
         number_of_elements="1"
-        default_values="1"
-        panel_visibility="default">
-        <BooleanDomain name="bool"/>
+        default_values="0">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="MorseSmaleManifold"/>
+          <Entry value="1" text="AscendingManifold"/>
+          <Entry value="2" text="DescendingManifold"/>
+        </EnumerationDomain>
         <Documentation>
-          Check the box to calculate critical points
+          Select the field to compute Separatrices from
         </Documentation>
       </IntVectorProperty>
 
@@ -94,11 +98,23 @@
         </Documentation>
       </IntVectorProperty>
 
+      <IntVectorProperty name="ComputeSeparatrices"
+        label="Separatrices"
+        command="SetComputeSeparatrices"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Documentation.
+        </Documentation>
+      </IntVectorProperty>
+
       <PropertyGroup panel_widget="Line" label="Output options">
-        <Property name="ComputeCriticalPoints"/>
         <Property name="ComputeAscendingSegmentation"/>
         <Property name="ComputeDescendingSegmentation"/>
         <Property name="ComputeFinalSegmentation"/>
+        <Property name="ComputeSeparatrices"/>
       </PropertyGroup>
 
       <OutputPort name="Critical Points" index="0" id="port0"/>

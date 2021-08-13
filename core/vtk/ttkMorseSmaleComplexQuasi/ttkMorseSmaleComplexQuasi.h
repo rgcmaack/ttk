@@ -37,6 +37,7 @@
 
 // VTK Includes
 #include <ttkAlgorithm.h>
+#include <ttkMacros.h>
 
 /* NAME
  *   ttkMorseSmaleComplexQuasi
@@ -60,23 +61,8 @@ public:
   static ttkMorseSmaleComplexQuasi *New();
   vtkTypeMacro(ttkMorseSmaleComplexQuasi, ttkAlgorithm);
 
-  vtkSetMacro(ComputeCriticalPoints, bool);
-  vtkGetMacro(ComputeCriticalPoints, bool);
-
-  vtkSetMacro(ComputeAscendingSeparatrices1, bool);
-  vtkGetMacro(ComputeAscendingSeparatrices1, bool);
-
-  vtkSetMacro(ComputeDescendingSeparatrices1, bool);
-  vtkGetMacro(ComputeDescendingSeparatrices1, bool);
-
-  vtkSetMacro(ComputeSaddleConnectors, bool);
-  vtkGetMacro(ComputeSaddleConnectors, bool);
-
-  vtkSetMacro(ComputeAscendingSeparatrices2, bool);
-  vtkGetMacro(ComputeAscendingSeparatrices2, bool);
-
-  vtkSetMacro(ComputeDescendingSeparatrices2, bool);
-  vtkGetMacro(ComputeDescendingSeparatrices2, bool);
+  ttkSetEnumMacro(SeparatricesManifold, SEPARATRICES_MANIFOLD);
+  vtkGetEnumMacro(SeparatricesManifold, SEPARATRICES_MANIFOLD);
 
   vtkSetMacro(ComputeAscendingSegmentation, bool);
   vtkGetMacro(ComputeAscendingSegmentation, bool);
@@ -86,6 +72,9 @@ public:
 
   vtkSetMacro(ComputeFinalSegmentation, bool);
   vtkGetMacro(ComputeFinalSegmentation, bool);
+
+  vtkSetMacro(ComputeSeparatrices, bool);
+  vtkGetMacro(ComputeSeparatrices, bool);
 
 protected:
   ttkMorseSmaleComplexQuasi();
@@ -105,12 +94,7 @@ protected:
                const triangulationType &triangulation);
 
 private:
-  bool ComputeCriticalPoints{true};
-  bool ComputeAscendingSeparatrices1{true};
-  bool ComputeDescendingSeparatrices1{true};
-  bool ComputeSaddleConnectors{true};
-  bool ComputeAscendingSeparatrices2{false};
-  bool ComputeDescendingSeparatrices2{false};
+  bool ComputeSeparatrices{true};
   bool ComputeAscendingSegmentation{true};
   bool ComputeDescendingSegmentation{true};
   bool ComputeFinalSegmentation{true};

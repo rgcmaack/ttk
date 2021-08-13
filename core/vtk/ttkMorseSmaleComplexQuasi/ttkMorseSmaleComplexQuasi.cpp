@@ -182,8 +182,9 @@ int ttkMorseSmaleComplexQuasi::RequestData(vtkInformation *request,
       pointData->AddArray(descendingManifold);
     if(ComputeAscendingSegmentation)
       pointData->AddArray(ascendingManifold);
-    if(ComputeAscendingSegmentation and ComputeDescendingSegmentation
-       and ComputeFinalSegmentation)
+    if(ComputeAscendingSegmentation &&
+      ComputeDescendingSegmentation &&
+      ComputeFinalSegmentation)
       pointData->AddArray(morseSmaleManifold);
   }
 
@@ -233,14 +234,9 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
   separatrices2_points.clear();
   separatrices2_cells_connectivity.clear();
 
-  if(ComputeCriticalPoints) {
-    this->setOutputCriticalPoints(
-      &criticalPoints_points, &criticalPoints_points_cellDimensions,
-      &criticalPoints_points_cellIds);
-  } else {
-    this->setOutputCriticalPoints(
-      nullptr, nullptr, nullptr);
-  }
+  this->setOutputCriticalPoints(
+    &criticalPoints_points, &criticalPoints_points_cellDimensions,
+    &criticalPoints_points_cellIds);
 
   this->setOutputSeparatrices1(
     &s1_numberOfPoints, &separatrices1_points,

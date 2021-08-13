@@ -424,12 +424,11 @@ namespace ttk {
     }
       
   protected:
-    bool ComputeAscendingSeparatrices1{false};
-    bool ComputeDescendingSeparatrices1{false};
-    bool ComputeSaddleConnectors{false};
-    bool ComputeAscendingSeparatrices2{false};
-    bool ComputeDescendingSeparatrices2{false};
-    bool ReturnSaddleConnectors{false};
+    enum class SEPARATRICES_MANIFOLD {
+      MORSESMALE = 0,
+      ASCENDING = 1,
+      DESCENDING = 2
+    };
 
     // input
     const void *inputOrderField_{};
@@ -469,6 +468,8 @@ namespace ttk {
 
     // Misc
     SimplexId num_MSC_regions_{};
+    SEPARATRICES_MANIFOLD SeparatricesManifold
+      {SEPARATRICES_MANIFOLD::MORSESMALE};
 
     // Debug
     bool db_omp = true;
@@ -539,10 +540,26 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
                      this->threadNumber_);
     }
 
+    SimplexId *sepManifold;
+
+    switch(SeparatricesManifold) {
+      case SEPARATRICES_MANIFOLD::MORSESMALE :
+        sepManifold = static_cast<SimplexId *>(outputMorseSmaleManifold_);
+        break;
+      case SEPARATRICES_MANIFOLD::ASCENDING :
+        sepManifold = static_cast<SimplexId *>(outputAscendingManifold_);
+        break;
+      case SEPARATRICES_MANIFOLD::DESCENDING :
+        sepManifold = static_cast<SimplexId *>(outputDescendingManifold_);
+        break;
+      default:
+        sepManifold = static_cast<SimplexId *>(outputMorseSmaleManifold_);
+    }
+
     if(dim == 2) {
       computeSeparatrices1_2D<dataType, triangulationType>(
                                 criticalPoints, separatrices1,
-                                morseSmaleManifold, triangulation);
+                                sepManifold, triangulation);
 
       this->printMsg("Write 1-seps");
       setSeparatrices1_2D<triangulationType>(separatrices1, triangulation);
@@ -552,7 +569,7 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
 
       computeSeparatrices_3D<dataType, triangulationType>(
                               trianglePos, caseData, separatrices1,
-                              morseSmaleManifold, triangulation);
+                              sepManifold, triangulation);
 
       setSeparatrices1_3D<triangulationType>(separatrices1, triangulation);
       setSeparatrices2_3D(trianglePos, caseData);
