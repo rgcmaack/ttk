@@ -137,6 +137,15 @@ namespace ttk {
         return *this;
       }
 
+      Separatrix &operator=(const Separatrix &separatrix) noexcept {
+        source_ = separatrix.source_;
+        destination_ = separatrix.destination_;
+        geometry_ = std::move(separatrix.geometry_);
+        onBoundary_ = separatrix.onBoundary_;
+
+        return *this;
+      }
+
       /**
        * Source triangle of the separatrix.
        */
@@ -535,11 +544,6 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
                                 num_MSC_regions_,
                                 morseSmaleManifold, triangulation);
 
-    if(ascendingManifold or descendingManifold) {
-      this->printMsg("Segmentation computed", 1.0, tmp.getElapsedTime(),
-                     this->threadNumber_);
-    }
-
     SimplexId *sepManifold;
 
     switch(SeparatricesManifold) {
@@ -595,20 +599,20 @@ int ttk::MorseSmaleComplexQuasi::computeManifold(
   const dataType *inputField = static_cast<const dataType *>(inputOrderField_);
 
   // start global timer
-  ttk::Timer globalTimer;
+  ttk::Timer localTimer;
   int iterations = 1;
   numberOfMaxima = 0;
+
+  const std::string manifoldStr = ascending ? "Ascending" : "Descending";
+  const std::string minMaxStr = ascending ? "Minima" : "Maxima";
 
   // -----------------------------------------------------------------------
   // Compute MSC variant
   // -----------------------------------------------------------------------
   {
-    // start a local timer for this subprocedure
-    ttk::Timer localTimer;
-
     this->printMsg(ttk::debug::Separator::L1);
     // print the progress of the current subprocedure (currently 0%)
-    this->printMsg("Computing Descending Manifold",
+    this->printMsg("Computing " + manifoldStr + " Manifold",
                    0, // progress form 0-1
                    0, // elapsed time so far
                    this->threadNumber_, ttk::debug::LineMode::REPLACE);
@@ -851,7 +855,7 @@ else {
     delete activeVertices;
 
     // print the progress of the current subprocedure with elapsed time
-    this->printMsg("Computed Descending Manifold",
+    this->printMsg("Computed " + manifoldStr + " Manifold",
                    1, // progress
                    localTimer.getElapsedTime(), this->threadNumber_);
   }
@@ -862,13 +866,12 @@ else {
   {
     this->printMsg(ttk::debug::Separator::L2); // horizontal '-' separator
 
-    const std::string maxMsg = "#Maxima: " + std::to_string(numberOfMaxima);
-    this->printMsg(maxMsg, 1, globalTimer.getElapsedTime() );
+    this->printMsg("#" + minMaxStr +  ": " + std::to_string(numberOfMaxima),
+      1, localTimer.getElapsedTime() );
 
-    const std::string itMsg = "#Iterations: " + std::to_string(iterations - 1);
-    this->printMsg(itMsg, 1, globalTimer.getElapsedTime() );
+    this->printMsg("#Iterations: " + std::to_string(iterations - 1),
+      1, localTimer.getElapsedTime() );
 
-    this->printMsg("Completed", 1, globalTimer.getElapsedTime() );
     this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
   }
 
@@ -1272,6 +1275,15 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
 
+  ttk::Timer localTimer;
+
+  this->printMsg(ttk::debug::Separator::L1);
+  // print the progress of the current subprocedure (currently 0%)
+  this->printMsg("Computing 2-Separatrices 3D",
+                 0, // progress form 0-1
+                 0, // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
   if(outputSeparatrices2_numberOfPoints_ == nullptr) {
     this->printErr("2-separatrices pointer to numberOfPoints is null.");
     return -1;
@@ -1295,8 +1307,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
 
-  this->printMsg("Start 3D separatrices calculation");
-
+//#ifndef TTK_ENABLE_OPENMP
+if(!db_omp) {
   for(SimplexId tet = 0; tet < numTetra; tet++) {
     SimplexId vertices[4];
     triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -1557,6 +1569,11 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
       }
     }
   }
+
+  this->printMsg("Computing 1-Separatrices 3D",
+                 0.9, // progress form 0-1
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
   
   const auto numTris = triangulation.getNumberOfTriangles();
   for (auto& it_seps: sepPieces1) { // put the sepPieces in sequence
@@ -1614,17 +1631,14 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
       }
     }
 
-    int countStarts = 0;
     std::unordered_map<SimplexId, bool> startIds;
-    // find a starting Tri
-    for (auto& it: triIdToArrIndex) {
+    for(auto& it: triIdToArrIndex) {
       if(!linkedTris[it.second].hasTwoNeighbors) {
         startIds.insert({it.first, false});
-        countStarts += 1;
       }
     }
 
-    for (const auto& it_starts: startIds) {
+    for (const auto& it_starts: startIds) { // detect paths
       if(it_starts.second) { // Is simplex already part of a separatrix?
         continue;
       }
@@ -1650,8 +1664,463 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
 
       separatrices1.push_back(newSep);
     }
+
+    for (auto& it: triIdToArrIndex) { // detect cycles
+      if(!linkedTris[it.second].visited) {
+        mscq::Separatrix newSep(std::get<0>(it));
+    
+        SimplexId previousId = std::get<0>(it);
+        SimplexId nextId = linkedTris[std::get<1>(it)].neighbors_[0];
+        linkedTris[triIdToArrIndex[previousId]].visited = true;
+        newSep.geometry_.push_back(nextId);
+
+        while(!linkedTris[triIdToArrIndex[nextId]].visited) {
+          SimplexId tempPreviousId = nextId;
+          nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
+          previousId = tempPreviousId;
+          newSep.geometry_.push_back(nextId);
+          linkedTris[triIdToArrIndex[previousId]].visited = true;
+        }
+
+        separatrices1.push_back(newSep);
+      }
+    }
   }
-  this->printMsg("Exit creating seps(3D)");
+//#else // TTK_ENABLE_OPENMP
+} else {
+  const size_t numCacheLineEntries =
+      hardware_destructive_interference_size / sizeof(SimplexId);
+  const auto numTris = triangulation.getNumberOfTriangles();
+
+  #pragma omp parallel num_threads(this->threadNumber_)
+  {
+    std::vector<std::array<float, 9>> trianglePosLocal;
+    std::vector<SimplexId> caseDataLocal;
+    std::vector<std::tuple<long long, SimplexId, SimplexId, bool>> sepPcsLocal;
+    std::vector<mscq::Separatrix> separatrices1Local;
+
+    #pragma omp for schedule(dynamic, numCacheLineEntries) nowait
+    for(SimplexId tet = 0; tet < numTetra; tet++) {
+      SimplexId vertices[4];
+      triangulation.getCellVertex(tet, 0, vertices[0]);
+      triangulation.getCellVertex(tet, 1, vertices[1]);
+      triangulation.getCellVertex(tet, 2, vertices[2]);
+      triangulation.getCellVertex(tet, 3, vertices[3]);
+
+      const SimplexId &msmV0 = morseSmaleManifold[vertices[0]];
+      const SimplexId &msmV1 = morseSmaleManifold[vertices[1]];
+      const SimplexId &msmV2 = morseSmaleManifold[vertices[2]];
+      const SimplexId &msmV3 = morseSmaleManifold[vertices[3]];
+
+      unsigned char index1 = (msmV0 == msmV1) ? 0x00 : 0x10; // 0 : 1
+      unsigned char index2 = (msmV0 == msmV2) ? 0x00 :       // 0
+                             (msmV1 == msmV2) ? 0x04 : 0x08; // 1 : 2
+      unsigned char index3 = (msmV0 == msmV3) ? 0x00 :       // 0
+                             (msmV1 == msmV3) ? 0x01 :       // 1
+                             (msmV2 == msmV3) ? 0x02 : 0x03; // 2 : 3
+
+      unsigned char lookupIndex = index1 | index2 | index3;
+      int *tetEdgeIndices = tetraederLookup[lookupIndex];
+
+      if(tetEdgeIndices[0] == -1) { // 1 label on tetraeder
+        continue;
+      } else {
+        float edgeCenters[10][3];
+        getEdgeIncenter(
+          vertices[0], vertices[1], edgeCenters[0], triangulation);
+        getEdgeIncenter(
+          vertices[0], vertices[2], edgeCenters[1], triangulation);
+        getEdgeIncenter(
+          vertices[0], vertices[3], edgeCenters[2], triangulation);
+        getEdgeIncenter(
+          vertices[1], vertices[2], edgeCenters[3], triangulation);
+        getEdgeIncenter(
+          vertices[1], vertices[3], edgeCenters[4], triangulation);
+        getEdgeIncenter(
+          vertices[2], vertices[3], edgeCenters[5], triangulation);
+
+        float vertPos[4][3];
+        triangulation.getVertexPoint(
+          vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+        triangulation.getVertexPoint(
+          vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+        triangulation.getVertexPoint(
+          vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+        triangulation.getVertexPoint(
+          vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+
+        getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
+        getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
+        getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
+        getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
+
+        if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+          float tetCenter[3];
+          triangulation.getCellIncenter(tet, 3, tetCenter);
+
+          // vertex 0
+          trianglePosLocal.push_back({
+            edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePosLocal.push_back({
+            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
+            edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePosLocal.push_back({
+            edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2], 
+            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePosLocal.push_back({
+            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
+            edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePosLocal.push_back({
+            edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2], 
+            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePosLocal.push_back({
+            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
+            edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+
+          // vertex 1
+          trianglePosLocal.push_back({
+            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
+            edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePosLocal.push_back({
+            edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePosLocal.push_back({
+            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+            edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePosLocal.push_back({
+            edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+
+          // vertex 2
+          trianglePosLocal.push_back({
+            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+            edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePosLocal.push_back({
+            edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2], 
+            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+
+          caseDataLocal.insert(caseDataLocal.end(),{
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex}
+          );
+
+          for(int tri = 0; tri < 4; ++tri) {
+            SimplexId triID;
+            triangulation.getCellTriangle(tet, tri, triID);
+
+            SimplexId triVertIds[3];
+            triangulation.getTriangleVertex(triID, 0, triVertIds[0]);
+            triangulation.getTriangleVertex(triID, 1, triVertIds[1]);
+            triangulation.getTriangleVertex(triID, 2, triVertIds[2]);
+
+            const long long sparseID = getSparseId(
+              morseSmaleManifold[triVertIds[0]],
+              morseSmaleManifold[triVertIds[1]],
+              morseSmaleManifold[triVertIds[2]]
+            );
+
+            sepPcsLocal.push_back(std::make_tuple(sparseID, triID, tet, true));
+          }
+        } else { // 2 or 3 labels on tetraeder
+          trianglePosLocal.push_back({
+            edgeCenters[tetEdgeIndices[0]][0],
+            edgeCenters[tetEdgeIndices[0]][1],
+            edgeCenters[tetEdgeIndices[0]][2], 
+            edgeCenters[tetEdgeIndices[1]][0],
+            edgeCenters[tetEdgeIndices[1]][1],
+            edgeCenters[tetEdgeIndices[1]][2], 
+            edgeCenters[tetEdgeIndices[2]][0],
+            edgeCenters[tetEdgeIndices[2]][1],
+            edgeCenters[tetEdgeIndices[2]][2]
+          });
+
+          if(tetEdgeIndices[3] != -1) { // 2 or 3 labels on tetraeder
+            trianglePosLocal.push_back({
+              edgeCenters[tetEdgeIndices[3]][0],
+              edgeCenters[tetEdgeIndices[3]][1],
+              edgeCenters[tetEdgeIndices[3]][2], 
+              edgeCenters[tetEdgeIndices[4]][0],
+              edgeCenters[tetEdgeIndices[4]][1],
+              edgeCenters[tetEdgeIndices[4]][2], 
+              edgeCenters[tetEdgeIndices[5]][0],
+              edgeCenters[tetEdgeIndices[5]][1],
+              edgeCenters[tetEdgeIndices[5]][2]
+            });
+
+            if(tetEdgeIndices[6] != -1) { // 3 labels on tetraeder
+              trianglePosLocal.push_back({
+                edgeCenters[tetEdgeIndices[6]][0],
+                edgeCenters[tetEdgeIndices[6]][1],
+                edgeCenters[tetEdgeIndices[6]][2], 
+                edgeCenters[tetEdgeIndices[7]][0],
+                edgeCenters[tetEdgeIndices[7]][1],
+                edgeCenters[tetEdgeIndices[7]][2], 
+                edgeCenters[tetEdgeIndices[8]][0],
+                edgeCenters[tetEdgeIndices[8]][1],
+                edgeCenters[tetEdgeIndices[8]][2]
+              });
+              trianglePosLocal.push_back({
+                edgeCenters[tetEdgeIndices[9]][0],
+                edgeCenters[tetEdgeIndices[9]][1],
+                edgeCenters[tetEdgeIndices[9]][2], 
+                edgeCenters[tetEdgeIndices[10]][0],
+                edgeCenters[tetEdgeIndices[10]][1],
+                edgeCenters[tetEdgeIndices[10]][2], 
+                edgeCenters[tetEdgeIndices[11]][0],
+                edgeCenters[tetEdgeIndices[11]][1],
+                edgeCenters[tetEdgeIndices[11]][2]
+              });
+              trianglePosLocal.push_back({
+                edgeCenters[tetEdgeIndices[12]][0],
+                edgeCenters[tetEdgeIndices[12]][1],
+                edgeCenters[tetEdgeIndices[12]][2], 
+                edgeCenters[tetEdgeIndices[13]][0],
+                edgeCenters[tetEdgeIndices[13]][1],
+                edgeCenters[tetEdgeIndices[13]][2], 
+                edgeCenters[tetEdgeIndices[14]][0],
+                edgeCenters[tetEdgeIndices[14]][1],
+                edgeCenters[tetEdgeIndices[14]][2]
+              });
+
+              caseDataLocal.insert(caseDataLocal.end(), {
+                lookupIndex, lookupIndex, lookupIndex, lookupIndex, lookupIndex
+              });
+
+              SimplexId sepTriangles[2];
+              bool foundFirst = false;
+              long long sparseID;
+
+              // find triangles that have 3 unique labels
+              for(int tri = 0; tri < 4; ++tri) {
+                SimplexId TriIDBuffer;
+                triangulation.getCellTriangle(tet, tri, TriIDBuffer);
+
+                SimplexId vert[3];
+                triangulation.getTriangleVertex(TriIDBuffer, 0, vert[0]);
+                triangulation.getTriangleVertex(TriIDBuffer, 1, vert[1]);
+                triangulation.getTriangleVertex(TriIDBuffer, 2, vert[2]);
+
+                if( // 3 unique labels on triangle
+                morseSmaleManifold[vert[0]] != morseSmaleManifold[vert[1]] &&
+                morseSmaleManifold[vert[0]] != morseSmaleManifold[vert[2]] &&
+                morseSmaleManifold[vert[1]] != morseSmaleManifold[vert[2]]) {
+                  if(foundFirst) {
+                    sepTriangles[1] = TriIDBuffer;
+                    break;
+                  } else {
+                    sepTriangles[0] = TriIDBuffer;
+                    sparseID = getSparseId(morseSmaleManifold[vert[0]],
+                      morseSmaleManifold[vert[1]], morseSmaleManifold[vert[2]]
+                    );
+                    foundFirst = true;
+                  }
+                }
+              }
+
+              sepPcsLocal.push_back(std::make_tuple(
+                sparseID, sepTriangles[0], sepTriangles[1], false));
+            } else {
+              caseDataLocal.insert(caseDataLocal.end(),
+                {lookupIndex, lookupIndex});
+            }
+          } else {
+            caseDataLocal.push_back(lookupIndex);
+          }
+        }
+      }
+    }
+
+    #pragma omp critical
+    {
+      trianglePos.insert(trianglePos.end(),
+        trianglePosLocal.begin(), trianglePosLocal.end());
+      caseData.insert(caseData.end(),
+        caseDataLocal.begin(), caseDataLocal.end());
+    }
+
+    #pragma omp critical
+    {
+      for(auto& it_sepPcs1 : sepPcsLocal){
+        const long long &sparseID = std::get<0>(it_sepPcs1);
+        if(sepPieces1.find(sparseID) == sepPieces1.end()) { // new sparseID
+          sepPieces1.insert({sparseID,
+            std::vector<std::tuple<SimplexId, SimplexId, bool>>()}
+          );
+        }
+        sepPieces1[sparseID].push_back(std::make_tuple(std::get<1>(it_sepPcs1), 
+          std::get<2>(it_sepPcs1), std::get<3>(it_sepPcs1))
+        );
+      }
+    }
+
+    #pragma omp barrier
+
+    #pragma omp single nowait
+    {
+      this->printMsg("Computing 1-Separatrices 3D",
+                      0.9, // progress form 0-1
+                      localTimer.getElapsedTime(), // elapsed time so far
+                      this->threadNumber_, ttk::debug::LineMode::REPLACE);
+    }
+
+    #pragma omp for schedule(dynamic, 4) nowait
+    for(size_t b = 0; b < sepPieces1.bucket_count(); b++) {
+    for(auto it_s = sepPieces1.begin(b); it_s != sepPieces1.end(b); it_s++){
+      auto sepVectorPtr = it_s->second;
+      const size_t vecSize = sepVectorPtr.size();
+      SimplexId maxIndex = 0;
+
+      // write all Triangles into a doubly Linked List
+      mscq::DoublyLinkedElement linkedTris[vecSize * 2];
+      std::unordered_map<SimplexId, SimplexId> triIdToArrIndex;
+      {
+        for(std::size_t sepI = 0; sepI < vecSize; ++sepI) {
+          const SimplexId firstTri = std::get<0>(sepVectorPtr[sepI]);
+          const SimplexId secondTri = std::get<1>(sepVectorPtr[sepI]);
+          const bool is4LabelSplit = std::get<2>(sepVectorPtr[sepI]);
+
+          if(is4LabelSplit) {
+            if(triIdToArrIndex.find(firstTri) == triIdToArrIndex.end()) {
+              SimplexId newIndex = maxIndex++;
+              triIdToArrIndex.insert({firstTri, newIndex});
+              linkedTris[newIndex] =
+                mscq::DoublyLinkedElement((secondTri + numTris));
+
+              newIndex = maxIndex++;
+              triIdToArrIndex.insert({secondTri + numTris, newIndex});
+              linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
+
+            } else {
+              linkedTris[triIdToArrIndex[firstTri]].insert(secondTri  + numTris);
+
+              SimplexId newIndex = maxIndex++;
+              triIdToArrIndex.insert({(secondTri + numTris), newIndex});
+              linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
+            }
+          } else {
+            if(triIdToArrIndex.find(firstTri) == triIdToArrIndex.end()) {
+              SimplexId newIndex = maxIndex++;
+              triIdToArrIndex.insert({firstTri, newIndex});
+              linkedTris[newIndex] = mscq::DoublyLinkedElement(secondTri);
+
+            } else {
+              linkedTris[triIdToArrIndex[firstTri]].insert(secondTri);
+            }
+
+            if(triIdToArrIndex.find(secondTri) == triIdToArrIndex.end()) {
+              SimplexId newIndex = maxIndex++;
+              triIdToArrIndex.insert({secondTri, newIndex});
+              linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
+
+            } else {
+              linkedTris[triIdToArrIndex[secondTri]].insert(firstTri);
+            }
+          }
+        }
+      }
+
+      std::unordered_map<SimplexId, bool> startIds;
+      for(auto& it: triIdToArrIndex) {
+        if(!linkedTris[it.second].hasTwoNeighbors) {
+          startIds.insert({it.first, false});
+        }
+      }
+
+      for (const auto& it_starts: startIds) { // detect paths
+        if(it_starts.second) { // Is simplex already part of a separatrix?
+          continue;
+        }
+        // write separatrix
+        const SimplexId startTri = it_starts.first;
+        mscq::Separatrix newSep(startTri);
+
+        SimplexId previousId = startTri;
+        SimplexId nextId = linkedTris[triIdToArrIndex[startTri]].neighbors_[0];
+        linkedTris[triIdToArrIndex[previousId]].visited = true;
+        newSep.geometry_.push_back(nextId);
+
+        while(linkedTris[triIdToArrIndex[nextId]].hasTwoNeighbors &&
+          !linkedTris[triIdToArrIndex[nextId]].visited) {
+          SimplexId tempPreviousId = nextId;
+          nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
+          previousId = tempPreviousId;
+          newSep.geometry_.push_back(nextId);
+          linkedTris[triIdToArrIndex[previousId]].visited = true;
+        }
+
+        startIds[nextId] = true;
+
+        separatrices1Local.push_back(newSep);
+      }
+
+      for (auto& it: triIdToArrIndex) { // detect cycles
+        if(!linkedTris[it.second].visited) {
+          mscq::Separatrix newSep(std::get<0>(it));
+
+          SimplexId previousId = std::get<0>(it);
+          SimplexId nextId = linkedTris[std::get<1>(it)].neighbors_[0];
+          linkedTris[triIdToArrIndex[previousId]].visited = true;
+          newSep.geometry_.push_back(nextId);
+
+          while(!linkedTris[triIdToArrIndex[nextId]].visited) {
+            SimplexId tempPreviousId = nextId;
+            nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
+            previousId = tempPreviousId;
+            newSep.geometry_.push_back(nextId);
+            linkedTris[triIdToArrIndex[previousId]].visited = true;
+          }
+
+          separatrices1Local.push_back(newSep);
+        }
+      }
+    }
+    }
+    #pragma omp critical
+    {
+      separatrices1.insert(separatrices1.end(),
+        separatrices1Local.begin(), separatrices1Local.end());
+    }
+  }
+} // TTK_ENABLE_OPENMP
+  this->printMsg("Computed Separatrices 3D",
+                 0, // progress form 0-1
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_);
+
+  this->printMsg(ttk::debug::Separator::L2); // horizontal '-' separator
+
+  this->printMsg("#1-separatrices: " + std::to_string(separatrices1.size()),
+    1, localTimer.getElapsedTime() );
+
+  this->printMsg("Completed", 1, localTimer.getElapsedTime() );
+  this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
 
   return 0;
 }
