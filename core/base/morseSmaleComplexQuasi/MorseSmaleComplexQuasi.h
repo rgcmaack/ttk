@@ -838,8 +838,7 @@ else {
         descendingManifold[i] = maxima.at(descendingManifold[i]);
       }
     }
-}
-//#endif // TTK_ENABLE_OPENMP
+} //#endif // TTK_ENABLE_OPENMP
 
     const int dim = triangulation.getDimensionality();
 
@@ -853,24 +852,17 @@ else {
     }
 
     delete activeVertices;
-
-    // print the progress of the current subprocedure with elapsed time
-    this->printMsg("Computed " + manifoldStr + " Manifold",
-                   1, // progress
-                   localTimer.getElapsedTime(), this->threadNumber_);
   }
 
-  // ---------------------------------------------------------------------
-  // print global performance
-  // ---------------------------------------------------------------------
   {
-    this->printMsg(ttk::debug::Separator::L2); // horizontal '-' separator
+    this->printMsg("Computed " + manifoldStr + " Manifold",
+                   1, localTimer.getElapsedTime(), this->threadNumber_);
 
     this->printMsg("#" + minMaxStr +  ": " + std::to_string(numberOfMaxima),
-      1, localTimer.getElapsedTime() );
+                   1, localTimer.getElapsedTime(), this->threadNumber_);
 
     this->printMsg("#Iterations: " + std::to_string(iterations - 1),
-      1, localTimer.getElapsedTime() );
+                   1, localTimer.getElapsedTime(), this->threadNumber_);
 
     this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
   }
@@ -1173,8 +1165,6 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
 
   // total number of separatrices points
   auto npoints{static_cast<size_t>(*outputSeparatrices1_numberOfPoints_)};
-  // list of valid geometryId to flatten loops
-  std::vector<SimplexId> validGeomIds{};
   // number of separatrices
   size_t numSep = separatrices.size();
   size_t numCells = 0;
@@ -2110,16 +2100,16 @@ if(!db_omp) {
   }
 } // TTK_ENABLE_OPENMP
   this->printMsg("Computed Separatrices 3D",
-                 0, // progress form 0-1
-                 localTimer.getElapsedTime(), // elapsed time so far
-                 this->threadNumber_);
-
-  this->printMsg(ttk::debug::Separator::L2); // horizontal '-' separator
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
 
   this->printMsg("#1-separatrices: " + std::to_string(separatrices1.size()),
-    1, localTimer.getElapsedTime() );
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
 
-  this->printMsg("Completed", 1, localTimer.getElapsedTime() );
+  this->printMsg("#2-sep triangles: " + std::to_string(trianglePos.size()),
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
+
+  this->printMsg("Completed",
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
   this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
 
   return 0;
@@ -2129,6 +2119,8 @@ template <typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   const std::vector<mscq::Separatrix> &separatrices,
   const triangulationType &triangulation) const {
+
+  ttk::Timer localTimer;
 
 #ifndef TTK_ENABLE_KAMIKAZE
   if(outputSeparatrices1_numberOfPoints_ == nullptr) {
@@ -2154,11 +2146,13 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   }
 #endif 
 
-  this->printMsg("Writing 1-seps(3D)");
+  this->printMsg("Writing 1-separatrices",
+                  1,
+                  localTimer.getElapsedTime(),
+                  this->threadNumber_,
+                  ttk::debug::LineMode::REPLACE);
 
   const auto numTris = triangulation.getNumberOfTriangles();
-  // list of valid geometryId to flatten loops
-  std::vector<SimplexId> validGeomIds{};
   // number of separatrices
   size_t numSep = separatrices.size();
   size_t npoints = 0;
@@ -2186,8 +2180,6 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
     outputSeparatrices1_cells_isOnBoundary_->resize(numSep);
 
-
-  this->printMsg("Start writing Seps");
   SimplexId currPId = 0, currCId = 0;
   for(size_t i = 0; i < numSep; ++i) {
 
@@ -2234,7 +2226,8 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   *outputSeparatrices1_numberOfPoints_ = npoints;
   *outputSeparatrices1_numberOfCells_ = numCells;
 
-  this->printMsg("Done writing 1-seps(3D)");
+  this->printMsg("Wrote 1-separatrices",
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
 }
@@ -2243,7 +2236,13 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices2_3D(
   std::vector<std::array<float, 9>> &trianglePos,
   std::vector<SimplexId> &caseData) const {
 
-  this->printMsg("Start writing 2-seps");
+  ttk::Timer localTimer;
+
+  this->printMsg("Writing 2-separatrices",
+                  1,
+                  localTimer.getElapsedTime(),
+                  this->threadNumber_,
+                  ttk::debug::LineMode::REPLACE);
 
   const int numTriangles = trianglePos.size();
 
@@ -2259,18 +2258,22 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices2_3D(
   auto &cellCase = *outputSeparatrices2_cells_cases;
   cellCase = caseData;
 
+#ifdef TTK_ENABLE_OPENMP
+#pragma omp parallel for schedule(static) if(numTriangles > 1000000)
+#endif
   for(int tri = 0; tri < numTriangles; ++tri) {
-    points[9 * tri + 0] = trianglePos[tri][0];
-    points[9 * tri + 1] = trianglePos[tri][1];
-    points[9 * tri + 2] = trianglePos[tri][2];
+    auto &triPos = trianglePos[tri];
+    points[9 * tri + 0] = triPos[0];
+    points[9 * tri + 1] = triPos[1];
+    points[9 * tri + 2] = triPos[2];
 
-    points[9 * tri + 3] = trianglePos[tri][3];
-    points[9 * tri + 4] = trianglePos[tri][4];
-    points[9 * tri + 5] = trianglePos[tri][5];
+    points[9 * tri + 3] = triPos[3];
+    points[9 * tri + 4] = triPos[4];
+    points[9 * tri + 5] = triPos[5];
 
-    points[9 * tri + 6] = trianglePos[tri][6];
-    points[9 * tri + 7] = trianglePos[tri][7];
-    points[9 * tri + 8] = trianglePos[tri][8];
+    points[9 * tri + 6] = triPos[6];
+    points[9 * tri + 7] = triPos[7];
+    points[9 * tri + 8] = triPos[8];
 
     cellsConn[3 * tri]     = 3 * tri;
     cellsConn[3 * tri + 1] = 3 * tri + 1;
@@ -2280,7 +2283,9 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices2_3D(
   // update pointers
   *outputSeparatrices2_numberOfPoints_ = npoints;
   *outputSeparatrices2_numberOfCells_ = numCells;
-  this->printMsg("End writing 2-seps");
+
+  this->printMsg("Wrote 2-separatrices",
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 1;
 }
