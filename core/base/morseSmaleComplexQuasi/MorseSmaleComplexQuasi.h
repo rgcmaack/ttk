@@ -21,15 +21,14 @@
 
 using ttk::SimplexId;
 
+// For cacheline width calculation
 #ifdef __cpp_lib_hardware_interference_size
-    using std::hardware_constructive_interference_size;
     using std::hardware_destructive_interference_size;
 #else
-    constexpr std::size_t hardware_constructive_interference_size
-        = 2 * sizeof(std::max_align_t);
     constexpr std::size_t hardware_destructive_interference_size
         = 2 * sizeof(std::max_align_t);
 #endif
+
 // (#Labels) 2nd label, 3rd label, 4th label - index
 // first label is always 0 
 int tetraederLookup[28][15] = {
@@ -210,6 +209,12 @@ namespace ttk {
   public:
     MorseSmaleComplexQuasi();
 
+    enum class SEPARATRICES_MANIFOLD {
+      MORSESMALE = 0,
+      ASCENDING = 1,
+      DESCENDING = 2
+    };
+
     int preconditionTriangulation(
       ttk::AbstractTriangulation *triangulation) const {
         int success = triangulation->preconditionVertexNeighbors();
@@ -309,7 +314,7 @@ namespace ttk {
     }
 
     inline long long getSparseId(
-      const SimplexId simID0, const SimplexId simID1) const {
+      const long long simID0, const long long simID1) const {
       if(simID0 < simID1) {
         return simID0 * num_MSC_regions_ + simID1;
       }
@@ -317,8 +322,8 @@ namespace ttk {
     }
 
     inline long long getSparseId(
-      const SimplexId simID0, const SimplexId simID1,
-      const SimplexId simID2) const {
+      const long long simID0, const long long simID1,
+      const long long simID2) const {
       if(simID0 < simID1) {
         if(simID1 < simID2) {
           return simID0 * num_MSC_regions_ * num_MSC_regions_ +
@@ -349,7 +354,11 @@ namespace ttk {
     }
 
     template <typename dataType, typename triangulationType>
-    int execute(const triangulationType &triangulation);
+    int execute(
+      const triangulationType &triangulation, 
+      SEPARATRICES_MANIFOLD sepManifoldType,
+      const bool computeSeparatrices,
+      const bool isolateExtrema);
 
     template <class dataType, class triangulationType>
     int computeManifold(
@@ -362,11 +371,19 @@ namespace ttk {
     template <typename triangulationType>
     int computeFinalSegmentation(
       const SimplexId numMaxima,
-      const SimplexId numMinima,
+      const std::vector<mscq::CriticalPoint> &criticalPoints,
+      const bool isolateExtrema,
       const SimplexId *const ascendingManifold,
       const SimplexId *const descendingManifold,
       SimplexId &numManifolds,
       SimplexId *const morseSmaleManifold,
+      const triangulationType &triangulation) const;
+    
+    template <typename triangulationType>
+    int isolateExtremaForManifold(
+      const std::vector<mscq::CriticalPoint> &criticalPoints,
+      SimplexId *const manifold,
+      const bool ascending,
       const triangulationType &triangulation) const;
 
     template <class dataType, class triangulationType>
@@ -433,12 +450,6 @@ namespace ttk {
     }
       
   protected:
-    enum class SEPARATRICES_MANIFOLD {
-      MORSESMALE = 0,
-      ASCENDING = 1,
-      DESCENDING = 2
-    };
-
     // input
     const void *inputOrderField_{};
 
@@ -477,8 +488,6 @@ namespace ttk {
 
     // Misc
     SimplexId num_MSC_regions_{};
-    SEPARATRICES_MANIFOLD SeparatricesManifold
-      {SEPARATRICES_MANIFOLD::MORSESMALE};
 
     // Debug
     bool db_omp = true;
@@ -488,9 +497,12 @@ namespace ttk {
 } // namespace ttk
 
 template <typename dataType, typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
+int ttk::MorseSmaleComplexQuasi::execute(
+  const triangulationType &triangulation, 
+  SEPARATRICES_MANIFOLD sepManifoldType,
+  const bool computeSeparatrices,
+  const bool isolateExtrema)
 {
-
 #ifndef TTK_ENABLE_KAMIKAZE
   if(!inputOrderField_) {
     this->printErr("Input scalar field pointer is null.");
@@ -524,8 +536,8 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
 
     const int dim = triangulation.getDimensionality();
 
-    SimplexId numberOfMaxima{};
-    SimplexId numberOfMinima{};
+    SimplexId numberOfMaxima{0};
+    SimplexId numberOfMinima{0};
 
     if(ascendingManifold)
       computeManifold<dataType, triangulationType>(
@@ -537,52 +549,82 @@ int ttk::MorseSmaleComplexQuasi::execute(const triangulationType &triangulation)
                                 descendingManifold, criticalPoints,
                                 numberOfMaxima, triangulation, false);
 
-    if(ascendingManifold and descendingManifold and morseSmaleManifold)
+    if(ascendingManifold && descendingManifold && morseSmaleManifold) {
+      this->printMsg("computeFinalSegmentation");
       computeFinalSegmentation<triangulationType>(
-                                numberOfMinima, numberOfMaxima,
+                                numberOfMinima, criticalPoints, isolateExtrema,
                                 ascendingManifold, descendingManifold,
-                                num_MSC_regions_,
+                                num_MSC_regions_, 
                                 morseSmaleManifold, triangulation);
-
-    SimplexId *sepManifold;
-
-    switch(SeparatricesManifold) {
-      case SEPARATRICES_MANIFOLD::MORSESMALE :
-        sepManifold = static_cast<SimplexId *>(outputMorseSmaleManifold_);
-        break;
-      case SEPARATRICES_MANIFOLD::ASCENDING :
-        sepManifold = static_cast<SimplexId *>(outputAscendingManifold_);
-        break;
-      case SEPARATRICES_MANIFOLD::DESCENDING :
-        sepManifold = static_cast<SimplexId *>(outputDescendingManifold_);
-        break;
-      default:
-        sepManifold = static_cast<SimplexId *>(outputMorseSmaleManifold_);
+    } else if((ascendingManifold || descendingManifold) && isolateExtrema) {
+      this->printMsg("isolateExtremaForManifold");
+      if(ascendingManifold) {
+        isolateExtremaForManifold(criticalPoints, ascendingManifold, true,
+          triangulation);
+      }
+      if(descendingManifold) {
+        isolateExtremaForManifold(criticalPoints, descendingManifold, false,
+          triangulation);
+      }
     }
 
-    if(dim == 2) {
-      computeSeparatrices1_2D<dataType, triangulationType>(
-                                criticalPoints, separatrices1,
-                                sepManifold, triangulation);
+    if(computeSeparatrices) {
+      SimplexId *sepManifold;
+      bool isSepManifoldValid = false;
 
-      this->printMsg("Write 1-seps");
-      setSeparatrices1_2D<triangulationType>(separatrices1, triangulation);
-    } else if (dim == 3) {
-      std::vector<std::array<float, 9>> trianglePos;
-      std::vector<SimplexId> caseData;
+      switch(sepManifoldType) {
+        case SEPARATRICES_MANIFOLD::MORSESMALE :
+          if(ascendingManifold and descendingManifold and morseSmaleManifold) {
+            sepManifold = static_cast<SimplexId *>(outputMorseSmaleManifold_);
+            isSepManifoldValid = true;
+          }
+          break;
+        case SEPARATRICES_MANIFOLD::ASCENDING :
+          if(ascendingManifold) {
+            sepManifold = static_cast<SimplexId *>(outputAscendingManifold_);
+            num_MSC_regions_ =
+              isolateExtrema ? numberOfMinima * 2 : numberOfMinima;
+            isSepManifoldValid = true;
+          }
+          break;
+        case SEPARATRICES_MANIFOLD::DESCENDING :
+          if(descendingManifold) {
+            sepManifold = static_cast<SimplexId *>(outputDescendingManifold_);
+            num_MSC_regions_ =
+              isolateExtrema ? numberOfMaxima * 2 : numberOfMaxima;
+            isSepManifoldValid = true;
+          }
+          break;
+        default:
+          break;
+      }
 
-      computeSeparatrices_3D<dataType, triangulationType>(
-                              trianglePos, caseData, separatrices1,
-                              sepManifold, triangulation);
+      if(isSepManifoldValid) {
+        if(dim == 2) {
+          computeSeparatrices1_2D<dataType, triangulationType>(
+                                    criticalPoints, separatrices1,
+                                    sepManifold, triangulation);
 
-      setSeparatrices1_3D<triangulationType>(separatrices1, triangulation);
-      setSeparatrices2_3D(trianglePos, caseData);
+          setSeparatrices1_2D<triangulationType>(separatrices1, triangulation);
+        } else if (dim == 3) {
+          std::vector<std::array<float, 9>> trianglePos;
+          std::vector<SimplexId> caseData;
+
+          computeSeparatrices_3D<dataType, triangulationType>(
+                                  trianglePos, caseData, separatrices1,
+                                  sepManifold, triangulation);
+
+          setSeparatrices1_3D<triangulationType>(separatrices1, triangulation);
+          setSeparatrices2_3D(trianglePos, caseData);
+        }
+      }
     }
   }
 
   this->printMsg( std::to_string(triangulation.getNumberOfVertices())
                    + " verticies processed",
                  1.0, t.getElapsedTime(), this->threadNumber_);
+  this->printMsg(ttk::debug::Separator::L0);
 
   return 0;
 }
@@ -840,11 +882,13 @@ else {
     }
 } //#endif // TTK_ENABLE_OPENMP
 
+    const int index =
+      ascending ? 0 : triangulation.getDimensionality();
     const int dim = triangulation.getDimensionality();
 
     float x, y, z;
     for (auto& it: maxima) {
-      criticalPoints.push_back(mscq::CriticalPoint(it.first, dim));
+      criticalPoints.push_back(mscq::CriticalPoint(it.first, index));
       triangulation.getVertexPoint(it.first, x, y, z);
       outputCriticalPoints_points_->push_back({x, y, z});
       outputCriticalPoints_points_cellDimensions_->push_back(dim);
@@ -873,8 +917,9 @@ else {
 
 template <typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeFinalSegmentation(
-  const SimplexId numberOfMaxima,
   const SimplexId numberOfMinima,
+  const std::vector<mscq::CriticalPoint> &criticalPoints,
+  const bool isolateExtrema,
   const SimplexId *const ascendingManifold,
   const SimplexId *const descendingManifold,
   SimplexId &numManifolds,
@@ -882,20 +927,46 @@ int ttk::MorseSmaleComplexQuasi::computeFinalSegmentation(
   const triangulationType &triangulation) const{
   
   const size_t nVerts = triangulation.getNumberOfVertices();
+  const size_t numCriticalPoints = isolateExtrema ? criticalPoints.size() : 0;
 
-  // associate a unique "sparse region id" to each (ascending, descending) pair
-#ifdef TTK_ENABLE_OPENMP
-#pragma omp parallel for num_threads(threadNumber_)
-#endif // TTK_ENABLE_OPENMP
+//#ifndef TTK_ENABLE_OPENMP
+if(!db_omp) {
   for(size_t i = 0; i < nVerts; ++i) {
-    const auto a = ascendingManifold[i];
-    const auto d = descendingManifold[i];
-    if(a == -1 || d == -1) {
-      morseSmaleManifold[i] = -1;
-    } else {
-      morseSmaleManifold[i] = a * numberOfMaxima + d;
+    morseSmaleManifold[i] = ascendingManifold[i] * numberOfMinima +
+      descendingManifold[i] + numCriticalPoints;
+  }
+
+  if(isolateExtrema) {
+    for(size_t i = 0; i < numCriticalPoints; ++i) {
+      morseSmaleManifold[criticalPoints[i].id_] = i;
     }
   }
+//#else // TTK_ENABLE_OPENMP
+} else {
+  const size_t numCacheLineEntries =
+  hardware_destructive_interference_size / sizeof(SimplexId);
+  #pragma omp parallel num_threads(threadNumber_)
+  {
+    #pragma omp for schedule(static, numCacheLineEntries) nowait
+    for(size_t i = 0; i < nVerts; ++i) {
+      morseSmaleManifold[i] = ascendingManifold[i] * numberOfMinima +
+        descendingManifold[i] + numCriticalPoints;
+    }
+
+    #pragma omp single
+    {
+      if(isolateExtrema) {
+        for(size_t i = 0; i < numCriticalPoints; ++i) {
+          morseSmaleManifold[criticalPoints[i].id_] = i;
+        }
+      }
+    }
+  }
+}
+
+  // associate a unique "sparse region id" to each (ascending, descending) pair
+
+
 
   // store the "sparse region ids" by copying the morseSmaleManifold output
   std::vector<SimplexId> sparseRegionIds(
@@ -927,6 +998,34 @@ int ttk::MorseSmaleComplexQuasi::computeFinalSegmentation(
   return 0;
 }
 
+template <typename triangulationType>
+int ttk::MorseSmaleComplexQuasi::isolateExtremaForManifold(
+  const std::vector<mscq::CriticalPoint> &criticalPoints,
+  SimplexId *const manifold,
+  const bool ascending,
+  const triangulationType &triangulation) const{
+
+    const size_t numCriticalPoints = criticalPoints.size();
+    const int indexToCheck = ascending ? 0 : triangulation.getDimensionality();
+
+  std::vector<SimplexId> selectedCritIds;
+  for(size_t i = 0; i < numCriticalPoints; ++i) {
+    this->printMsg(std::to_string(criticalPoints[i].index_) +
+      " - " + std::to_string(indexToCheck));
+    if(criticalPoints[i].index_ == indexToCheck) {
+      selectedCritIds.push_back(criticalPoints[i].id_);
+    }
+  }
+
+  const size_t numSelectedCrits = selectedCritIds.size();
+
+  for(size_t i = 0; i < numSelectedCrits; ++i) {
+    manifold[selectedCritIds[i]] = numSelectedCrits + i;
+  }
+
+  return 0;
+}
+
 template <class dataType, class triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
   std::vector<mscq::CriticalPoint> &criticalPoints, 
@@ -938,24 +1037,32 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
   ttk::Timer localTimer;
 
   this->printMsg(ttk::debug::Separator::L1);
-  this->printMsg("Computing 1-separatrices",
+  this->printMsg("Computing 1-separatrices (2D)",
                  0, // progress form 0-1
                  0, // elapsed time so far
                  this->threadNumber_);//, ttk::debug::LineMode::REPLACE);
+  this->printMsg("X0");
   // sparseId, vector of edgeID tuples
   std::unordered_map<
     long long, std::vector<std::tuple<SimplexId, SimplexId>>*> sepPieces;
 
+  this->printMsg("X0");
+
   // sparseId, triangle0, edge0, triangle1, edge1
   std::unordered_map<long long, std::tuple<
     SimplexId, SimplexId, SimplexId, SimplexId>> triConnectors;
+    this->printMsg("X0");
   std::unordered_set<long long> unhandledTriConnectors;
+  this->printMsg("X0");
 
   // morseSmaleManifoldId, edgeId and corresponding vertexID
   std::unordered_map<
     SimplexId, std::tuple<SimplexId, SimplexId>> borderSepSeeds;
+    this->printMsg("X0");
 
   const SimplexId numTriangles = triangulation.getNumberOfTriangles();
+
+  this->printMsg("X0");
 
   for(SimplexId tri = 0; tri < numTriangles; tri++) {
     SimplexId edges[3];
@@ -1017,6 +1124,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
       }
     }
   }
+
+  this->printMsg("X1");
 
   for (auto& it_seps: sepPieces) { // put the sepPieces in sequence
     auto sepVectorPtr = it_seps.second;
@@ -1111,6 +1220,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     separatrixVector.push_back(newSep);
   }
 
+  this->printMsg("X2");
+
   // merge two splitting triangles into a saddle
   for(auto u : unhandledTriConnectors) {
     const auto& conn = triConnectors[u];
@@ -1130,6 +1241,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     outputCriticalPoints_points_cellIds_->push_back(splitEdge0);
     criticalPoints.push_back(mscq::CriticalPoint(splitEdge0, 1, 1));
   }
+
+  this->printMsg("X3");
 
   return 0;
 }
@@ -1982,104 +2095,85 @@ if(!db_omp) {
 
     #pragma omp for schedule(dynamic, 4) nowait
     for(size_t b = 0; b < sepPieces1.bucket_count(); b++) {
-    for(auto it_s = sepPieces1.begin(b); it_s != sepPieces1.end(b); it_s++){
-      auto sepVectorPtr = it_s->second;
-      const size_t vecSize = sepVectorPtr.size();
-      SimplexId maxIndex = 0;
+      for(auto it_s = sepPieces1.begin(b); it_s != sepPieces1.end(b); it_s++){
+        auto sepVectorPtr = it_s->second;
+        const size_t vecSize = sepVectorPtr.size();
+        SimplexId maxIndex = 0;
 
-      // write all Triangles into a doubly Linked List
-      mscq::DoublyLinkedElement linkedTris[vecSize * 2];
-      std::unordered_map<SimplexId, SimplexId> triIdToArrIndex;
-      {
-        for(std::size_t sepI = 0; sepI < vecSize; ++sepI) {
-          const SimplexId firstTri = std::get<0>(sepVectorPtr[sepI]);
-          const SimplexId secondTri = std::get<1>(sepVectorPtr[sepI]);
-          const bool is4LabelSplit = std::get<2>(sepVectorPtr[sepI]);
+        // write all Triangles into a doubly Linked List
+        mscq::DoublyLinkedElement linkedTris[vecSize * 2];
+        std::unordered_map<SimplexId, SimplexId> triIdToArrIndex;
+        {
+          for(std::size_t sepI = 0; sepI < vecSize; ++sepI) {
+            const SimplexId firstTri = std::get<0>(sepVectorPtr[sepI]);
+            const SimplexId secondTri = std::get<1>(sepVectorPtr[sepI]);
+            const bool is4LabelSplit = std::get<2>(sepVectorPtr[sepI]);
 
-          if(is4LabelSplit) {
-            if(triIdToArrIndex.find(firstTri) == triIdToArrIndex.end()) {
-              SimplexId newIndex = maxIndex++;
-              triIdToArrIndex.insert({firstTri, newIndex});
-              linkedTris[newIndex] =
-                mscq::DoublyLinkedElement((secondTri + numTris));
+            if(is4LabelSplit) {
+              if(triIdToArrIndex.find(firstTri) == triIdToArrIndex.end()) {
+                SimplexId newIndex = maxIndex++;
+                triIdToArrIndex.insert({firstTri, newIndex});
+                linkedTris[newIndex] =
+                  mscq::DoublyLinkedElement((secondTri + numTris));
 
-              newIndex = maxIndex++;
-              triIdToArrIndex.insert({secondTri + numTris, newIndex});
-              linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
+                newIndex = maxIndex++;
+                triIdToArrIndex.insert({secondTri + numTris, newIndex});
+                linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
 
+              } else {
+                linkedTris[triIdToArrIndex[firstTri]].insert(
+                  secondTri  + numTris
+                );
+
+                SimplexId newIndex = maxIndex++;
+                triIdToArrIndex.insert({(secondTri + numTris), newIndex});
+                linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
+              }
             } else {
-              linkedTris[triIdToArrIndex[firstTri]].insert(secondTri  + numTris);
+              if(triIdToArrIndex.find(firstTri) == triIdToArrIndex.end()) {
+                SimplexId newIndex = maxIndex++;
+                triIdToArrIndex.insert({firstTri, newIndex});
+                linkedTris[newIndex] = mscq::DoublyLinkedElement(secondTri);
 
-              SimplexId newIndex = maxIndex++;
-              triIdToArrIndex.insert({(secondTri + numTris), newIndex});
-              linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
-            }
-          } else {
-            if(triIdToArrIndex.find(firstTri) == triIdToArrIndex.end()) {
-              SimplexId newIndex = maxIndex++;
-              triIdToArrIndex.insert({firstTri, newIndex});
-              linkedTris[newIndex] = mscq::DoublyLinkedElement(secondTri);
+              } else {
+                linkedTris[triIdToArrIndex[firstTri]].insert(secondTri);
+              }
 
-            } else {
-              linkedTris[triIdToArrIndex[firstTri]].insert(secondTri);
-            }
+              if(triIdToArrIndex.find(secondTri) == triIdToArrIndex.end()) {
+                SimplexId newIndex = maxIndex++;
+                triIdToArrIndex.insert({secondTri, newIndex});
+                linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
 
-            if(triIdToArrIndex.find(secondTri) == triIdToArrIndex.end()) {
-              SimplexId newIndex = maxIndex++;
-              triIdToArrIndex.insert({secondTri, newIndex});
-              linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
-
-            } else {
-              linkedTris[triIdToArrIndex[secondTri]].insert(firstTri);
+              } else {
+                linkedTris[triIdToArrIndex[secondTri]].insert(firstTri);
+              }
             }
           }
         }
-      }
 
-      std::unordered_map<SimplexId, bool> startIds;
-      for(auto& it: triIdToArrIndex) {
-        if(!linkedTris[it.second].hasTwoNeighbors) {
-          startIds.insert({it.first, false});
-        }
-      }
-
-      for (const auto& it_starts: startIds) { // detect paths
-        if(it_starts.second) { // Is simplex already part of a separatrix?
-          continue;
-        }
-        // write separatrix
-        const SimplexId startTri = it_starts.first;
-        mscq::Separatrix newSep(startTri);
-
-        SimplexId previousId = startTri;
-        SimplexId nextId = linkedTris[triIdToArrIndex[startTri]].neighbors_[0];
-        linkedTris[triIdToArrIndex[previousId]].visited = true;
-        newSep.geometry_.push_back(nextId);
-
-        while(linkedTris[triIdToArrIndex[nextId]].hasTwoNeighbors &&
-          !linkedTris[triIdToArrIndex[nextId]].visited) {
-          SimplexId tempPreviousId = nextId;
-          nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
-          previousId = tempPreviousId;
-          newSep.geometry_.push_back(nextId);
-          linkedTris[triIdToArrIndex[previousId]].visited = true;
+        std::unordered_map<SimplexId, bool> startIds;
+        for(auto& it: triIdToArrIndex) {
+          if(!linkedTris[it.second].hasTwoNeighbors) {
+            startIds.insert({it.first, false});
+          }
         }
 
-        startIds[nextId] = true;
+        for (const auto& it_starts: startIds) { // detect paths
+          if(it_starts.second) { // Is simplex already part of a separatrix?
+            continue;
+          }
+          // write separatrix
+          const SimplexId startTri = it_starts.first;
+          mscq::Separatrix newSep(startTri);
 
-        separatrices1Local.push_back(newSep);
-      }
-
-      for (auto& it: triIdToArrIndex) { // detect cycles
-        if(!linkedTris[it.second].visited) {
-          mscq::Separatrix newSep(std::get<0>(it));
-
-          SimplexId previousId = std::get<0>(it);
-          SimplexId nextId = linkedTris[std::get<1>(it)].neighbors_[0];
+          SimplexId previousId = startTri;
+          SimplexId nextId =
+            linkedTris[triIdToArrIndex[startTri]].neighbors_[0];
           linkedTris[triIdToArrIndex[previousId]].visited = true;
           newSep.geometry_.push_back(nextId);
 
-          while(!linkedTris[triIdToArrIndex[nextId]].visited) {
+          while(linkedTris[triIdToArrIndex[nextId]].hasTwoNeighbors &&
+            !linkedTris[triIdToArrIndex[nextId]].visited) {
             SimplexId tempPreviousId = nextId;
             nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
             previousId = tempPreviousId;
@@ -2087,10 +2181,32 @@ if(!db_omp) {
             linkedTris[triIdToArrIndex[previousId]].visited = true;
           }
 
+          startIds[nextId] = true;
+
           separatrices1Local.push_back(newSep);
         }
+
+        for (auto& it: triIdToArrIndex) { // detect cycles
+          if(!linkedTris[it.second].visited) {
+            mscq::Separatrix newSep(std::get<0>(it));
+
+            SimplexId previousId = std::get<0>(it);
+            SimplexId nextId = linkedTris[std::get<1>(it)].neighbors_[0];
+            linkedTris[triIdToArrIndex[previousId]].visited = true;
+            newSep.geometry_.push_back(nextId);
+
+            while(!linkedTris[triIdToArrIndex[nextId]].visited) {
+              SimplexId tempPreviousId = nextId;
+              nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
+              previousId = tempPreviousId;
+              newSep.geometry_.push_back(nextId);
+              linkedTris[triIdToArrIndex[previousId]].visited = true;
+            }
+
+            separatrices1Local.push_back(newSep);
+          }
+        }
       }
-    }
     }
     #pragma omp critical
     {

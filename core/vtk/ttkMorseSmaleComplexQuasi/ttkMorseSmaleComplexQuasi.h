@@ -76,6 +76,9 @@ public:
   vtkSetMacro(ComputeSeparatrices, bool);
   vtkGetMacro(ComputeSeparatrices, bool);
 
+  vtkSetMacro(SeperateExtrema, bool);
+  vtkGetMacro(SeperateExtrema, bool);
+
 protected:
   ttkMorseSmaleComplexQuasi();
   ~ttkMorseSmaleComplexQuasi() override;
@@ -98,6 +101,9 @@ private:
   bool ComputeAscendingSegmentation{true};
   bool ComputeDescendingSegmentation{true};
   bool ComputeFinalSegmentation{true};
+  bool SeperateExtrema{true};
+  SEPARATRICES_MANIFOLD SeparatricesManifold
+    {SEPARATRICES_MANIFOLD::MORSESMALE};
 
   // critical points
   std::vector<std::array<float, 3>> criticalPoints_points{};

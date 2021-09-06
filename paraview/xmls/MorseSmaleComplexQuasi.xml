@@ -58,7 +58,7 @@
           <Entry value="2" text="DescendingManifold"/>
         </EnumerationDomain>
         <Documentation>
-          Select the field to compute Separatrices from
+          Select the field to compute Separatrices from.
         </Documentation>
       </IntVectorProperty>
 
@@ -99,8 +99,20 @@
       </IntVectorProperty>
 
       <IntVectorProperty name="ComputeSeparatrices"
-        label="Separatrices"
+        label="Compute Separatrices"
         command="SetComputeSeparatrices"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Documentation.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="SeperateExtrema"
+        label="SeperateExtrema"
+        command="SetSeperateExtrema"
         number_of_elements="1"
         default_values="1"
         panel_visibility="default">
@@ -115,6 +127,7 @@
         <Property name="ComputeDescendingSegmentation"/>
         <Property name="ComputeFinalSegmentation"/>
         <Property name="ComputeSeparatrices"/>
+        <Property name="SeperateExtrema"/>
       </PropertyGroup>
 
       <OutputPort name="Critical Points" index="0" id="port0"/>

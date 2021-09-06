@@ -252,7 +252,8 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     &s2_numberOfCells, &separatrices2_cells_connectivity,
     &separatrices2_cells_caseTypes);
 
-  const int ret = this->execute<dataType>(triangulation);
+  const int ret = this->execute<dataType, triangulationType>(
+    triangulation, SeparatricesManifold, ComputeSeparatrices, SeperateExtrema);
 
 #ifndef TTK_ENABLE_KAMIKAZE
   if(ret != 0) {
