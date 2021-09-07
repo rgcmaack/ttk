@@ -70,7 +70,7 @@
         panel_visibility="default">
         <BooleanDomain name="bool"/>
         <Documentation>
-          Documentation.
+          Create the Ascending Manifold?
         </Documentation>
       </IntVectorProperty>
 
@@ -82,7 +82,7 @@
         panel_visibility="default">
         <BooleanDomain name="bool"/>
         <Documentation>
-          Documentation.
+          Create the Descending Manifold?
         </Documentation>
       </IntVectorProperty>
 
@@ -94,7 +94,8 @@
         panel_visibility="default">
         <BooleanDomain name="bool"/>
         <Documentation>
-          Documentation.
+          Create the Morse-Smale Manifold?
+          (Needs Ascending and Descending Manifold)
         </Documentation>
       </IntVectorProperty>
 
@@ -106,19 +107,31 @@
         panel_visibility="default">
         <BooleanDomain name="bool"/>
         <Documentation>
-          Documentation.
+          Compute Separatrices?
         </Documentation>
       </IntVectorProperty>
 
       <IntVectorProperty name="SeperateExtrema"
-        label="SeperateExtrema"
+        label="Seperate Extrema"
         command="SetSeperateExtrema"
         number_of_elements="1"
         default_values="1"
         panel_visibility="default">
         <BooleanDomain name="bool"/>
         <Documentation>
-          Documentation.
+          Isolate Extrema with Separatrices and in Manifolds.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="FastSeparatrices"
+        label="Fast Separatrices"
+        command="SetFastSeparatrices"
+        number_of_elements="1"
+        default_values="0"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Output Separatrices as Tetrahedra with atleast 2 labels.
         </Documentation>
       </IntVectorProperty>
 
@@ -128,6 +141,7 @@
         <Property name="ComputeFinalSegmentation"/>
         <Property name="ComputeSeparatrices"/>
         <Property name="SeperateExtrema"/>
+        <Property name="FastSeparatrices"/>
       </PropertyGroup>
 
       <OutputPort name="Critical Points" index="0" id="port0"/>
