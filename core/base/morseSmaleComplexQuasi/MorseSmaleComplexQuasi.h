@@ -7,6 +7,8 @@
 
 #include <Debug.h>
 #include <Triangulation.h>
+#include <UnionFind.h>
+
 #include <unordered_map>
 #include <map>
 #include <list>
@@ -250,6 +252,7 @@ namespace ttk {
         int success = triangulation->preconditionVertexNeighbors();
         success += triangulation->preconditionTriangleEdges();
         success += triangulation->preconditionCellTriangles();
+        success += triangulation->preconditionVertexStars();
       return success;
     };
 
@@ -391,7 +394,7 @@ namespace ttk {
       const bool isolateExtrema,
       const bool fastSeparatrices);
 
-    template <class dataType, class triangulationType>
+    template <typename dataType, typename triangulationType>
     int computeManifold(
       SimplexId *const manifold,
       std::vector<mscq::CriticalPoint> &criticalPoints,
@@ -417,7 +420,7 @@ namespace ttk {
       const bool ascending,
       const triangulationType &triangulation) const;
 
-    template <class dataType, class triangulationType>
+    template <typename dataType, typename triangulationType>
     int computeSeparatrices1_2D(
       std::vector<mscq::CriticalPoint> &criticalPoints,    
       std::vector<mscq::Separatrix> &separatrices,
@@ -429,15 +432,16 @@ namespace ttk {
       const std::vector<mscq::Separatrix> &separatrices,
       const triangulationType &triangulation) const;
 
-    template <class dataType, class triangulationType>
+    template <typename dataType, typename triangulationType>
     int computeSeparatrices_3D(
       std::vector<std::array<float, 9>> &trianglePos,    
       std::vector<SimplexId> &caseData,
       std::vector<mscq::Separatrix> &separatrices1,
+      std::vector<SimplexId> *saddleCandidateTets,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
-    template <class dataType, class triangulationType>
+    template <typename dataType, typename triangulationType>
     int computeSeparatrices_3D_fast(
       std::vector<std::array<float, 9>> &trianglePos,    
       std::vector<SimplexId> &caseData,
@@ -453,7 +457,18 @@ namespace ttk {
       std::vector<std::array<float, 9>> &trianglePos,
       std::vector<SimplexId> &caseData) const;
 
-    template <class triangulationType>
+    template <typename dataType, typename triangulationType>
+    int setSaddlePointsFromCadidates(
+      const std::vector<SimplexId> &saddleCandidateTets,
+      const triangulationType &triangulation) const;
+
+    template <typename dataType, typename triangulationType>
+    std::pair<ttk::SimplexId, ttk::SimplexId> getNumberOfLowerUpperComponents(
+      const SimplexId vertexId,
+      const dataType * const offsets,
+      const triangulationType &triangulation) const;
+
+    template <typename triangulationType>
     inline int getEdgeIncenter(
       SimplexId vertexId0, SimplexId vertexId1, float incenter[3],
       const triangulationType &triangulation) const {
@@ -570,6 +585,7 @@ int ttk::MorseSmaleComplexQuasi::execute(
 
   std::vector<mscq::CriticalPoint> criticalPoints;
   std::vector<mscq::Separatrix> separatrices1;
+  std::vector<SimplexId> saddleCandidateTets;
   {
     Timer tmp;
 
@@ -589,14 +605,12 @@ int ttk::MorseSmaleComplexQuasi::execute(
                                 numberOfMaxima, triangulation, false);
 
     if(ascendingManifold && descendingManifold && morseSmaleManifold) {
-      this->printMsg("computeFinalSegmentation");
       computeFinalSegmentation<triangulationType>(
                                 numberOfMinima, criticalPoints, isolateExtrema,
                                 ascendingManifold, descendingManifold,
                                 num_MSC_regions_, 
                                 morseSmaleManifold, triangulation);
     } else if((ascendingManifold || descendingManifold) && isolateExtrema) {
-      this->printMsg("isolateExtremaForManifold");
       if(ascendingManifold) {
         isolateExtremaForManifold(criticalPoints, ascendingManifold, true,
           triangulation);
@@ -662,7 +676,12 @@ int ttk::MorseSmaleComplexQuasi::execute(
             std::vector<SimplexId> caseData;
 
             computeSeparatrices_3D<dataType, triangulationType>(
-              trianglePos, caseData, separatrices1, sepManifold, triangulation
+              trianglePos, caseData, separatrices1, &saddleCandidateTets,
+              sepManifold, triangulation
+            );
+
+            setSaddlePointsFromCadidates<dataType, triangulationType>(
+              saddleCandidateTets, triangulation
             );
 
             setSeparatrices1_3D<triangulationType>(
@@ -684,7 +703,7 @@ int ttk::MorseSmaleComplexQuasi::execute(
 }
 
 
-template <class dataType, class triangulationType>
+template <typename dataType, typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeManifold(
   SimplexId *const descendingManifold,
   std::vector<mscq::CriticalPoint> &criticalPoints,
@@ -938,14 +957,14 @@ else {
 
     const int index =
       ascending ? 0 : triangulation.getDimensionality();
-    const int dim = triangulation.getDimensionality();
+    //const int dim = triangulation.getDimensionality();
 
     float x, y, z;
     for (auto& it: maxima) {
       criticalPoints.push_back(mscq::CriticalPoint(it.first, index));
       triangulation.getVertexPoint(it.first, x, y, z);
       outputCriticalPoints_points_->push_back({x, y, z});
-      outputCriticalPoints_points_cellDimensions_->push_back(dim);
+      outputCriticalPoints_points_cellDimensions_->push_back(index);
       outputCriticalPoints_points_cellIds_->push_back(it.first);
     }
 
@@ -1080,7 +1099,7 @@ int ttk::MorseSmaleComplexQuasi::isolateExtremaForManifold(
   return 0;
 }
 
-template <class dataType, class triangulationType>
+template <typename dataType, typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
   std::vector<mscq::CriticalPoint> &criticalPoints, 
   std::vector<mscq::Separatrix> &separatrixVector,
@@ -1095,28 +1114,21 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
                  0, // progress form 0-1
                  0, // elapsed time so far
                  this->threadNumber_);//, ttk::debug::LineMode::REPLACE);
-  this->printMsg("X0");
+
   // sparseId, vector of edgeID tuples
   std::unordered_map<
     long long, std::vector<std::tuple<SimplexId, SimplexId>>*> sepPieces;
 
-  this->printMsg("X0");
-
   // sparseId, triangle0, edge0, triangle1, edge1
   std::unordered_map<long long, std::tuple<
     SimplexId, SimplexId, SimplexId, SimplexId>> triConnectors;
-    this->printMsg("X0");
   std::unordered_set<long long> unhandledTriConnectors;
-  this->printMsg("X0");
 
   // morseSmaleManifoldId, edgeId and corresponding vertexID
   std::unordered_map<
     SimplexId, std::tuple<SimplexId, SimplexId>> borderSepSeeds;
-    this->printMsg("X0");
 
   const SimplexId numTriangles = triangulation.getNumberOfTriangles();
-
-  this->printMsg("X0");
 
   for(SimplexId tri = 0; tri < numTriangles; tri++) {
     SimplexId edges[3];
@@ -1178,8 +1190,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
       }
     }
   }
-
-  this->printMsg("X1");
 
   for (auto& it_seps: sepPieces) { // put the sepPieces in sequence
     auto sepVectorPtr = it_seps.second;
@@ -1273,8 +1283,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
 
     separatrixVector.push_back(newSep);
   }
-
-  this->printMsg("X2");
 
   // merge two splitting triangles into a saddle
   for(auto u : unhandledTriConnectors) {
@@ -1424,11 +1432,12 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
   return 0;
 }
 
-template <class dataType, class triangulationType>
+template <typename dataType, typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
   std::vector<std::array<float, 9>> &trianglePos,    
   std::vector<SimplexId> &caseData,
   std::vector<mscq::Separatrix> &separatrices1,
+  std::vector<SimplexId> *saddleCandidateTets,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
 
@@ -1463,6 +1472,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
     std::vector<std::tuple<SimplexId, SimplexId, bool>>> sepPieces1;
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
+  const bool testFindSaddles = saddleCandidateTets != nullptr;
 
 //#ifndef TTK_ENABLE_OPENMP
 if(!db_omp) {
@@ -1491,6 +1501,10 @@ if(!db_omp) {
     if(tetEdgeIndices[0] == -1) { // 1 label on tetraeder
       continue;
     } else {
+      if(testFindSaddles) {
+        saddleCandidateTets->push_back(tet);
+      }
+
       float edgeCenters[10][3];
       getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
       getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
@@ -1855,6 +1869,7 @@ if(!db_omp) {
     std::vector<SimplexId> caseDataLocal;
     std::vector<std::tuple<long long, SimplexId, SimplexId, bool>> sepPcsLocal;
     std::vector<mscq::Separatrix> separatrices1Local;
+    std::vector<SimplexId> saddleCandidateTetsLocal;
 
     #pragma omp for schedule(dynamic, numCacheLineEntries) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
@@ -1882,6 +1897,10 @@ if(!db_omp) {
       if(tetEdgeIndices[0] == -1) { // 1 label on tetraeder
         continue;
       } else {
+        if(testFindSaddles) {
+          saddleCandidateTetsLocal.push_back(tet);
+        }
+
         float edgeCenters[10][3];
         getEdgeIncenter(
           vertices[0], vertices[1], edgeCenters[0], triangulation);
@@ -2137,6 +2156,12 @@ if(!db_omp) {
       }
     }
 
+    #pragma omp critical
+    {
+      saddleCandidateTets->insert(saddleCandidateTets->end(),
+        saddleCandidateTetsLocal.begin(), saddleCandidateTetsLocal.end());
+    }
+
     #pragma omp barrier
 
     #pragma omp single nowait
@@ -2269,6 +2294,7 @@ if(!db_omp) {
     }
   }
 } // TTK_ENABLE_OPENMP
+
   this->printMsg("Computed Separatrices 3D",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
@@ -2285,7 +2311,7 @@ if(!db_omp) {
   return 0;
 }
 
-template <class dataType, class triangulationType>
+template <typename dataType, typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D_fast(
   std::vector<std::array<float, 9>> &trianglePos,    
   std::vector<SimplexId> &caseData,
@@ -2643,4 +2669,191 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices2_3D(
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 1;
+}
+
+template <typename dataType, typename triangulationType>
+int ttk::MorseSmaleComplexQuasi::setSaddlePointsFromCadidates(
+  const std::vector<SimplexId> &saddleCandidateTets,
+  const triangulationType &triangulation) const {
+
+  ttk::Timer localTimer;
+
+  const dataType *inputField = static_cast<const dataType *>(inputOrderField_);
+  const size_t numSaddleCandidates = saddleCandidateTets.size();
+
+  this->printMsg("Writing saddles Candidates:" + std::to_string(numSaddleCandidates),
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
+  
+  for(size_t i = 0; i < numSaddleCandidates; ++i) {
+    SimplexId candidates[4];
+
+    triangulation.getCellVertex(saddleCandidateTets[i], 0, candidates[0]);
+    triangulation.getCellVertex(saddleCandidateTets[i], 1, candidates[1]);
+    triangulation.getCellVertex(saddleCandidateTets[i], 2, candidates[2]);
+    triangulation.getCellVertex(saddleCandidateTets[i], 3, candidates[3]);
+
+    SimplexId lowerComponents, upperComponents;
+    float x, y, z;
+    for(int j = 0; j < 4; ++j) {
+      std::tie(lowerComponents, upperComponents)
+        = getNumberOfLowerUpperComponents(
+        candidates[j], inputField, triangulation
+      );
+
+      if(lowerComponents > 1 && upperComponents > 1) {
+        this->printMsg("Can1", 1, localTimer.getElapsedTime(), this->threadNumber_);
+        triangulation.getVertexPoint(candidates[j], x, y, z);
+        outputCriticalPoints_points_->push_back({x, y, z});
+        outputCriticalPoints_points_cellDimensions_->push_back(4);
+        outputCriticalPoints_points_cellIds_->push_back(candidates[j]);
+      }
+      else if(lowerComponents > 1 && upperComponents == 1) {
+        this->printMsg("Can2", 1, localTimer.getElapsedTime(), this->threadNumber_);
+        triangulation.getVertexPoint(candidates[j], x, y, z);
+        outputCriticalPoints_points_->push_back({x, y, z});
+        outputCriticalPoints_points_cellDimensions_->push_back(1);
+        outputCriticalPoints_points_cellIds_->push_back(candidates[j]);
+      }
+      else if(lowerComponents == 1 && upperComponents > 1) {
+        this->printMsg("Can3", 1, localTimer.getElapsedTime(), this->threadNumber_);
+        triangulation.getVertexPoint(candidates[j], x, y, z);
+        outputCriticalPoints_points_->push_back({x, y, z});
+        outputCriticalPoints_points_cellDimensions_->push_back(2);
+        outputCriticalPoints_points_cellIds_->push_back(candidates[j]);
+      }
+    }
+  }
+  return 0;
+}
+
+template <typename dataType, typename triangulationType>
+std::pair<ttk::SimplexId, ttk::SimplexId>
+  ttk::MorseSmaleComplexQuasi::getNumberOfLowerUpperComponents(
+    const SimplexId vertexId,
+    const dataType * const offsets,
+    const triangulationType &triangulation) const {
+
+  SimplexId neighborNumber = triangulation.getVertexNeighborNumber(vertexId);
+  std::vector<SimplexId> lowerNeighbors, upperNeighbors;
+
+  for(SimplexId i = 0; i < neighborNumber; i++) {
+    SimplexId neighborId = 0;
+    triangulation.getVertexNeighbor(vertexId, i, neighborId);
+
+    if(offsets[neighborId] < offsets[vertexId]) {
+      lowerNeighbors.push_back(neighborId);
+    }
+
+    // upper link
+    if(offsets[neighborId] > offsets[vertexId]) {
+      upperNeighbors.push_back(neighborId);
+    }
+  }
+
+  // shortcut, if min or max do not construct the complete star
+  if(lowerNeighbors.empty()) {
+    // minimum
+    return std::make_pair(0, 1);
+  }
+
+  if(upperNeighbors.empty()) {
+    // maximum
+    return std::make_pair(1, 0);
+  }
+
+  // now do the actual work
+  std::vector<UnionFind> lowerSeeds(lowerNeighbors.size());
+  std::vector<UnionFind *> lowerList(lowerNeighbors.size());
+  std::vector<UnionFind> upperSeeds(upperNeighbors.size());
+  std::vector<UnionFind *> upperList(upperNeighbors.size());
+
+  for(SimplexId i = 0; i < (SimplexId)lowerSeeds.size(); i++) {
+    lowerList[i] = &(lowerSeeds[i]);
+  }
+  for(SimplexId i = 0; i < (SimplexId)upperSeeds.size(); i++) {
+    upperList[i] = &(upperSeeds[i]);
+  }
+
+  SimplexId vertexStarSize = triangulation.getVertexStarNumber(vertexId);
+
+  for(SimplexId i = 0; i < vertexStarSize; i++) {
+    SimplexId cellId = 0;
+    triangulation.getVertexStar(vertexId, i, cellId);
+
+    SimplexId cellSize = triangulation.getCellVertexNumber(cellId);
+    for(SimplexId j = 0; j < cellSize; j++) {
+      SimplexId neighborId0 = -1;
+      triangulation.getCellVertex(cellId, j, neighborId0);
+
+      if(neighborId0 != vertexId) {
+        // we are on the link
+
+        bool lower0 = offsets[neighborId0] < offsets[vertexId];
+
+        // connect it to everybody except himself and vertexId
+        for(SimplexId k = j + 1; k < cellSize; k++) {
+
+          SimplexId neighborId1 = -1;
+          triangulation.getCellVertex(cellId, k, neighborId1);
+
+          if((neighborId1 != neighborId0) && (neighborId1 != vertexId)) {
+
+            bool lower1 = offsets[neighborId1] < offsets[vertexId];
+
+            std::vector<SimplexId> *neighbors = &lowerNeighbors;
+            std::vector<UnionFind *> *seeds = &lowerList;
+
+            if(!lower0) {
+              neighbors = &upperNeighbors;
+              seeds = &upperList;
+            }
+
+            if(lower0 == lower1) {
+              // connect their union-find sets!
+              SimplexId lowerId0 = -1, lowerId1 = -1;
+              for(SimplexId l = 0; l < (SimplexId)neighbors->size(); l++) {
+                if((*neighbors)[l] == neighborId0) {
+                  lowerId0 = l;
+                }
+                if((*neighbors)[l] == neighborId1) {
+                  lowerId1 = l;
+                }
+              }
+              if((lowerId0 != -1) && (lowerId1 != -1)) {
+                (*seeds)[lowerId0] = UnionFind::makeUnion(
+                  (*seeds)[lowerId0], (*seeds)[lowerId1]);
+                (*seeds)[lowerId1] = (*seeds)[lowerId0];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // let's remove duplicates now
+
+  // update the UF if necessary
+  for(SimplexId i = 0; i < (SimplexId)lowerList.size(); i++)
+    lowerList[i] = lowerList[i]->find();
+  for(SimplexId i = 0; i < (SimplexId)upperList.size(); i++)
+    upperList[i] = upperList[i]->find();
+
+  std::vector<UnionFind *>::iterator it;
+  std::sort(lowerList.begin(), lowerList.end());
+  it = unique(lowerList.begin(), lowerList.end());
+  lowerList.resize(distance(lowerList.begin(), it));
+
+  std::sort(upperList.begin(), upperList.end());
+  it = unique(upperList.begin(), upperList.end());
+  upperList.resize(distance(upperList.begin(), it));
+
+  if(debugLevel_ >= (int)(debug::Priority::VERBOSE)) {
+    printMsg("Vertex #" + std::to_string(vertexId)
+               + ": lowerLink-#CC=" + std::to_string(lowerList.size())
+               + " upperLink-#CC=" + std::to_string(upperList.size()),
+             debug::Priority::VERBOSE);
+  }
+
+  return std::make_pair(lowerList.size(), upperList.size());
 }

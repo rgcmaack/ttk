@@ -5,4 +5,5 @@ ttk_add_base_library(morseSmaleComplexQuasi
     MorseSmaleComplexQuasi.h
   DEPENDS
     triangulation
+    unionFind
 )
