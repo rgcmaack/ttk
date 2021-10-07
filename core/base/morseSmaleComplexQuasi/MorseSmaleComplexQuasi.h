@@ -253,6 +253,7 @@ namespace ttk {
         success += triangulation->preconditionTriangleEdges();
         success += triangulation->preconditionCellTriangles();
         success += triangulation->preconditionVertexStars();
+        success += triangulation->preconditionBoundaryVertices();
       return success;
     };
 
@@ -1110,10 +1111,10 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
   ttk::Timer localTimer;
 
   this->printMsg(ttk::debug::Separator::L1);
-  this->printMsg("Computing 1-separatrices (2D)",
+  this->printMsg("Computing 1-separatrices",
                  0, // progress form 0-1
                  0, // elapsed time so far
-                 this->threadNumber_);//, ttk::debug::LineMode::REPLACE);
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
   // sparseId, vector of edgeID tuples
   std::unordered_map<
@@ -1191,9 +1192,16 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     }
   }
 
+  this->printMsg("Computing 1-separatrices (s)" + std::to_string(sepPieces.size()),
+                 0.5, // progress form 0-1
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
   for (auto& it_seps: sepPieces) { // put the sepPieces in sequence
+    
     auto sepVectorPtr = it_seps.second;
     const SimplexId vecSize = sepVectorPtr->size();
+    this->printMsg("it_seps - vecsize: " + std::to_string(vecSize));
 
     SimplexId maxIndex = 0;
 
@@ -1223,6 +1231,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
       }
     }
 
+    this->printMsg("startEdge: ");
+
     // find a starting edge
     SimplexId startEdge{-1};
     for (auto& it: edgeIdToArrIndex) {
@@ -1231,6 +1241,11 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
         break;
       }
     }
+
+    if(startEdge == -1)
+      continue;
+
+    this->printMsg("startEdge: " + std::to_string(startEdge));
 
     // write separatrix
     mscq::Separatrix newSep(startEdge);
@@ -1269,10 +1284,14 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
         }
       } // else ends at border edge
     }
+
+    
     
     SimplexId previousId = startEdge;
     SimplexId nextId = linkedEdges[edgeIdToArrIndex[startEdge]].neighbors_[0];
     newSep.geometry_.push_back(nextId);
+
+    this->printMsg("X: " + std::to_string(previousId));
 
     while(linkedEdges[edgeIdToArrIndex[nextId]].hasTwoNeighbors) {
       SimplexId tempPreviousId = nextId;
@@ -1281,8 +1300,15 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
       newSep.geometry_.push_back(nextId);
     }
 
+    this->printMsg("Y: " + std::to_string(previousId));
+
     separatrixVector.push_back(newSep);
   }
+
+  this->printMsg("Computing 1-separatrices (u)" + std::to_string(unhandledTriConnectors.size()),
+                 0.5, // progress form 0-1
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
   // merge two splitting triangles into a saddle
   for(auto u : unhandledTriConnectors) {
@@ -1304,8 +1330,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     criticalPoints.push_back(mscq::CriticalPoint(splitEdge0, 1, 1));
   }
 
-  this->printMsg("X3");
-
   return 0;
 }
 
@@ -1313,6 +1337,10 @@ template <typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
   const std::vector<mscq::Separatrix> &separatrices,
   const triangulationType &triangulation) const {
+
+  this->printMsg("Writing 1-separatrices:" + std::to_string(separatrices.size()),
+                 1, 0, this->threadNumber_,
+                 ttk::debug::LineMode::REPLACE);
 
 #ifndef TTK_ENABLE_KAMIKAZE
   if(outputSeparatrices1_numberOfPoints_ == nullptr) {
@@ -1336,7 +1364,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
       " 1-separatrices pointer to the input scalar field is null.");
     return -1;
   }
-#endif 
+#endif
 
   // total number of separatrices points
   auto npoints{static_cast<size_t>(*outputSeparatrices1_numberOfPoints_)};
@@ -1429,6 +1457,9 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
   *outputSeparatrices1_numberOfPoints_ = npoints;
   *outputSeparatrices1_numberOfCells_ = numCells;
 
+  this->printMsg("Wrote 1-separatrices:" + std::to_string(separatrices.size()),
+                 1, 0, this->threadNumber_);
+
   return 0;
 }
 
@@ -1501,20 +1532,6 @@ if(!db_omp) {
     if(tetEdgeIndices[0] == -1) { // 1 label on tetraeder
       continue;
     } else {
-      if(testFindSaddles) {
-        SimplexId candidates[4];
-
-        triangulation.getCellVertex(tet, 0, candidates[0]);
-        triangulation.getCellVertex(tet, 1, candidates[1]);
-        triangulation.getCellVertex(tet, 2, candidates[2]);
-        triangulation.getCellVertex(tet, 3, candidates[3]);
-
-        saddleCandidates->insert(candidates[0]);
-        saddleCandidates->insert(candidates[1]);
-        saddleCandidates->insert(candidates[2]);
-        saddleCandidates->insert(candidates[3]);
-      }
-
       float edgeCenters[10][3];
       getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
       getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
@@ -1539,6 +1556,13 @@ if(!db_omp) {
       getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
 
       if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+        if(testFindSaddles) {
+          saddleCandidates->insert(vertices[0]);
+          saddleCandidates->insert(vertices[1]);
+          saddleCandidates->insert(vertices[2]);
+          saddleCandidates->insert(vertices[3]);
+        }
+
         float tetCenter[3];
         triangulation.getCellIncenter(tet, 3, tetCenter);
 
@@ -1638,6 +1662,30 @@ if(!db_omp) {
           sepPieces1[sparseID].push_back(std::make_tuple(triID, tet, true));
         }
       } else { // 2 or 3 labels on tetraeder
+        if(testFindSaddles) {
+          this->printMsg(std::to_string(triangulation.isVertexOnBoundary(vertices[0])));
+          if(tetEdgeIndices[6] == -1) {
+
+
+            if(triangulation.isVertexOnBoundary(vertices[0]))
+              saddleCandidates->insert(vertices[0]);
+
+            if(triangulation.isVertexOnBoundary(vertices[1]))
+              saddleCandidates->insert(vertices[1]);
+
+            if(triangulation.isVertexOnBoundary(vertices[2]))
+              saddleCandidates->insert(vertices[2]);
+
+            if(triangulation.isVertexOnBoundary(vertices[3]))
+              saddleCandidates->insert(vertices[3]);
+
+            this->printMsg(std::to_string(triangulation.isVertexOnBoundary(vertices[0])));
+            this->printMsg(std::to_string(triangulation.isVertexOnBoundary(vertices[1])));
+            this->printMsg(std::to_string(triangulation.isVertexOnBoundary(vertices[2])));
+            this->printMsg(std::to_string(triangulation.isVertexOnBoundary(vertices[3])));
+          }
+        }
+
         trianglePos.push_back({
           edgeCenters[tetEdgeIndices[0]][0],
           edgeCenters[tetEdgeIndices[0]][1],
@@ -1907,20 +1955,6 @@ if(!db_omp) {
       if(tetEdgeIndices[0] == -1) { // 1 label on tetraeder
         continue;
       } else {
-        if(testFindSaddles) {
-          SimplexId candidates[4];
-
-          triangulation.getCellVertex(tet, 0, candidates[0]);
-          triangulation.getCellVertex(tet, 1, candidates[1]);
-          triangulation.getCellVertex(tet, 2, candidates[2]);
-          triangulation.getCellVertex(tet, 3, candidates[3]);
-
-          saddleCandidatesLocal.push_back(candidates[0]);
-          saddleCandidatesLocal.push_back(candidates[1]);
-          saddleCandidatesLocal.push_back(candidates[2]);
-          saddleCandidatesLocal.push_back(candidates[3]);
-        }
-
         float edgeCenters[10][3];
         getEdgeIncenter(
           vertices[0], vertices[1], edgeCenters[0], triangulation);
@@ -1951,6 +1985,13 @@ if(!db_omp) {
         getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
 
         if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+          if(testFindSaddles) {
+            saddleCandidatesLocal.push_back(vertices[0]);
+            saddleCandidatesLocal.push_back(vertices[1]);
+            saddleCandidatesLocal.push_back(vertices[2]);
+            saddleCandidatesLocal.push_back(vertices[3]);
+          }
+
           float tetCenter[3];
           triangulation.getCellIncenter(tet, 3, tetCenter);
 
@@ -2045,6 +2086,22 @@ if(!db_omp) {
             sepPcsLocal.push_back(std::make_tuple(sparseID, triID, tet, true));
           }
         } else { // 2 or 3 labels on tetraeder
+          if(testFindSaddles) {
+            if(tetEdgeIndices[6] == -1) {
+              if(triangulation.isVertexOnBoundary(vertices[0]))
+                saddleCandidatesLocal.push_back(vertices[0]);
+
+              if(triangulation.isVertexOnBoundary(vertices[1]))
+                saddleCandidatesLocal.push_back(vertices[1]);
+
+              if(triangulation.isVertexOnBoundary(vertices[2]))
+                saddleCandidatesLocal.push_back(vertices[2]);
+
+              if(triangulation.isVertexOnBoundary(vertices[3]))
+                saddleCandidatesLocal.push_back(vertices[3]);
+            }
+          }
+
           trianglePosLocal.push_back({
             edgeCenters[tetEdgeIndices[0]][0],
             edgeCenters[tetEdgeIndices[0]][1],
