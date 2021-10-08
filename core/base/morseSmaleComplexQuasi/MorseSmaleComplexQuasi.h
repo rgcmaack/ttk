@@ -669,6 +669,8 @@ int ttk::MorseSmaleComplexQuasi::execute(
               criticalPoints, separatrices1, sepManifold, triangulation
             );
 
+            this->printMsg("1-seps computed");
+
             setSeparatrices1_2D<triangulationType>(
               separatrices1, triangulation
             );
@@ -1120,10 +1122,11 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
   std::unordered_map<
     long long, std::vector<std::tuple<SimplexId, SimplexId>>*> sepPieces;
 
-  // sparseId, triangle0, edge0, triangle1, edge1
-  std::unordered_map<long long, std::tuple<
-    SimplexId, SimplexId, SimplexId, SimplexId>> triConnectors;
-  std::unordered_set<long long> unhandledTriConnectors;
+  // 3 label triangles
+  std::unordered_map<long long, std::vector<
+    std::tuple<SimplexId, SimplexId> >> triConnectors;
+
+  std::unordered_set<SimplexId> saddleCandidates;
 
   // morseSmaleManifoldId, edgeId and corresponding vertexID
   std::unordered_map<
@@ -1162,11 +1165,18 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
 
         if(triConnectors.find(sparseID) == triConnectors.end()) {
           triConnectors.insert(
-            {sparseID, std::make_tuple(tri, edges[e], -1, -1)});
-        } else {
-          std::get<2>(triConnectors[sparseID]) = tri;
-          std::get<3>(triConnectors[sparseID]) = edges[e];
+            {sparseID, std::vector<std::tuple<SimplexId, SimplexId>>()} );
         }
+        triConnectors[sparseID].push_back(std::make_tuple(edges[e], tri));
+
+        SimplexId saddleCandidateVertex[3];
+        triangulation.getTriangleVertex(tri, 0, saddleCandidateVertex[0]);
+        triangulation.getTriangleVertex(tri, 1, saddleCandidateVertex[1]);
+        triangulation.getTriangleVertex(tri, 2, saddleCandidateVertex[2]);
+
+        saddleCandidates.insert(saddleCandidateVertex[0]);
+        saddleCandidates.insert(saddleCandidateVertex[1]);
+        saddleCandidates.insert(saddleCandidateVertex[2]);
       }
     } else if (sameLabelCount == 1) { // 2 labels on triangle
 
@@ -1192,11 +1202,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     }
   }
 
-  this->printMsg("Computing 1-separatrices (s)" + std::to_string(sepPieces.size()),
-                 0.5, // progress form 0-1
-                 localTimer.getElapsedTime(), // elapsed time so far
-                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
-
   for (auto& it_seps: sepPieces) { // put the sepPieces in sequence
     
     auto sepVectorPtr = it_seps.second;
@@ -1205,7 +1210,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
     SimplexId maxIndex = 0;
 
     // write all Edges into a doubly Linked List
-    mscq::DoublyLinkedElement linkedEdges[vecSize+1];
+    std::vector<mscq::DoublyLinkedElement> linkedEdges;
+    linkedEdges.reserve(vecSize+2);
     std::unordered_map<SimplexId, SimplexId> edgeIdToArrIndex;
     {
       for (auto& it_vec: *sepVectorPtr) {
@@ -1215,7 +1221,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
         if(edgeIdToArrIndex.find(firstEdge) == edgeIdToArrIndex.end()) {
           SimplexId newIndex = maxIndex++;
           edgeIdToArrIndex.insert({firstEdge, newIndex});
-          linkedEdges[newIndex] = mscq::DoublyLinkedElement(secondEdge);
+          linkedEdges.push_back(mscq::DoublyLinkedElement(secondEdge));
         } else {
           linkedEdges[edgeIdToArrIndex[firstEdge]].insert(secondEdge);
         }
@@ -1223,12 +1229,15 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
         if(edgeIdToArrIndex.find(secondEdge) == edgeIdToArrIndex.end()) {
           SimplexId newIndex = maxIndex++;
           edgeIdToArrIndex.insert({secondEdge, newIndex});
-          linkedEdges[newIndex] = mscq::DoublyLinkedElement(firstEdge);
+          linkedEdges.push_back(mscq::DoublyLinkedElement(firstEdge));
         } else {
           linkedEdges[edgeIdToArrIndex[secondEdge]].insert(firstEdge);
         }
       }
     }
+
+    this->printMsg("maxIndex:" + std::to_string(maxIndex));
+    this->printMsg("vecSize: " + std::to_string((vecSize)) + "\n");
 
     // find a starting edge
     std::unordered_map<SimplexId, bool> startIds;
@@ -1245,6 +1254,28 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
       // write separatrix
       const SimplexId startEdge = it_starts.first;
       mscq::Separatrix newSep(startEdge);
+
+      SimplexId startEdgeVerts[2];
+      triangulation.getEdgeVertex(startEdge, 0, startEdgeVerts[0]);
+      triangulation.getEdgeVertex(startEdge, 1, startEdgeVerts[1]);
+
+      const long long sparseID = getSparseId(
+        morseSmaleManifold[startEdgeVerts[0]],
+        morseSmaleManifold[startEdgeVerts[1]]
+      );
+
+      auto &triConnVect = triConnectors[sparseID];
+      const size_t triConnVectSize = triConnVect.size();
+
+      // Find the starting Triangle, if it exists
+      for(size_t ec = 0; ec < triConnVectSize; ++ec) {
+        if(std::get<0>(triConnVect[ec]) == startEdge) {
+          newSep.source_ = std::get<1>(triConnVect[ec]);
+          triConnectors[sparseID].erase( triConnectors[sparseID].begin() + ec);
+
+          break;
+        }
+      }
       
       SimplexId previousId = startEdge;
       SimplexId nextId = linkedEdges[edgeIdToArrIndex[startEdge]].neighbors_[0];
@@ -1260,102 +1291,50 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1_2D(
         linkedEdges[edgeIdToArrIndex[previousId]].visited = true;
       }
 
-      //while(linkedEdges[edgeIdToArrIndex[nextId]].hasTwoNeighbors) {
-    //  SimplexId tempPreviousId = nextId;
-    //  nextId = linkedEdges[edgeIdToArrIndex[nextId]].next(previousId);
-    //  previousId = tempPreviousId;
-    //  newSep.geometry_.push_back(nextId);
-    //}
+      for(size_t ec = 0; ec < triConnVectSize; ++ec) {
+        if(std::get<0>(triConnVect[ec]) == nextId) {
+          newSep.destination_ = std::get<1>(triConnVect[ec]);
+          triConnectors[sparseID].erase( triConnectors[sparseID].begin() + ec);
+
+          break;
+        }
+      }
       
       startIds[nextId] = true;
 
       separatrixVector.push_back(newSep);
     }
-
-    //this->printMsg("startEdge: " + std::to_string(startEdge));
-
-    //// write separatrix
-    //mscq::Separatrix newSep(startEdge);
-
-    //SimplexId v0, v1;
-    //triangulation.getEdgeVertex(startEdge, 0, v0);
-    //triangulation.getEdgeVertex(startEdge, 1, v1);
-
-    //const long long sparseID = getSparseId(
-    //  morseSmaleManifold[v0], morseSmaleManifold[v1]);
-
-    //unhandledTriConnectors.erase(sparseID); // remove handled IDs
-
-    //bool splitAtStart = false;
- 
-    //if(triConnectors.find(sparseID) != triConnectors.end()) {
-    //  SimplexId splitTriangle = std::get<0>(triConnectors[sparseID]);
-    //  SimplexId splitEdge = std::get<1>(triConnectors[sparseID]);
-
-    //  splitAtStart = splitEdge == startEdge;
-
-    //  if(splitAtStart) {
-    //    newSep.source_ = splitTriangle;
-    //  } else {
-    //    newSep.destination_ = splitTriangle;
-    //  }
-
-    //  splitTriangle = std::get<2>(triConnectors[sparseID]);
-    //  splitEdge = std::get<3>(triConnectors[sparseID]);
-
-    //  if(splitTriangle != -1) {
-    //    if(splitAtStart) {
-    //      newSep.destination_ = splitTriangle;
-    //    } else {
-    //     newSep.source_ = splitTriangle;
-    //    }
-    //  } // else ends at border edge
-    //}
-
-    //
-    //
-    //SimplexId previousId = startEdge;
-    //SimplexId nextId = linkedEdges[edgeIdToArrIndex[startEdge]].neighbors_[0];
-    //newSep.geometry_.push_back(nextId);
-
-    //this->printMsg("X: " + std::to_string(previousId));
-
-    //while(linkedEdges[edgeIdToArrIndex[nextId]].hasTwoNeighbors) {
-    //  SimplexId tempPreviousId = nextId;
-    //  nextId = linkedEdges[edgeIdToArrIndex[nextId]].next(previousId);
-    //  previousId = tempPreviousId;
-    //  newSep.geometry_.push_back(nextId);
-    //}
-
-    //this->printMsg("Y: " + std::to_string(previousId));
-
-    //separatrixVector.push_back(newSep);
   }
 
-  this->printMsg("Computing 1-separatrices (u)" + std::to_string(unhandledTriConnectors.size()),
-                 0.5, // progress form 0-1
-                 localTimer.getElapsedTime(), // elapsed time so far
-                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
-
   // merge two splitting triangles into a saddle
-  //for(auto u : unhandledTriConnectors) {
-  //  const auto& conn = triConnectors[u];
-  //  SimplexId splitTriangle0 = std::get<0>(conn);
-  //  SimplexId splitEdge0 = std::get<1>(conn);
-  //  SimplexId splitTriangle1 = std::get<2>(conn);
-  //
-  //  mscq::Separatrix newSep(splitEdge0);
-  //  newSep.source_ = splitTriangle0;
-  //  newSep.destination_ = splitTriangle1;
-  //  separatrixVector.push_back(newSep);
-  //
-  //  std::array<float, 3> pt{};
-  //  triangulation.getEdgeIncenter(splitEdge0, pt.data());
-  //  outputCriticalPoints_points_->push_back(pt);
-  //  outputCriticalPoints_points_cellDimensions_->push_back(1);
-  //  outputCriticalPoints_points_cellIds_->push_back(splitEdge0);
-  //  criticalPoints.push_back(mscq::CriticalPoint(splitEdge0, 1, 1));
-  //}
+  for(auto u : triConnectors) {
+    if(u.second.size() > 0) {
+      for(size_t i = 0; i < u.second.size(); ++i) {
+        for (size_t j = i+1; j < u.second.size(); ++j) {
+          if(std::get<0>(u.second[i]) == std::get<0>(u.second[j])) {
+            SimplexId splitEdge0 = std::get<0>(u.second[i]);
+            SimplexId splitTriangle0 = std::get<1>(u.second[i]);
+            SimplexId splitTriangle1 = std::get<1>(u.second[j]);
+
+            mscq::Separatrix newSep(splitEdge0);
+            newSep.source_ = splitTriangle0;
+            newSep.destination_ = splitTriangle1;
+            separatrixVector.push_back(newSep);
+
+            std::array<float, 3> pt{};
+            triangulation.getEdgeIncenter(splitEdge0, pt.data());
+            //outputCriticalPoints_points_->push_back(pt);
+            //outputCriticalPoints_points_cellDimensions_->push_back(1);
+            //outputCriticalPoints_points_cellIds_->push_back(splitEdge0);
+            //criticalPoints.push_back(mscq::CriticalPoint(splitEdge0, 1, 1));
+
+            u.second.erase( u.second.begin() + j);
+          }
+        }
+      }
+    }
+    
+  }
 
   return 0;
 }
