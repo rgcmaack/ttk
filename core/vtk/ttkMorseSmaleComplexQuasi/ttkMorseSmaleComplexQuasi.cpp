@@ -253,7 +253,7 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     &separatrices2_cells_caseTypes);
 
   const int ret = this->execute<dataType, triangulationType>(
-    triangulation, SeparatricesManifold, ComputeSeparatrices, SeperateExtrema,
+    triangulation, SeparatricesManifold, ComputeSeparatrices,
     FastSeparatrices
   );
 
