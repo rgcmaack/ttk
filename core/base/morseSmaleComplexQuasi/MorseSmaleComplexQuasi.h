@@ -499,11 +499,28 @@ namespace ttk {
       const triangulationType &triangulation) const;
 
     template <typename dataType, typename triangulationType>
-    int computeSeparatrices_3D(
+    int compute2Separatrices_3D(
       std::vector<std::array<float, 9>> &trianglePos,    
       std::vector<SimplexId> &caseData,
-      std::vector<mscq::Separatrix3D> &separatrices1,
       std::unordered_set<SimplexId> *saddleCandidates,
+      std::unordered_map<long long, std::vector<
+        std::tuple<SimplexId, SimplexId, bool>>> &pieces1separatrices,
+      const SimplexId *const morseSmaleManifold,
+      const triangulationType &triangulation) const;
+
+    template <typename dataType, typename triangulationType>
+    int compute1SeparatricesInner_3D(
+      std::unordered_map<long long, std::vector<
+      std::tuple<SimplexId, SimplexId, bool>>> &pieces1separatrices,
+      std::vector<mscq::Separatrix3D> &separatrices1,
+      std::unordered_set<SimplexId> &borderSeeds,
+      const SimplexId *const morseSmaleManifold,
+      const triangulationType &triangulation) const;
+
+    template <typename triangulationType>
+    int compute1SeparatricesBorder_3D(
+      std::unordered_set<SimplexId> &borderSeeds,
+      std::vector<mscq::Separatrix3D> &separatrices1,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
@@ -622,7 +639,7 @@ namespace ttk {
     SimplexId num_MSC_regions_{};
 
     // Debug
-    bool db_omp = false;
+    bool db_omp = true;
 
   }; // MorseSmaleComplexQuasi class
 
@@ -664,6 +681,9 @@ int ttk::MorseSmaleComplexQuasi::execute(
   std::vector<mscq::CriticalPoint> criticalPoints;
   std::vector<mscq::Separatrix3D> separatrices1;
   std::unordered_set<SimplexId> saddleCandidates;
+  std::unordered_map<long long, std::vector<
+    std::tuple<SimplexId, SimplexId, bool>>> pieces1separatrices;
+  std::unordered_set<SimplexId> borderSeeds;
   {
     Timer tmp;
 
@@ -742,13 +762,22 @@ int ttk::MorseSmaleComplexQuasi::execute(
             std::vector<std::array<float, 9>> trianglePos;
             std::vector<SimplexId> caseData;
 
-            computeSeparatrices_3D<dataType, triangulationType>(
-              trianglePos, caseData, separatrices1, &saddleCandidates,
+            compute2Separatrices_3D<dataType, triangulationType>(
+              trianglePos, caseData, &saddleCandidates, pieces1separatrices,
               sepManifold, triangulation
             );
 
             setSaddlePointsFromCadidates<dataType, triangulationType>(
               saddleCandidates, triangulation
+            );
+
+            compute1SeparatricesInner_3D<dataType, triangulationType>(
+              pieces1separatrices, separatrices1, borderSeeds,
+              sepManifold, triangulation
+            );
+
+            compute1SeparatricesBorder_3D<triangulationType>(
+              borderSeeds, separatrices1, sepManifold, triangulation
             );
 
             setSeparatrices1_3D<triangulationType>(
@@ -761,6 +790,7 @@ int ttk::MorseSmaleComplexQuasi::execute(
     }
   }
 
+  this->printMsg(ttk::debug::Separator::L1);
   this->printMsg( std::to_string(triangulation.getNumberOfVertices())
                    + " verticies processed",
                  1.0, t.getElapsedTime(), this->threadNumber_);
@@ -1482,17 +1512,17 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
 }
 
 template <typename dataType, typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
+int ttk::MorseSmaleComplexQuasi::compute2Separatrices_3D(
   std::vector<std::array<float, 9>> &trianglePos,    
   std::vector<SimplexId> &caseData,
-  std::vector<mscq::Separatrix3D> &separatrices1,
   std::unordered_set<SimplexId> *saddleCandidates,
+  std::unordered_map<long long, std::vector<
+    std::tuple<SimplexId, SimplexId, bool>>> &pieces1separatrices,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
-
+  
   ttk::Timer localTimer;
 
-  this->printMsg(ttk::debug::Separator::L1);
   // print the progress of the current subprocedure (currently 0%)
   this->printMsg("Computing 2-Separatrices 3D",
                  0, // progress form 0-1
@@ -1515,12 +1545,6 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D(
     this->printErr("2-separatrices pointer to cells is null.");
     return -1;
   }
-  
-  std::unordered_map<
-    long long,
-    std::vector<std::tuple<SimplexId, SimplexId, bool>>> sepPieces1;
-
-  //std::unordered_map<SimplexId, std::vector<SimplexId>> 
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
   const bool testFindSaddles = saddleCandidates != nullptr;
@@ -1674,12 +1698,13 @@ if(!db_omp) {
             morseSmaleManifold[triVertIds[2]]
           );
 
-          if(sepPieces1.find(sparseID) == sepPieces1.end()) { // new sparseID
-            sepPieces1.insert({sparseID,
+          if(pieces1separatrices.find(sparseID) == pieces1separatrices.end()) {
+            pieces1separatrices.insert({sparseID,
               std::vector<std::tuple<SimplexId, SimplexId, bool>>()}
             );
           }
-          sepPieces1[sparseID].push_back(std::make_tuple(triID, tet, true));
+          pieces1separatrices[sparseID].push_back(
+            std::make_tuple(triID, tet, true));
         }
       } else { // 2 or 3 labels on tetraeder
         if(testFindSaddles) {
@@ -1794,12 +1819,13 @@ if(!db_omp) {
               }
             }
 
-            if(sepPieces1.find(sparseID) == sepPieces1.end()) { // new sparseID
-              sepPieces1.insert({
+            if(pieces1separatrices.find(sparseID) ==
+              pieces1separatrices.end()) {
+              pieces1separatrices.insert({
                 sparseID,
                 std::vector<std::tuple<SimplexId, SimplexId, bool>>()});
             }
-            sepPieces1[sparseID].push_back(
+            pieces1separatrices[sparseID].push_back(
               std::make_tuple(sepTriangles[0], sepTriangles[1], false)
             );
           } else {
@@ -1811,259 +1837,16 @@ if(!db_omp) {
       }
     }
   }
-
-  this->printMsg("Computing 1-Separatrices 3D",
-                 0.9, // progress form 0-1
-                 localTimer.getElapsedTime(), // elapsed time so far
-                 this->threadNumber_);
-  
-  const auto numTris = triangulation.getNumberOfTriangles();
-  for (auto& it_seps: sepPieces1) { // put the sepPieces in sequence
-    auto sepVectorPtr = it_seps.second;
-    const size_t vecSize = sepVectorPtr.size();
-    SimplexId maxIndex = 0;
-
-    // write all Triangles into a doubly Linked List
-    mscq::DoublyLinkedElement linkedTris[vecSize * 2];
-    std::unordered_map<SimplexId, SimplexId> triIdToArrIndex;
-    {
-      for(std::size_t sepI = 0; sepI < vecSize; ++sepI) {
-        const SimplexId firstTri = std::get<0>(sepVectorPtr[sepI]);
-        const SimplexId secondTri = std::get<1>(sepVectorPtr[sepI]);
-        const bool is4LabelSplit = std::get<2>(sepVectorPtr[sepI]);
-
-        if(is4LabelSplit) {
-          if(triIdToArrIndex.find(firstTri) == triIdToArrIndex.end()) {
-            SimplexId newIndex = maxIndex++;
-            triIdToArrIndex.insert({firstTri, newIndex});
-            linkedTris[newIndex] =
-              mscq::DoublyLinkedElement((secondTri + numTris));
-
-            newIndex = maxIndex++;
-            triIdToArrIndex.insert({secondTri + numTris, newIndex});
-            linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
-
-          } else {
-            linkedTris[triIdToArrIndex[firstTri]].insert(secondTri  + numTris);
-
-            SimplexId newIndex = maxIndex++;
-            triIdToArrIndex.insert({(secondTri + numTris), newIndex});
-            linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
-          }
-        } else {
-          if(triIdToArrIndex.find(firstTri) == triIdToArrIndex.end()) {
-            SimplexId newIndex = maxIndex++;
-            triIdToArrIndex.insert({firstTri, newIndex});
-            linkedTris[newIndex] = mscq::DoublyLinkedElement(secondTri);
-
-          } else {
-            linkedTris[triIdToArrIndex[firstTri]].insert(secondTri);
-          }
-
-          if(triIdToArrIndex.find(secondTri) == triIdToArrIndex.end()) {
-            SimplexId newIndex = maxIndex++;
-            triIdToArrIndex.insert({secondTri, newIndex});
-            linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
-
-          } else {
-            linkedTris[triIdToArrIndex[secondTri]].insert(firstTri);
-          }
-        }
-      }
-    }
-
-    std::unordered_map<SimplexId, bool> startIds;
-    for(auto& it: triIdToArrIndex) {
-      if(!linkedTris[it.second].hasTwoNeighbors) {
-        startIds.insert({it.first, false});
-      }
-    }
-
-    std::unordered_set<SimplexId> borderSeeds;
-
-    for(const auto& it_starts: startIds) { // detect paths
-      if(it_starts.second) { // Is simplex already part of a separatrix?
-        continue;
-      }
-      // write separatrix
-      const SimplexId startTri = it_starts.first;
-      mscq::Separatrix3D newSep(startTri);
-      
-      SimplexId previousId = startTri;
-      SimplexId nextId = linkedTris[triIdToArrIndex[startTri]].neighbors_[0];
-      linkedTris[triIdToArrIndex[previousId]].visited = true;
-      newSep.geometry_.push_back(nextId);
-
-      while(linkedTris[triIdToArrIndex[nextId]].hasTwoNeighbors &&
-        !linkedTris[triIdToArrIndex[nextId]].visited) {
-        SimplexId tempPreviousId = nextId;
-        nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
-        previousId = tempPreviousId;
-        newSep.geometry_.push_back(nextId);
-        linkedTris[triIdToArrIndex[previousId]].visited = true;
-      }
-      
-      startIds[nextId] = true;
-
-      if(newSep.geometry_.front() >= numTris ||
-        newSep.geometry_.back() >= numTris) {
-        
-        if(newSep.geometry_.front() < newSep.geometry_.back()) {
-          std::reverse(newSep.geometry_.begin(), newSep.geometry_.end());
-        }
-
-        if(newSep.geometry_.back() < numTris) { // ends on boundary
-          borderSeeds.insert(newSep.geometry_.back());
-          newSep.endsOnBoundary_ = true;
-        }
-
-        separatrices1.push_back(newSep);
-      } else {
-        borderSeeds.insert(newSep.geometry_.front());
-        borderSeeds.insert(newSep.geometry_.back());
-      }
-    }
-
-    std::unordered_map<long long,
-      std::vector<std::tuple<SimplexId, SimplexId>>> borderPathSeeds;
-
-    for (const auto& it: borderSeeds) {
-      SimplexId triEdges[3];
-      triangulation.getTriangleEdge(it, 0, triEdges[0]);
-      triangulation.getTriangleEdge(it, 1, triEdges[1]);
-      triangulation.getTriangleEdge(it, 2, triEdges[2]);
-
-      SimplexId triEdgeVertices[3][2];
-      triangulation.getEdgeVertex(triEdges[0], 0, triEdgeVertices[0][0]);
-      triangulation.getEdgeVertex(triEdges[0], 1, triEdgeVertices[0][1]);
-      triangulation.getEdgeVertex(triEdges[1], 0, triEdgeVertices[1][0]);
-      triangulation.getEdgeVertex(triEdges[1], 1, triEdgeVertices[1][1]);
-      triangulation.getEdgeVertex(triEdges[2], 0, triEdgeVertices[2][0]);
-      triangulation.getEdgeVertex(triEdges[2], 1, triEdgeVertices[2][1]);
-
-      long long sparseIds[3];
-      sparseIds[0] = getSparseId(
-        morseSmaleManifold[triEdgeVertices[0][0]],
-        morseSmaleManifold[triEdgeVertices[0][1]]
-      );
-      sparseIds[1] = getSparseId(
-        morseSmaleManifold[triEdgeVertices[1][0]],
-        morseSmaleManifold[triEdgeVertices[1][1]]
-      );
-      sparseIds[2] = getSparseId(
-        morseSmaleManifold[triEdgeVertices[2][0]],
-        morseSmaleManifold[triEdgeVertices[2][1]]
-      );
-
-      if(!(
-        triangulation.isVertexOnBoundary(triEdgeVertices[0][0]) &&
-        triangulation.isVertexOnBoundary(triEdgeVertices[0][1]) &&
-        triangulation.isVertexOnBoundary(triEdgeVertices[1][0]) &&
-        triangulation.isVertexOnBoundary(triEdgeVertices[1][1]) &&
-        triangulation.isVertexOnBoundary(triEdgeVertices[2][0]) &&
-        triangulation.isVertexOnBoundary(triEdgeVertices[2][1]) )) {
-        this->printMsg("Error!!!!");
-      }
-
-      if(borderPathSeeds.find(sparseIds[0]) == borderPathSeeds.end()) {
-        borderPathSeeds.insert({
-          sparseIds[0], std::vector<std::tuple<SimplexId, SimplexId>>()}
-        );
-      }
-      if(borderPathSeeds.find(sparseIds[1]) == borderPathSeeds.end()) {
-        borderPathSeeds.insert({
-          sparseIds[1], std::vector<std::tuple<SimplexId, SimplexId>>()}
-        );
-      }
-      if(borderPathSeeds.find(sparseIds[2]) == borderPathSeeds.end()) {
-        borderPathSeeds.insert({
-          sparseIds[2], std::vector<std::tuple<SimplexId, SimplexId>>()}
-        );
-      }
-
-      borderPathSeeds[sparseIds[0]].push_back(
-        std::make_tuple(it, triEdges[0])
-      );
-      borderPathSeeds[sparseIds[1]].push_back(
-        std::make_tuple(it, triEdges[1])
-      );
-      borderPathSeeds[sparseIds[2]].push_back(
-        std::make_tuple(it, triEdges[2])
-      );
-    }
-
-    for (auto& it: borderPathSeeds) {
-      if(it.second.size() <= 2) {
-
-        mscq::Separatrix3D newSep;
-        newSep.onBoundary_ = true;
-        createBorderPath_3D(
-          newSep,
-          std::get<0>(it.second.front()),
-          std::get<1>(it.second.front()),
-          morseSmaleManifold,
-          triangulation
-        );
-        separatrices1.push_back(newSep);
-      } else {
-
-        for(size_t bps = 0; bps < it.second.size(); bps++) {
-          mscq::Separatrix3D newSep;
-          newSep.onBoundary_ = true;
-          createBorderPath_3D(
-            newSep,
-            std::get<0>(it.second[bps]),
-            std::get<1>(it.second[bps]),
-            morseSmaleManifold,
-            triangulation
-          );
-          separatrices1.push_back(newSep);
-
-          for(size_t bps2 = 0; bps2 < it.second.size(); bps2++) {
-            if(newSep.geometry_.back() == std::get<0>(it.second[bps2]) &&
-              newSep.geometry_[newSep.geometry_.size()- 2] == 
-              std::get<1>(it.second[bps2])) {
-              it.second.erase(it.second.begin() + bps2);
-              continue;
-            }
-          }
-        }
-      }
-    }
-
-    /*for (auto& it: triIdToArrIndex) { // detect cycles
-      if(!linkedTris[it.second].visited) {
-        mscq::Separatrix3D newSep(std::get<0>(it));
-    
-        SimplexId previousId = std::get<0>(it);
-        SimplexId nextId = linkedTris[std::get<1>(it)].neighbors_[0];
-        linkedTris[triIdToArrIndex[previousId]].visited = true;
-        newSep.geometry_.push_back(nextId);
-
-        while(!linkedTris[triIdToArrIndex[nextId]].visited) {
-          SimplexId tempPreviousId = nextId;
-          nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
-          previousId = tempPreviousId;
-          newSep.geometry_.push_back(nextId);
-          linkedTris[triIdToArrIndex[previousId]].visited = true;
-        }
-
-        separatrices1.push_back(newSep);
-      }
-    }*/
-  }
 //#else // TTK_ENABLE_OPENMP
 } else {
   const size_t numCacheLineEntries =
       hardware_destructive_interference_size / sizeof(SimplexId);
-  const auto numTris = triangulation.getNumberOfTriangles();
 
   #pragma omp parallel num_threads(this->threadNumber_)
   {
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
     std::vector<std::tuple<long long, SimplexId, SimplexId, bool>> sepPcsLocal;
-    std::vector<mscq::Separatrix3D> separatrices1Local;
     std::vector<SimplexId> saddleCandidatesLocal;
 
     #pragma omp for schedule(dynamic, numCacheLineEntries) nowait
@@ -2359,13 +2142,15 @@ if(!db_omp) {
     {
       for(auto& it_sepPcs1 : sepPcsLocal){
         const long long &sparseID = std::get<0>(it_sepPcs1);
-        if(sepPieces1.find(sparseID) == sepPieces1.end()) { // new sparseID
-          sepPieces1.insert({sparseID,
+        if(pieces1separatrices.find(sparseID) == pieces1separatrices.end()) { // new sparseID
+          pieces1separatrices.insert({sparseID,
             std::vector<std::tuple<SimplexId, SimplexId, bool>>()}
           );
         }
-        sepPieces1[sparseID].push_back(std::make_tuple(std::get<1>(it_sepPcs1), 
-          std::get<2>(it_sepPcs1), std::get<3>(it_sepPcs1))
+        pieces1separatrices[sparseID].push_back(std::make_tuple(
+          std::get<1>(it_sepPcs1),
+          std::get<2>(it_sepPcs1),
+          std::get<3>(it_sepPcs1))
         );
       }
     }
@@ -2375,20 +2160,148 @@ if(!db_omp) {
       std::copy(saddleCandidatesLocal.begin(), saddleCandidatesLocal.end(),
         std::inserter(*saddleCandidates, saddleCandidates->end()));
     }
+  }
+} // #if TTK_OMPENMP
+  this->printMsg("Computed 2-Separatrices 3D",
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
 
-    #pragma omp barrier
+  return 0;
+}
 
-    #pragma omp single nowait
+template <typename dataType, typename triangulationType>
+int ttk::MorseSmaleComplexQuasi::compute1SeparatricesInner_3D(
+  std::unordered_map<long long, std::vector<
+    std::tuple<SimplexId, SimplexId, bool>>> &pieces1separatrices,
+  std::vector<mscq::Separatrix3D> &separatrices1,
+  std::unordered_set<SimplexId> &borderSeeds,
+  const SimplexId *const morseSmaleManifold,
+  const triangulationType &triangulation) const {
+
+  ttk::Timer localTimer;
+
+  // print the progress of the current subprocedure (currently 0%)
+  this->printMsg("Computing inner 1-Separatrices 3D",
+                 0, // progress form 0-1
+                 0, // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+  
+  const auto numTris = triangulation.getNumberOfTriangles();
+
+if(!db_omp) {
+  for (auto& it_seps: pieces1separatrices) { // put the sepPieces in sequence
+    auto sepVectorPtr = it_seps.second;
+    const size_t vecSize = sepVectorPtr.size();
+    SimplexId maxIndex = 0;
+
+    // write all Triangles into a doubly Linked List
+    mscq::DoublyLinkedElement linkedTris[vecSize * 2];
+    std::unordered_map<SimplexId, SimplexId> triIdToArrIndex;
     {
-      this->printMsg("Computing 1-Separatrices 3D",
-                      0.9, // progress form 0-1
-                      localTimer.getElapsedTime(), // elapsed time so far
-                      this->threadNumber_, ttk::debug::LineMode::REPLACE);
+      for(std::size_t sepI = 0; sepI < vecSize; ++sepI) {
+        const SimplexId firstTri = std::get<0>(sepVectorPtr[sepI]);
+        const SimplexId secondTri = std::get<1>(sepVectorPtr[sepI]);
+        const bool is4LabelSplit = std::get<2>(sepVectorPtr[sepI]);
+
+        if(is4LabelSplit) {
+          if(triIdToArrIndex.find(firstTri) == triIdToArrIndex.end()) {
+            SimplexId newIndex = maxIndex++;
+            triIdToArrIndex.insert({firstTri, newIndex});
+            linkedTris[newIndex] =
+              mscq::DoublyLinkedElement((secondTri + numTris));
+
+            newIndex = maxIndex++;
+            triIdToArrIndex.insert({secondTri + numTris, newIndex});
+            linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
+
+          } else {
+            linkedTris[triIdToArrIndex[firstTri]].insert(secondTri  + numTris);
+
+            SimplexId newIndex = maxIndex++;
+            triIdToArrIndex.insert({(secondTri + numTris), newIndex});
+            linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
+          }
+        } else {
+          if(triIdToArrIndex.find(firstTri) == triIdToArrIndex.end()) {
+            SimplexId newIndex = maxIndex++;
+            triIdToArrIndex.insert({firstTri, newIndex});
+            linkedTris[newIndex] = mscq::DoublyLinkedElement(secondTri);
+
+          } else {
+            linkedTris[triIdToArrIndex[firstTri]].insert(secondTri);
+          }
+
+          if(triIdToArrIndex.find(secondTri) == triIdToArrIndex.end()) {
+            SimplexId newIndex = maxIndex++;
+            triIdToArrIndex.insert({secondTri, newIndex});
+            linkedTris[newIndex] = mscq::DoublyLinkedElement(firstTri);
+
+          } else {
+            linkedTris[triIdToArrIndex[secondTri]].insert(firstTri);
+          }
+        }
+      }
     }
 
+    std::unordered_map<SimplexId, bool> startIds;
+    for(auto& it: triIdToArrIndex) {
+      if(!linkedTris[it.second].hasTwoNeighbors) {
+        startIds.insert({it.first, false});
+      }
+    }
+
+    for(const auto& it_starts: startIds) { // detect paths
+      if(it_starts.second) { // Is simplex already part of a separatrix?
+        continue;
+      }
+      // write separatrix
+      const SimplexId startTri = it_starts.first;
+      mscq::Separatrix3D newSep(startTri);
+      
+      SimplexId previousId = startTri;
+      SimplexId nextId = linkedTris[triIdToArrIndex[startTri]].neighbors_[0];
+      linkedTris[triIdToArrIndex[previousId]].visited = true;
+      newSep.geometry_.push_back(nextId);
+
+      while(linkedTris[triIdToArrIndex[nextId]].hasTwoNeighbors &&
+        !linkedTris[triIdToArrIndex[nextId]].visited) {
+        SimplexId tempPreviousId = nextId;
+        nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
+        previousId = tempPreviousId;
+        newSep.geometry_.push_back(nextId);
+        linkedTris[triIdToArrIndex[previousId]].visited = true;
+      }
+      
+      startIds[nextId] = true;
+
+      if(newSep.geometry_.front() >= numTris ||
+        newSep.geometry_.back() >= numTris) {
+        
+        if(newSep.geometry_.front() < newSep.geometry_.back()) {
+          std::reverse(newSep.geometry_.begin(), newSep.geometry_.end());
+        }
+
+        if(newSep.geometry_.back() < numTris) { // ends on boundary
+          borderSeeds.insert(newSep.geometry_.back());
+          newSep.endsOnBoundary_ = true;
+        }
+
+        separatrices1.push_back(newSep);
+      } else {
+        borderSeeds.insert(newSep.geometry_.front());
+        borderSeeds.insert(newSep.geometry_.back());
+      }
+    }
+  }
+} else {
+  #pragma omp parallel num_threads(this->threadNumber_)
+  {
+    std::vector<mscq::Separatrix3D> separatrices1Local;
+    std::vector<SimplexId> borderSeedsLocal;
+
     #pragma omp for schedule(dynamic, 4) nowait
-    for(size_t b = 0; b < sepPieces1.bucket_count(); b++) {
-      for(auto it_s = sepPieces1.begin(b); it_s != sepPieces1.end(b); it_s++){
+    for(size_t b = 0; b < pieces1separatrices.bucket_count(); b++) {
+      for(auto it_s = pieces1separatrices.begin(b);
+        it_s != pieces1separatrices.end(b); it_s++){
         auto sepVectorPtr = it_s->second;
         const size_t vecSize = sepVectorPtr.size();
         SimplexId maxIndex = 0;
@@ -2476,7 +2389,23 @@ if(!db_omp) {
 
           startIds[nextId] = true;
 
-          separatrices1Local.push_back(newSep);
+          if(newSep.geometry_.front() >= numTris ||
+            newSep.geometry_.back() >= numTris) {
+            
+            if(newSep.geometry_.front() < newSep.geometry_.back()) {
+              std::reverse(newSep.geometry_.begin(), newSep.geometry_.end());
+            }
+
+            if(newSep.geometry_.back() < numTris) { // ends on boundary
+              borderSeedsLocal.push_back(newSep.geometry_.back());
+              newSep.endsOnBoundary_ = true;
+            }
+
+            separatrices1Local.push_back(newSep);
+          } else {
+            borderSeedsLocal.push_back(newSep.geometry_.front());
+            borderSeedsLocal.push_back(newSep.geometry_.back());
+          }
         }
 
         for (auto& it: triIdToArrIndex) { // detect cycles
@@ -2506,23 +2435,137 @@ if(!db_omp) {
       separatrices1.insert(separatrices1.end(),
         separatrices1Local.begin(), separatrices1Local.end());
     }
+    #pragma omp critical
+    {
+      std::copy(borderSeedsLocal.begin(), borderSeedsLocal.end(),
+        std::inserter(borderSeeds, borderSeeds.end()));
+    }
   }
 } // TTK_ENABLE_OPENMP
 
-  this->printMsg("Computed Separatrices 3D",
+  this->printMsg("Computed inner 1-Separatrices 3D",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
-
-  this->printMsg("#1-separatrices: " + std::to_string(separatrices1.size()),
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
-
-  this->printMsg("#2-sep triangles: " + std::to_string(trianglePos.size()),
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
-
-  this->printMsg("Completed",
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
-  this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
 
   return 0;
+}
+
+template <typename triangulationType>
+int ttk::MorseSmaleComplexQuasi::compute1SeparatricesBorder_3D(
+  std::unordered_set<SimplexId> &borderSeeds,
+  std::vector<mscq::Separatrix3D> &separatrices1,
+  const SimplexId *const morseSmaleManifold,
+  const triangulationType &triangulation) const {
+
+  ttk::Timer localTimer;
+
+  // print the progress of the current subprocedure (currently 0%)
+  this->printMsg("Computing border 1-Separatrices 3D",
+                 0, // progress form 0-1
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+  std::unordered_map<long long,
+    std::vector<std::tuple<SimplexId, SimplexId>>> borderPathSeeds;
+
+  for (const auto& it: borderSeeds) {
+    SimplexId triEdges[3];
+    triangulation.getTriangleEdge(it, 0, triEdges[0]);
+    triangulation.getTriangleEdge(it, 1, triEdges[1]);
+    triangulation.getTriangleEdge(it, 2, triEdges[2]);
+
+    SimplexId triEdgeVertices[3][2];
+    triangulation.getEdgeVertex(triEdges[0], 0, triEdgeVertices[0][0]);
+    triangulation.getEdgeVertex(triEdges[0], 1, triEdgeVertices[0][1]);
+    triangulation.getEdgeVertex(triEdges[1], 0, triEdgeVertices[1][0]);
+    triangulation.getEdgeVertex(triEdges[1], 1, triEdgeVertices[1][1]);
+    triangulation.getEdgeVertex(triEdges[2], 0, triEdgeVertices[2][0]);
+    triangulation.getEdgeVertex(triEdges[2], 1, triEdgeVertices[2][1]);
+
+    long long sparseIds[3];
+    sparseIds[0] = getSparseId(
+      morseSmaleManifold[triEdgeVertices[0][0]],
+      morseSmaleManifold[triEdgeVertices[0][1]]
+    );
+    sparseIds[1] = getSparseId(
+      morseSmaleManifold[triEdgeVertices[1][0]],
+      morseSmaleManifold[triEdgeVertices[1][1]]
+    );
+    sparseIds[2] = getSparseId(
+      morseSmaleManifold[triEdgeVertices[2][0]],
+      morseSmaleManifold[triEdgeVertices[2][1]]
+    );
+
+    if(borderPathSeeds.find(sparseIds[0]) == borderPathSeeds.end()) {
+      borderPathSeeds.insert({
+        sparseIds[0], std::vector<std::tuple<SimplexId, SimplexId>>()}
+      );
+    }
+    if(borderPathSeeds.find(sparseIds[1]) == borderPathSeeds.end()) {
+      borderPathSeeds.insert({
+        sparseIds[1], std::vector<std::tuple<SimplexId, SimplexId>>()}
+      );
+    }
+    if(borderPathSeeds.find(sparseIds[2]) == borderPathSeeds.end()) {
+      borderPathSeeds.insert({
+        sparseIds[2], std::vector<std::tuple<SimplexId, SimplexId>>()}
+      );
+    }
+
+    borderPathSeeds[sparseIds[0]].push_back(
+      std::make_tuple(it, triEdges[0])
+    );
+    borderPathSeeds[sparseIds[1]].push_back(
+      std::make_tuple(it, triEdges[1])
+    );
+    borderPathSeeds[sparseIds[2]].push_back(
+      std::make_tuple(it, triEdges[2])
+    );
+  }
+
+  for (auto& it: borderPathSeeds) {
+    if(it.second.size() <= 2) { // one border path with this sparseID
+      mscq::Separatrix3D newSep;
+      newSep.onBoundary_ = true;
+      createBorderPath_3D(
+        newSep,
+        std::get<0>(it.second.front()),
+        std::get<1>(it.second.front()),
+        morseSmaleManifold,
+        triangulation
+      );
+      separatrices1.push_back(newSep);
+    } else { // multiple border paths with this sparseID
+      for(size_t bps = 0; bps < it.second.size(); bps++) {
+
+        // create the path first
+        mscq::Separatrix3D newSep;
+        newSep.onBoundary_ = true;
+        createBorderPath_3D(
+          newSep,
+          std::get<0>(it.second[bps]),
+          std::get<1>(it.second[bps]),
+          morseSmaleManifold,
+          triangulation
+        );
+        separatrices1.push_back(newSep);
+
+        //remove the path from the list
+        for(size_t bps2 = 0; bps2 < it.second.size(); bps2++) {
+          if(newSep.geometry_.back() == std::get<0>(it.second[bps2]) &&
+            newSep.geometry_[newSep.geometry_.size()- 2] == 
+            std::get<1>(it.second[bps2])) {
+            it.second.erase(it.second.begin() + bps2);
+            continue;
+          }
+        }
+      }
+    }
+  }
+
+  this->printMsg("Computed border 1-Separatrices 3D",
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
+
+  return 1;
 }
 
 template <typename triangulationType>
