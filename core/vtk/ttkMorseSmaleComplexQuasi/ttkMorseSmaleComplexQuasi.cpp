@@ -282,7 +282,7 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     points->SetNumberOfPoints(nPoints);
 
     cellDimensions->SetNumberOfComponents(1);
-    cellDimensions->SetName("CellDimension");
+    cellDimensions->SetName("Criticality Index");
     setArray(cellDimensions, criticalPoints_points_cellDimensions);
 
     cellIds->SetNumberOfComponents(1);
