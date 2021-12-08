@@ -532,7 +532,7 @@ namespace ttk {
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
-    int finalize1Separatrices_3D(
+    int split1SeparatricesAtCrit_3D(
       std::vector<mscq::CriticalPoint> &criticalPoints,
       std::vector<mscq::Separatrix> &separatrices1,
       const SimplexId *const morseSmaleManifold,
@@ -843,7 +843,7 @@ int ttk::MorseSmaleComplexQuasi::execute(
             compute1SeparatricesBorder_3D<triangulationType>(
               borderSeeds, separatrices1, sepManifold, triangulation);
 
-            finalize1Separatrices_3D<triangulationType>(
+            split1SeparatricesAtCrit_3D<triangulationType>(
               criticalPoints, separatrices1, sepManifold, triangulation);
 
             computeIntegralLines<dataType, triangulationType>(
@@ -2741,27 +2741,6 @@ if(!db_omp) {
             borderSeedsLocal.push_back(newSep.geometry_.back());
           }
         }
-
-        for (auto& it: triIdToArrIndex) { // detect cycles
-          if(!linkedTris[it.second].visited) {
-            mscq::Separatrix newSep(std::get<0>(it));
-
-            SimplexId previousId = std::get<0>(it);
-            SimplexId nextId = linkedTris[std::get<1>(it)].neighbors_[0];
-            linkedTris[triIdToArrIndex[previousId]].visited = true;
-            newSep.geometry_.push_back(nextId);
-
-            while(!linkedTris[triIdToArrIndex[nextId]].visited) {
-              SimplexId tempPreviousId = nextId;
-              nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
-              previousId = tempPreviousId;
-              newSep.geometry_.push_back(nextId);
-              linkedTris[triIdToArrIndex[previousId]].visited = true;
-            }
-
-            separatrices1Local.push_back(newSep);
-          }
-        }
       }
     }
     #pragma omp critical
@@ -2903,7 +2882,7 @@ int ttk::MorseSmaleComplexQuasi::compute1SeparatricesBorder_3D(
 }
 
 template <typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::finalize1Separatrices_3D(
+int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
   std::vector<mscq::CriticalPoint> &criticalPoints,
   std::vector<mscq::Separatrix> &separatrices1,
   const SimplexId *const morseSmaleManifold,
@@ -3048,13 +3027,6 @@ int ttk::MorseSmaleComplexQuasi::finalize1Separatrices_3D(
       separatrices1.push_back(sep);
     }
     else {
-      std::string showSepInfo
-        = "L: " + std::to_string(sep.geometry_.size()) + " | ";
-      for(auto k : splitPoints) {
-        showSepInfo += std::to_string(k) + " ";
-      }
-      this->printMsg(showSepInfo);
-
       std::vector<mscq::Separatrix> startSeps;
       size_t nextInsertion = 0;
       size_t splitPointIdx = 0;
@@ -3090,10 +3062,6 @@ int ttk::MorseSmaleComplexQuasi::finalize1Separatrices_3D(
                 sep.geometry_.begin() + (splitPoints[splitPointIdx]));
             }
 
-            this->printMsg(std::to_string(splitPoints[splitPointIdx]) + " " +
-                          std::to_string(nextInsertion) + " " +
-                          std::to_string((int)newSep.geometry_.size()));
-
             newSep.onBoundary_ = sep.onBoundary_;
             separatrices1.push_back(newSep);
           }
@@ -3113,9 +3081,9 @@ int ttk::MorseSmaleComplexQuasi::finalize1Separatrices_3D(
       }
 
       // last simplex is no critical point
-      if(splitPoints.back() < sep.geometry_.size() -1) {
+      if(nextInsertion < sep.geometry_.size()) {
         for(size_t ss = 0; ss < startSeps.size(); ++ss) {
-          if(sep.geometry_.size() < nextInsertion) {
+          if(nextInsertion < sep.geometry_.size()) {
             startSeps[ss].geometry_.insert(
               startSeps[ss].geometry_.end(),
               sep.geometry_.begin() + nextInsertion, sep.geometry_.end());
@@ -3216,17 +3184,9 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
     if(!sep.onBoundary_) { // inner separatrix
       highDimCenterFunction = &triangulationType::getTetraIncenter;
       lowDimCenterFunction = &triangulationType::getTriangleIncenter;
-      // this->printMsg("Inner: " + std::to_string(sep.critIdStart_ != -1)
-      //               + std::to_string(sep.critIdEnd_ != -1) + " | " +
-      //               std::to_string(sep.critIdStart_) + " " +
-      //               std::to_string(sep.critIdEnd_) + " | " +
-      //               std::to_string(geomSize));
     } else {
       highDimCenterFunction = &triangulationType::getTriangleIncenter;
       lowDimCenterFunction = &triangulationType::getEdgeIncenter;
-      //this->printMsg("Outer: " + std::to_string(sep.critIdStart_ != -1)
-      //               + std::to_string(sep.critIdEnd_ != -1)
-      //               + std::to_string(geomSize));
     }
     
     const size_t geomSize
