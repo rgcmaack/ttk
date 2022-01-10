@@ -292,6 +292,7 @@ namespace ttk {
         saddleVertId_ = svi;
         lastId_ = li;
         path_.push_back(sep);
+        visitedIds_.insert(sep->Id_);
       }
 
       SaddleSaddlePath(const SimplexId &svi,
@@ -300,22 +301,24 @@ namespace ttk {
         saddleVertId_ = svi;
         lastId_ = li;
         path_.push_back(&sep);
+        visitedIds_.insert(sep.Id_);
       }
 
       explicit SaddleSaddlePath(const SaddleSaddlePath &ssp)
-        : saddleVertId_{ssp.saddleVertId_}, lastId_{ssp.lastId_}, path_{
-                                                                    ssp.path_} {
+        : saddleVertId_{ssp.saddleVertId_}, lastId_{ssp.lastId_},
+          path_{ssp.path_}, visitedIds_{ssp.visitedIds_} {
       }
 
       explicit SaddleSaddlePath(SaddleSaddlePath &&ssp) noexcept
         : saddleVertId_{ssp.saddleVertId_}, lastId_{ssp.lastId_},
-          path_{std::move(ssp.path_)} {
-      }
+          path_{std::move(ssp.path_)}, visitedIds_{std::move(ssp.visitedIds_)}
+      {}
 
       SaddleSaddlePath &operator=(SaddleSaddlePath &&ssp) noexcept {
         saddleVertId_ = ssp.saddleVertId_;
         lastId_ = ssp.lastId_;
         path_ = std::move(ssp.path_);
+        visitedIds_ = std::move(ssp.visitedIds_);
 
         return *this;
       }
@@ -324,6 +327,7 @@ namespace ttk {
         saddleVertId_ = ssp.saddleVertId_;
         lastId_ = ssp.lastId_;
         path_ = std::move(ssp.path_);
+        visitedIds_ = std::move(ssp.visitedIds_);
 
         return *this;
       }
@@ -331,6 +335,7 @@ namespace ttk {
         SimplexId saddleVertId_;
         SimplexId lastId_;
         std::vector<mscq::Separatrix *> path_;
+        std::set<SimplexId> visitedIds_;
     };
   } // namespace mscq
 
@@ -940,11 +945,11 @@ int ttk::MorseSmaleComplexQuasi::execute(
             setCriticalPoints<dataType, triangulationType>(
               criticalPoints, triangulation);
 
-            setIntegralLines_3D<triangulationType>(
-              plIntLines, triangulation);
+            //setIntegralLines_3D<triangulationType>(
+            //  plIntLines, triangulation);
 
-            setSeparatrices1_3D<triangulationType>(
-              separatrices1, triangulation);
+            //setSeparatrices1_3D<triangulationType>(
+            //  separatrices1, triangulation);
 
             setSeparatrices2_3D(trianglePos, caseData);
           }
@@ -2975,7 +2980,7 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
   this->printMsg("Splitting 1-Separatrices at crits",
                  0, // progress form 0-1
                  0, // elapsed time so far
-                 this->threadNumber_);
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
   std::unordered_map<SimplexId, std::set<SimplexId>> tetCritMap;
   std::unordered_map<SimplexId, std::set<SimplexId>> triCritMap;
@@ -3317,6 +3322,7 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
 
   for(size_t sep = 0; sep < sepsSize; sep++) {
     mscq::Separatrix &sepRef = separatrices[sep];
+    sepRef.Id_ = sep;
     computeSeparatrixLowIds<dataType, triangulationType>(
       sepRef, offsets, triangulation);
 
@@ -3359,7 +3365,7 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
     vertexEdges[end].push_back(&sepRef);
   }
 
-  this->printMsg("Finished sep loop");
+  this->printMsg("Queue size: " + std::to_string(sspQueue.size()));
 
   while(!sspQueue.empty()) {
     
@@ -3369,6 +3375,9 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
     std::vector<SimplexId> endSepIds;
     std::vector<mscq::Separatrix*> shortestSeps;
     std::map<SimplexId, size_t> endSepIdToSepIndex;
+
+    this->printMsg(std::to_string(sspQueue.size()) + " / "
+                   + std::to_string(numSeps));
 
     // filter duplicate seps(same end point) use the shorter one
     for(size_t i = 0; i < numSeps; ++i) {
@@ -3380,7 +3389,9 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
       if(endSepIdToSepIndex.find(endSepId) == endSepIdToSepIndex.end()) {
         shortestSeps.push_back(vertexEdges[ref.lastId_][i]);
         endSepIds.push_back(endSepId);
-      } else { // two seps with the same end point
+        endSepIdToSepIndex.insert({endSepId, endSepIds.size() - 1});
+      }
+      else { // two seps with the same end point
         if(shortestSeps[endSepIdToSepIndex[endSepId]]->length()
            > vertexEdges[ref.lastId_][i]->length()) {
           shortestSeps[endSepIdToSepIndex[endSepId]]
@@ -3391,24 +3402,33 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
 
     const size_t numFilteredSeps = shortestSeps.size();
 
-    this->printMsg(std::to_string(sspQueue.size()) + " / " + std::to_string(numFilteredSeps));
+    //this->printMsg(std::to_string(sspQueue.size()) + " / " +
+    //  std::to_string(numFilteredSeps) + " o " + std::to_string(numSeps));
 
     for(size_t i = 0; i < numFilteredSeps; ++i) {
-      if(offsets[endSepIds[i]] < offsets[ref.lastId_]) {
+      if(offsets[endSepIds[i]] <= offsets[ref.lastId_]) {
         if(vertexToCritIdAll.find(endSepIds[i]) != vertexToCritIdAll.end()) {
           if(criticalPoints[vertexToCritIdAll[endSepIds[i]]].index_ == 1) {
             // path complete
             ref.path_.push_back(shortestSeps[i]);
             ref.lastId_ = endSepIds[i];
             ssPaths.push_back(ref);
-            this->printMsg("Fin");
+            //this->printMsg("Fin");
           }
         } else { // extend path
-          mscq::SaddleSaddlePath newPath(ref);
-          newPath.path_.push_back(vertexEdges[ref.lastId_][i]);
-          newPath.lastId_ = endSepIds[i];
-          sspQueue.push(newPath);
-          this->printMsg("Extended");
+          if(ref.visitedIds_.find(vertexEdges[ref.lastId_][i]->Id_)
+             == ref.visitedIds_.end()) {
+            mscq::SaddleSaddlePath newPath(ref);
+            newPath.path_.push_back(vertexEdges[ref.lastId_][i]);
+            newPath.lastId_ = endSepIds[i];
+            newPath.visitedIds_.insert(vertexEdges[ref.lastId_][i]->Id_);
+            sspQueue.push(newPath);
+          }
+
+          /*this->printMsg("Ext: " + std::to_string(offsets[endSepIds[i]]) + " i "
+                         + std::to_string(offsets[ref.lastId_]) + " ! "
+                         + std::to_string(endSepIds[i]) + " i "
+                         + std::to_string(ref.lastId_));*/
         }
       }
     }
@@ -3418,8 +3438,8 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
 
   this->printMsg("Computed saddle saddle connectors",
                  0, // progress form 0-1
-                 0, // elapsed time so far
-                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_);
 
   return 1;
 }
@@ -3639,6 +3659,9 @@ int ttk::MorseSmaleComplexQuasi::setSaddleSaddleConnectors_3D(
   const size_t prevNpoints = *outputSeparatrices1_numberOfPoints_,
                prevNcells = *outputSeparatrices1_numberOfCells_;
 
+  this->printMsg("PRevpts: " + std::to_string(prevNpoints) + " : "
+                 + std::to_string(prevNcells));
+
   // number of separatrices
   const size_t numSSPaths = ssp.size(); // separatrices.size();
   size_t npoints = 0;
@@ -3659,6 +3682,9 @@ int ttk::MorseSmaleComplexQuasi::setSaddleSaddleConnectors_3D(
 
     npoints -= (numSeps - 1);
   }
+
+  this->printMsg("Npts: " + std::to_string(npoints) + " : "
+                 + std::to_string(numCells));
 
   // resize arrays
   outputSeparatrices1_points_->resize((prevNpoints + npoints) * 3);
@@ -3822,14 +3848,17 @@ int ttk::MorseSmaleComplexQuasi::setSaddleSaddleConnectors_3D(
     }
   }
 
-    // update pointers
-    *outputSeparatrices1_numberOfPoints_ = prevNpoints + npoints;
-    *outputSeparatrices1_numberOfCells_ = prevNcells + numCells;
+  this->printMsg("Pid: " + std::to_string(currPId) + " : "
+                 + std::to_string(currCId));
 
-    this->printMsg("Wrote 1-separatrices", 1, localTimer.getElapsedTime(),
-                   this->threadNumber_);
+  // update pointers
+  *outputSeparatrices1_numberOfPoints_ = prevNpoints + npoints;
+  *outputSeparatrices1_numberOfCells_ = prevNcells + numCells;
 
-    return 0;
+  this->printMsg("Wrote saddle saddle connectors", 1, localTimer.getElapsedTime(),
+                 this->threadNumber_);
+
+  return 0;
 }
 
 template <typename triangulationType>
@@ -4047,7 +4076,7 @@ int ttk::MorseSmaleComplexQuasi::setIntegralLines_3D(
   }
 #endif 
 
-  this->printMsg("Writing 1-separatrices",
+  this->printMsg("Writing extrema saddle connectors",
                   1,
                   localTimer.getElapsedTime(),
                   this->threadNumber_,
@@ -4127,8 +4156,8 @@ int ttk::MorseSmaleComplexQuasi::setIntegralLines_3D(
   *outputSeparatrices1_numberOfPoints_ = prevNpoints + npoints;
   *outputSeparatrices1_numberOfCells_ = prevNcells + numCells;
 
-  this->printMsg("Wrote 1-separatrices",
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
+  this->printMsg("Wrote extrema saddle connectors", 1,
+                 localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
 }
