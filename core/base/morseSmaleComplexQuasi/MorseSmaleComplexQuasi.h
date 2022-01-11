@@ -288,11 +288,15 @@ namespace ttk {
     };
 
     struct SaddleSaddlePath {
+      SaddleSaddlePath() {
+      }
+
       SaddleSaddlePath(SimplexId svi, SimplexId li, mscq::Separatrix *sep) {
         saddleVertId_ = svi;
         lastId_ = li;
         path_.push_back(sep);
         visitedIds_.insert(sep->Id_);
+        length_ = sep->length();
       }
 
       SaddleSaddlePath(const SimplexId &svi,
@@ -302,23 +306,26 @@ namespace ttk {
         lastId_ = li;
         path_.push_back(&sep);
         visitedIds_.insert(sep.Id_);
+        length_ = sep.length();
       }
 
       explicit SaddleSaddlePath(const SaddleSaddlePath &ssp)
         : saddleVertId_{ssp.saddleVertId_}, lastId_{ssp.lastId_},
-          path_{ssp.path_}, visitedIds_{ssp.visitedIds_} {
+          path_{ssp.path_}, visitedIds_{ssp.visitedIds_}, length_{ssp.length_} {
       }
 
       explicit SaddleSaddlePath(SaddleSaddlePath &&ssp) noexcept
         : saddleVertId_{ssp.saddleVertId_}, lastId_{ssp.lastId_},
-          path_{std::move(ssp.path_)}, visitedIds_{std::move(ssp.visitedIds_)}
-      {}
+          path_{std::move(ssp.path_)},
+          visitedIds_{std::move(ssp.visitedIds_)}, length_{ssp.length_} {
+      }
 
       SaddleSaddlePath &operator=(SaddleSaddlePath &&ssp) noexcept {
         saddleVertId_ = ssp.saddleVertId_;
         lastId_ = ssp.lastId_;
         path_ = std::move(ssp.path_);
         visitedIds_ = std::move(ssp.visitedIds_);
+        length_ = ssp.length_;
 
         return *this;
       }
@@ -328,14 +335,23 @@ namespace ttk {
         lastId_ = ssp.lastId_;
         path_ = std::move(ssp.path_);
         visitedIds_ = std::move(ssp.visitedIds_);
+        length_ = ssp.length_;
 
         return *this;
       }
 
-        SimplexId saddleVertId_;
-        SimplexId lastId_;
-        std::vector<mscq::Separatrix *> path_;
-        std::set<SimplexId> visitedIds_;
+      void insertPathPiece(mscq::Separatrix *sep, SimplexId newLastId) {
+        lastId_ = newLastId;
+        path_.push_back(sep);
+        visitedIds_.insert(sep->Id_);
+        length_ += sep->length() - 1;
+      }
+
+      SimplexId saddleVertId_;
+      SimplexId lastId_;
+      std::vector<mscq::Separatrix *> path_;
+      std::set<SimplexId> visitedIds_;
+      SimplexId length_{0};
     };
   } // namespace mscq
 
@@ -3305,9 +3321,9 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
   const dataType *offsets = static_cast<const dataType *>(inputOrderField_);
 
   // map vertex Ids to their correspoding critical point
-  std::unordered_map<SimplexId, size_t> vertexToCritIdAll;
+  std::unordered_map<SimplexId, size_t> vertexToCritId;
   for(size_t i = 0; i < criticalPoints.size(); ++i) {
-    vertexToCritIdAll.insert({criticalPoints[i].id_, i});
+    vertexToCritId.insert({criticalPoints[i].id_, i});
   }
 
   // queue to store unfinished saddle saddle paths
@@ -3331,7 +3347,7 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
 
     // for all 2-saddles, find 1-seps that decrease in function value
     if(sepRef.critIdStart_ != -1) { // using critIdStart
-      int index = criticalPoints[vertexToCritIdAll[sepRef.critIdEnd_]].index_;
+      int index = criticalPoints[vertexToCritId[sepRef.critIdEnd_]].index_;
       if(index == 2) {
         if(offsets[end] <= offsets[sepRef.critIdStart_]) {
           sspQueue.push(mscq::SaddleSaddlePath(start, end, sepRef));
@@ -3342,7 +3358,7 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
       }
     }
     if(sepRef.critIdEnd_ != -1) { // using critIdEnd
-      int index = criticalPoints[vertexToCritIdAll[sepRef.critIdEnd_]].index_;
+      int index = criticalPoints[vertexToCritId[sepRef.critIdEnd_]].index_;
       if(index == 2) {
         if(offsets[start] <= offsets[sepRef.critIdEnd_]) {
           sspQueue.push(mscq::SaddleSaddlePath(end, start, sepRef));
@@ -3366,18 +3382,22 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
   }
 
   this->printMsg("Queue size: " + std::to_string(sspQueue.size()));
+  size_t maxQueueSize = sspQueue.size();
+
+  std::map<SimplexId, size_t> critPairToSSP;
 
   while(!sspQueue.empty()) {
-    
+
+    if(sspQueue.size() > maxQueueSize) {
+      maxQueueSize = sspQueue.size();
+    }
+
     mscq::SaddleSaddlePath &ref = sspQueue.front();
     const size_t numSeps = vertexEdges[ref.lastId_].size();
 
     std::vector<SimplexId> endSepIds;
     std::vector<mscq::Separatrix*> shortestSeps;
-    std::map<SimplexId, size_t> endSepIdToSepIndex;
-
-    this->printMsg(std::to_string(sspQueue.size()) + " / "
-                   + std::to_string(numSeps));
+    std::unordered_map<SimplexId, size_t> endSepIdToSepIndex;
 
     // filter duplicate seps(same end point) use the shorter one
     for(size_t i = 0; i < numSeps; ++i) {
@@ -3402,39 +3422,61 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
 
     const size_t numFilteredSeps = shortestSeps.size();
 
-    //this->printMsg(std::to_string(sspQueue.size()) + " / " +
-    //  std::to_string(numFilteredSeps) + " o " + std::to_string(numSeps));
+    this->printMsg(std::to_string(sspQueue.size()) + " / " +
+      std::to_string(numFilteredSeps) + " o " + std::to_string(numSeps));
 
     for(size_t i = 0; i < numFilteredSeps; ++i) {
       if(offsets[endSepIds[i]] <= offsets[ref.lastId_]) {
-        if(vertexToCritIdAll.find(endSepIds[i]) != vertexToCritIdAll.end()) {
-          if(criticalPoints[vertexToCritIdAll[endSepIds[i]]].index_ == 1) {
+        if(vertexToCritId.find(endSepIds[i]) != vertexToCritId.end()) {
+          if(criticalPoints[vertexToCritId[endSepIds[i]]].index_ == 1) {
             // path complete
-            ref.path_.push_back(shortestSeps[i]);
-            ref.lastId_ = endSepIds[i];
-            ssPaths.push_back(ref);
-            //this->printMsg("Fin");
+            ref.insertPathPiece(shortestSeps[i], endSepIds[i]);
+
+            const SimplexId uniqueCritId
+              = (vertexToCritId[ref.saddleVertId_] * criticalPoints.size())
+              + vertexToCritId[endSepIds[i]];
+
+            this->printMsg("Fin: " + std::to_string(offsets[endSepIds[i]])
+                           + " i " + std::to_string(offsets[ref.lastId_])
+                           + " ! " + std::to_string(endSepIds[i]) + " i "
+                           + std::to_string(ref.lastId_) + " x "
+                           + std::to_string(uniqueCritId));
+
+            if(critPairToSSP.find(uniqueCritId) == critPairToSSP.end()) {
+              this->printMsg("A1");
+              ssPaths.push_back(ref);
+              this->printMsg("A2");
+              critPairToSSP.insert({uniqueCritId, ssPaths.size() - 1 });
+              this->printMsg("A3");
+            } else {
+              this->printMsg("B1");
+              if(ssPaths[critPairToSSP[uniqueCritId]].length_ > ref.length_) {
+                this->printMsg("B2");
+                ssPaths[critPairToSSP[uniqueCritId]] = ref;
+              }
+              this->printMsg("B3");
+            }
           }
         } else { // extend path
           if(ref.visitedIds_.find(vertexEdges[ref.lastId_][i]->Id_)
              == ref.visitedIds_.end()) {
+            this->printMsg("Ext: " + std::to_string(offsets[endSepIds[i]])
+                           + " i " + std::to_string(offsets[ref.lastId_])
+                           + " ! " + std::to_string(endSepIds[i]) + " i "
+                           + std::to_string(ref.lastId_));
+
             mscq::SaddleSaddlePath newPath(ref);
-            newPath.path_.push_back(vertexEdges[ref.lastId_][i]);
-            newPath.lastId_ = endSepIds[i];
-            newPath.visitedIds_.insert(vertexEdges[ref.lastId_][i]->Id_);
+            newPath.insertPathPiece(vertexEdges[ref.lastId_][i], endSepIds[i]);
             sspQueue.push(newPath);
           }
-
-          /*this->printMsg("Ext: " + std::to_string(offsets[endSepIds[i]]) + " i "
-                         + std::to_string(offsets[ref.lastId_]) + " ! "
-                         + std::to_string(endSepIds[i]) + " i "
-                         + std::to_string(ref.lastId_));*/
         }
       }
     }
 
     sspQueue.pop();
   }
+
+  this->printMsg("Max Queue size: " + std::to_string(maxQueueSize));
 
   this->printMsg("Computed saddle saddle connectors",
                  0, // progress form 0-1
