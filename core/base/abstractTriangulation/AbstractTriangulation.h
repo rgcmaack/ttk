@@ -1530,6 +1530,14 @@ namespace ttk {
 
     /// Get the point (3D coordinates) for the \p vertexId-th vertex.
     /// \param vertexId Input global vertex identifier.
+    /// \param coord Output coordinates
+    /// \return Returns 0 upon success, negative values otherwise.
+    inline int getVertexCoordinates(const SimplexId vertexId, float coord[3]) const {
+      return getVertexPointInternal(vertexId, coord[0], coord[1], coord[2]);
+    }
+
+    /// Get the point (3D coordinates) for the \p vertexId-th vertex.
+    /// \param vertexId Input global vertex identifier.
     /// \param x Output x coordinate.
     /// \param y Output y coordinate.
     /// \param z Output z coordinate.

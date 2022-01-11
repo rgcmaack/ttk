@@ -116,27 +116,30 @@ namespace ttk {
     struct Separatrix {
       // default :
       explicit Separatrix()
-        : geometry_{}, onBoundary_{false},
+        : geometry_{}, dims_{}, onBoundary_{false},
         startAtHighDimSimplex_{true}, endAtHighDimSimplex_{true} {
       }
 
       // initialization with one segment :
-      explicit Separatrix(const SimplexId segmentGeometry) {
+      explicit Separatrix(const SimplexId segmentGeometry, const unsigned short dim) {
         geometry_.push_back(segmentGeometry);
+        dims_.push_back(dim);
       }
 
       explicit Separatrix(const Separatrix &separatrix)
-        : geometry_{separatrix.geometry_}, onBoundary_{separatrix.onBoundary_},
+        : geometry_{separatrix.geometry_}, dims_{std::move(separatrix.dims_)},
+          onBoundary_{separatrix.onBoundary_},
           startAtHighDimSimplex_{separatrix.startAtHighDimSimplex_},
           endAtHighDimSimplex_{separatrix.endAtHighDimSimplex_},
           critIdStart_{separatrix.critIdStart_},
-          critIdEnd_{separatrix.critIdEnd_},
-          lowerNeighbors_{std::move(separatrix.lowerNeighbors_)},
+          critIdEnd_{separatrix.critIdEnd_}, lowerNeighbors_{std::move(
+          separatrix.lowerNeighbors_)},
           regionIds_{std::move(separatrix.regionIds_)} {
       }
 
       explicit Separatrix(Separatrix &&separatrix) noexcept
         : geometry_{std::move(separatrix.geometry_)},
+          dims_{std::move(separatrix.dims_)},
           onBoundary_{separatrix.onBoundary_},
           startAtHighDimSimplex_{separatrix.startAtHighDimSimplex_},
           endAtHighDimSimplex_{separatrix.endAtHighDimSimplex_},
@@ -148,6 +151,7 @@ namespace ttk {
 
       Separatrix &operator=(Separatrix &&separatrix) noexcept {
         geometry_ = std::move(separatrix.geometry_);
+        dims_ = std::move(separatrix.dims_);
         onBoundary_ = separatrix.onBoundary_;
         startAtHighDimSimplex_ = separatrix.startAtHighDimSimplex_;
         endAtHighDimSimplex_ = separatrix.endAtHighDimSimplex_;
@@ -161,6 +165,7 @@ namespace ttk {
 
       Separatrix &operator=(const Separatrix &separatrix) noexcept {
         geometry_ = std::move(separatrix.geometry_);
+        dims_ = std::move(separatrix.dims_);
         onBoundary_ = separatrix.onBoundary_;
         startAtHighDimSimplex_ = separatrix.startAtHighDimSimplex_;
         endAtHighDimSimplex_ = separatrix.endAtHighDimSimplex_;
@@ -170,6 +175,16 @@ namespace ttk {
         regionIds_ = std::move(separatrix.regionIds_);
 
         return *this;
+      }
+
+      void insertGeometry(SimplexId s, unsigned short d) {
+        geometry_.push_back(s);
+        dims_.push_back(d);
+      }
+
+      void reverse() {
+        std::reverse(geometry_.begin(), geometry_.end());
+        std::reverse(dims_.begin(), dims_.end());
       }
 
       size_t length(){
@@ -185,6 +200,8 @@ namespace ttk {
        * of the geometry (i.e. separatricesGeometry).
        */
       std::vector<SimplexId> geometry_;
+
+      std::vector<unsigned short> dims_;
 
       /**
        * Flag indicating that the separatix is located on the boundary
@@ -291,32 +308,39 @@ namespace ttk {
       SaddleSaddlePath() {
       }
 
-      SaddleSaddlePath(SimplexId svi, SimplexId li, mscq::Separatrix *sep) {
+      SaddleSaddlePath(SimplexId svi,
+                       SimplexId li,
+                       mscq::Separatrix *sep,
+                       bool reversed) {
         saddleVertId_ = svi;
         lastId_ = li;
         path_.push_back(sep);
+        reversed_.push_back(reversed);
         visitedIds_.insert(sep->Id_);
         length_ = sep->length();
       }
 
       SaddleSaddlePath(const SimplexId &svi,
                        const SimplexId &li,
-                       ttk::mscq::Separatrix &sep) {
+                       ttk::mscq::Separatrix &sep,
+                       bool reversed) {
         saddleVertId_ = svi;
         lastId_ = li;
         path_.push_back(&sep);
+        reversed_.push_back(reversed);
         visitedIds_.insert(sep.Id_);
         length_ = sep.length();
       }
 
       explicit SaddleSaddlePath(const SaddleSaddlePath &ssp)
         : saddleVertId_{ssp.saddleVertId_}, lastId_{ssp.lastId_},
-          path_{ssp.path_}, visitedIds_{ssp.visitedIds_}, length_{ssp.length_} {
+          path_{ssp.path_}, reversed_{std::move(ssp.reversed_)},
+          visitedIds_{ssp.visitedIds_}, length_{ssp.length_} {
       }
 
       explicit SaddleSaddlePath(SaddleSaddlePath &&ssp) noexcept
         : saddleVertId_{ssp.saddleVertId_}, lastId_{ssp.lastId_},
-          path_{std::move(ssp.path_)},
+          path_{std::move(ssp.path_)}, reversed_{std::move(ssp.reversed_)},
           visitedIds_{std::move(ssp.visitedIds_)}, length_{ssp.length_} {
       }
 
@@ -324,6 +348,7 @@ namespace ttk {
         saddleVertId_ = ssp.saddleVertId_;
         lastId_ = ssp.lastId_;
         path_ = std::move(ssp.path_);
+        reversed_ = std::move(ssp.reversed_);
         visitedIds_ = std::move(ssp.visitedIds_);
         length_ = ssp.length_;
 
@@ -334,15 +359,17 @@ namespace ttk {
         saddleVertId_ = ssp.saddleVertId_;
         lastId_ = ssp.lastId_;
         path_ = std::move(ssp.path_);
+        reversed_ = std::move(ssp.reversed_);
         visitedIds_ = std::move(ssp.visitedIds_);
         length_ = ssp.length_;
 
         return *this;
       }
 
-      void insertPathPiece(mscq::Separatrix *sep, SimplexId newLastId) {
+      void insertPathPiece(mscq::Separatrix *sep, SimplexId newLastId, bool reversed) {
         lastId_ = newLastId;
         path_.push_back(sep);
+        reversed_.push_back(reversed);
         visitedIds_.insert(sep->Id_);
         length_ += sep->length() - 1;
       }
@@ -350,6 +377,7 @@ namespace ttk {
       SimplexId saddleVertId_;
       SimplexId lastId_;
       std::vector<mscq::Separatrix *> path_;
+      std::vector<bool> reversed_;
       std::set<SimplexId> visitedIds_;
       SimplexId length_{0};
     };
@@ -677,6 +705,12 @@ namespace ttk {
       const triangulationType &triangulation) const;
 
     template <typename dataType, typename triangulationType>
+    SimplexId getSmallesVertexOfVertex(
+      const SimplexId vertexId,
+      const dataType *const offsets,
+      const triangulationType &triangulation) const;
+
+    template <typename dataType, typename triangulationType>
     SimplexId getSmallesVertexOfEdge(
       const SimplexId edgeId,
       const dataType *const offsets,
@@ -945,7 +979,7 @@ int ttk::MorseSmaleComplexQuasi::execute(
             compute1SeparatricesBorder_3D<triangulationType>(
               borderSeeds, separatrices1, sepManifold, triangulation);
 
-            split1SeparatricesAtCrit_3D<triangulationType>(
+            /*split1SeparatricesAtCrit_3D<triangulationType>(
               criticalPoints, separatrices1, sepManifold, triangulation);
 
             computeIntegralLines<dataType, triangulationType>(
@@ -956,7 +990,7 @@ int ttk::MorseSmaleComplexQuasi::execute(
             findSaddleSaddleConnectors<dataType, triangulationType>(
               criticalPoints, separatrices1, ssp, triangulation);
 
-            setSaddleSaddleConnectors_3D<triangulationType>(ssp, triangulation);
+            setSaddleSaddleConnectors_3D<triangulationType>(ssp, triangulation);*/
 
             setCriticalPoints<dataType, triangulationType>(
               criticalPoints, triangulation);
@@ -964,8 +998,8 @@ int ttk::MorseSmaleComplexQuasi::execute(
             //setIntegralLines_3D<triangulationType>(
             //  plIntLines, triangulation);
 
-            //setSeparatrices1_3D<triangulationType>(
-            //  separatrices1, triangulation);
+            setSeparatrices1_3D<triangulationType>(
+              separatrices1, triangulation);
 
             setSeparatrices2_3D(trianglePos, caseData);
           }
@@ -1506,7 +1540,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Inner_2D(
       // Find the starting Triangle, if it exists
       for(size_t ec = 0; ec < triConnVectSize; ++ec) {
         if(std::get<0>(triConnVect[ec]) == startEdge) {
-          newSep.geometry_.push_back(std::get<1>(triConnVect[ec]));
+          newSep.insertGeometry(std::get<1>(triConnVect[ec]), 2);
           triConnectors[sparseID].erase( triConnectors[sparseID].begin() + ec);
           startsOnBoundary = false;
           break;
@@ -1514,24 +1548,24 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Inner_2D(
       }
       
       SimplexId previousId = startEdge;
-      newSep.geometry_.push_back(startEdge);
+      newSep.insertGeometry(startEdge, 1);
       SimplexId nextId = linkedEdges[edgeIdToArrIndex[startEdge]].neighbors_[0];
       linkedEdges[edgeIdToArrIndex[previousId]].visited = true;
-      newSep.geometry_.push_back(nextId);
+      newSep.insertGeometry(nextId, 1);
 
       while(linkedEdges[edgeIdToArrIndex[nextId]].hasTwoNeighbors &&
         !linkedEdges[edgeIdToArrIndex[nextId]].visited) {
         SimplexId tempPreviousId = nextId;
         nextId = linkedEdges[edgeIdToArrIndex[nextId]].next(previousId);
         previousId = tempPreviousId;
-        newSep.geometry_.push_back(nextId);
+        newSep.insertGeometry(nextId, 1);
         linkedEdges[edgeIdToArrIndex[previousId]].visited = true;
       }
 
       // Find the ending Triangle, if it exists
       for(size_t ec = 0; ec < triConnVectSize; ++ec) {
         if(std::get<0>(triConnVect[ec]) == nextId) {
-          newSep.geometry_.push_back(std::get<1>(triConnVect[ec]));
+          newSep.insertGeometry(std::get<1>(triConnVect[ec]), 2);
           triConnectors[sparseID].erase( triConnectors[sparseID].begin() + ec);
           endsOnBoundary = false;
           break;
@@ -1564,7 +1598,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Inner_2D(
 
         newSep.endAtHighDimSimplex_ = false;
 
-        std::reverse(newSep.geometry_.begin(), newSep.geometry_.end());
+        newSep.reverse();
       }
 
       separatrices.push_back(newSep);
@@ -1582,9 +1616,9 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Inner_2D(
             SimplexId &splitTriangle1 = std::get<1>(u.second[j]);
 
             mscq::Separatrix newSep;
-            newSep.geometry_.push_back(splitTriangle0);
-            newSep.geometry_.push_back(splitEdge0);
-            newSep.geometry_.push_back(splitTriangle1);
+            newSep.insertGeometry(splitTriangle0, 2);
+            newSep.insertGeometry(splitEdge0, 1);
+            newSep.insertGeometry(splitTriangle1, 2);
             separatrices.push_back(newSep);
 
             u.second.erase( u.second.begin() + j);
@@ -1688,45 +1722,28 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
   if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
     outputSeparatrices1_cells_isOnBoundary_->resize(numSep);
 
+  int (triangulationType::*getPosFuncs[3])(SimplexId, float *) const = {
+    &triangulationType::getVertexCoordinates,
+    &triangulationType::getEdgeIncenter,
+    &triangulationType::getTriangleIncenter
+  };
+
   SimplexId currPId = 0, currCId = 0;
   for(size_t i = 0; i < numSep; ++i) {
     const auto &sep = separatrices[i];
 
     std::array<float, 3> pt{};
 
-    if(!sep.onBoundary_) { // inner separatrix
-      triangulation.getTriangleIncenter(
-        (sep.geometry_[0]), pt.data());
+    (triangulation.*getPosFuncs[sep.dims_[0]])(sep.geometry_[0], pt.data());
 
-      points[3 * currPId + 0] = pt[0];
-      points[3 * currPId + 1] = pt[1];
-      points[3 * currPId + 2] = pt[2];
+    points[3 * currPId + 0] = pt[0];
+    points[3 * currPId + 1] = pt[1];
+    points[3 * currPId + 2] = pt[2];
 
-      currPId += 1;
+    currPId += 1;
 
-      size_t geomSize = sep.geometry_.size() - 1;
-
-      for(size_t j = 1; j < geomSize; ++j) {
-        triangulation.getEdgeIncenter(sep.geometry_[j], pt.data());
-
-        points[3 * currPId + 0] = pt[0];
-        points[3 * currPId + 1] = pt[1];
-        points[3 * currPId + 2] = pt[2];
-
-        cellsConn[2 * currCId + 0] = currPId - 1;
-        cellsConn[2 * currCId + 1] = currPId;
-
-        currPId += 1;
-        currCId += 1;
-      }
-
-      if(!sep.endAtHighDimSimplex_){
-        triangulation.getEdgeIncenter(sep.geometry_[geomSize], pt.data());
-      } else {
-        triangulation.getTriangleIncenter(
-          sep.geometry_[geomSize], pt.data()
-        );
-      }
+    for(size_t j = 1; j < sep.geometry_.size(); ++j) {
+      (triangulation.*getPosFuncs[sep.dims_[j]])(sep.geometry_[j], pt.data());
 
       points[3 * currPId + 0] = pt[0];
       points[3 * currPId + 1] = pt[1];
@@ -1737,51 +1754,10 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
 
       currPId += 1;
       currCId += 1;
-
-      if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
-        (*outputSeparatrices1_cells_isOnBoundary_)[i] = false;
-
-    } else { // boundary separatrix
-
-      /*triangulation.getTriangleIncenter(sep.geometry_.front(), pt.data());
-
-      points[3 * currPId + 0] = pt[0];
-      points[3 * currPId + 1] = pt[1];
-      points[3 * currPId + 2] = pt[2];
-
-      currPId += 1;
-
-      size_t geomSize = sep.geometry_.size() - 1;
-
-      for(size_t j = 1; j < geomSize; ++j) {
-        triangulation.getEdgeIncenter(sep.geometry_[j], pt.data());
-
-        points[3 * currPId + 0] = pt[0];
-        points[3 * currPId + 1] = pt[1];
-        points[3 * currPId + 2] = pt[2];
-
-        cellsConn[2 * currCId + 0] = currPId - 1;
-        cellsConn[2 * currCId + 1] = currPId;
-
-        currPId += 1;
-        currCId += 1;
-      }
-
-      triangulation.getTriangleIncenter(sep.geometry_.back(), pt.data());
-
-      points[3 * currPId + 0] = pt[0];
-      points[3 * currPId + 1] = pt[1];
-      points[3 * currPId + 2] = pt[2];
-
-      cellsConn[2 * currCId + 0] = currPId - 1;
-      cellsConn[2 * currCId + 1] = currPId;
-
-      currPId += 1;
-      currCId += 1;
-
-      if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
-        (*outputSeparatrices1_cells_isOnBoundary_)[i] = true;*/
     }
+
+    if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
+      (*outputSeparatrices1_cells_isOnBoundary_)[i] = false;
   }
 
   // update pointers
@@ -2685,35 +2661,45 @@ if(!db_omp) {
       }
       // write separatrix
       const SimplexId startTri = it_starts.first;
-      mscq::Separatrix newSep(startTri);
+      mscq::Separatrix newSep(startTri, 2);
       
       SimplexId previousId = startTri;
       SimplexId nextId = linkedTris[triIdToArrIndex[startTri]].neighbors_[0];
       linkedTris[triIdToArrIndex[previousId]].visited = true;
-      newSep.geometry_.push_back(nextId);
+      newSep.insertGeometry(nextId, 2);
 
       while(linkedTris[triIdToArrIndex[nextId]].hasTwoNeighbors &&
         !linkedTris[triIdToArrIndex[nextId]].visited) {
         SimplexId tempPreviousId = nextId;
         nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
         previousId = tempPreviousId;
-        newSep.geometry_.push_back(nextId);
+        newSep.insertGeometry(nextId, 2);
         linkedTris[triIdToArrIndex[previousId]].visited = true;
       }
       
       startIds[nextId] = true;
 
-      if(newSep.geometry_.front() >= numTris ||
-        newSep.geometry_.back() >= numTris) {
-        
+      if(newSep.geometry_.front() >= numTris
+         || newSep.geometry_.back() >= numTris) {
+
         if(newSep.geometry_.front() < newSep.geometry_.back()) {
-          std::reverse(newSep.geometry_.begin(), newSep.geometry_.end());
+          newSep.reverse();
         }
 
         if(newSep.geometry_.back() < numTris) { // ends on boundary
           borderSeeds.insert(newSep.geometry_.back());
           newSep.endAtHighDimSimplex_ = false;
+        } else {
+          // reverse hack for identifying tetrahedra
+          newSep.geometry_.back() = newSep.geometry_.back() - numTris;
+          newSep.dims_.back() += 1;
+          newSep.endAtHighDimSimplex_ = true;
         }
+
+        // reverse hack for identifying tetrahedra
+        newSep.geometry_.front() = newSep.geometry_.front() - numTris;
+        newSep.dims_.front() += 1;
+        newSep.startAtHighDimSimplex_ = true;
 
         separatrices1.push_back(newSep);
       } else {
@@ -2800,20 +2786,20 @@ if(!db_omp) {
           }
           // write separatrix
           const SimplexId startTri = it_starts.first;
-          mscq::Separatrix newSep(startTri);
+          mscq::Separatrix newSep(startTri, 2);
 
           SimplexId previousId = startTri;
           SimplexId nextId =
             linkedTris[triIdToArrIndex[startTri]].neighbors_[0];
           linkedTris[triIdToArrIndex[previousId]].visited = true;
-          newSep.geometry_.push_back(nextId);
+          newSep.insertGeometry(nextId, 2);
 
           while(linkedTris[triIdToArrIndex[nextId]].hasTwoNeighbors &&
             !linkedTris[triIdToArrIndex[nextId]].visited) {
             SimplexId tempPreviousId = nextId;
             nextId = linkedTris[triIdToArrIndex[nextId]].next(previousId);
             previousId = tempPreviousId;
-            newSep.geometry_.push_back(nextId);
+            newSep.insertGeometry(nextId, 2);
             linkedTris[triIdToArrIndex[previousId]].visited = true;
           }
 
@@ -2823,7 +2809,7 @@ if(!db_omp) {
             newSep.geometry_.back() >= numTris) {
             
             if(newSep.geometry_.front() < newSep.geometry_.back()) {
-              std::reverse(newSep.geometry_.begin(), newSep.geometry_.end());
+              newSep.reverse();
             }
 
             if(newSep.geometry_.back() < numTris) { // ends on boundary
@@ -2832,14 +2818,16 @@ if(!db_omp) {
             } else {
               // reverse hack for identifying tetrahedra
               newSep.geometry_.back() = newSep.geometry_.back() - numTris;
+              newSep.dims_.back() += 1;
               newSep.endAtHighDimSimplex_ = true;
             }
             
             // reverse hack for identifying tetrahedra
             newSep.geometry_.front() = newSep.geometry_.front() - numTris;
+            newSep.dims_.front() += 1;
             newSep.startAtHighDimSimplex_ = true;
 
-              separatrices1Local.push_back(newSep);
+            separatrices1Local.push_back(newSep);
           } else {
             borderSeedsLocal.push_back(newSep.geometry_.front());
             borderSeedsLocal.push_back(newSep.geometry_.back());
@@ -2969,7 +2957,7 @@ int ttk::MorseSmaleComplexQuasi::compute1SeparatricesBorder_3D(
         //remove the path from the list
         for(size_t bps2 = 0; bps2 < it.second.size(); bps2++) {
           if(newSep.geometry_.back() == std::get<0>(it.second[bps2]) &&
-            newSep.geometry_[newSep.geometry_.size()- 2] == 
+            newSep.geometry_[newSep.geometry_.size() - 2] == 
             std::get<1>(it.second[bps2])) {
             it.second.erase(it.second.begin() + bps2);
             continue;
@@ -3134,7 +3122,7 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
 
       if(splitPoints[splitPointIdx] == 0) { // critical point at start simplex
         for(const auto &spcp : splitPointCriticalPoints[splitPointIdx]) {
-          mscq::Separatrix newSep;
+          mscq::Separatrix newSep(spcp, 0);
           newSep.endAtHighDimSimplex_ = sep.endAtHighDimSimplex_;
           newSep.startAtHighDimSimplex_ = false;
           newSep.critIdStart_ = spcp;
@@ -3161,6 +3149,9 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
               newSep.geometry_.insert(
                 newSep.geometry_.end(), sep.geometry_.begin() + nextInsertion,
                 sep.geometry_.begin() + (splitPoints[splitPointIdx]));
+              newSep.dims_.insert(
+                newSep.dims_.end(), sep.dims_.begin() + nextInsertion,
+                sep.dims_.begin() + (splitPoints[splitPointIdx]));
             }
 
             newSep.onBoundary_ = sep.onBoundary_;
@@ -3188,6 +3179,9 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
             startSeps[ss].geometry_.insert(
               startSeps[ss].geometry_.end(),
               sep.geometry_.begin() + nextInsertion, sep.geometry_.end());
+            startSeps[ss].dims_.insert(startSeps[ss].dims_.end(),
+                                       sep.dims_.begin() + nextInsertion,
+                                       sep.dims_.end());
           }
           startSeps[ss].onBoundary_ = sep.onBoundary_;
           startSeps[ss].endAtHighDimSimplex_ = sep.endAtHighDimSimplex_;
@@ -3210,7 +3204,21 @@ void ttk::MorseSmaleComplexQuasi::computeSeparatrixLowIds(
   mscq::Separatrix &sep,
   const dataType *const offsets,
   const triangulationType &triangulation) const {
-  if(sep.onBoundary_) {
+
+  SimplexId (triangulationType::*getLowFuncs[4])(
+    SimplexId, dataType *, triangulationType &) const
+    = {&triangulationType::getSmallesVertexOfVertex,
+       &triangulationType::getSmallesVertexOfEdge,
+       &triangulationType::getSmallesVertexOfTri,
+       &triangulationType::getSmallesVertexOfTet};
+
+  sep.lowIdStart_ = (triangulation.*getLowFuncs[sep.dims_.front()])(
+    sep.geometry_.front(), offsets, triangulation);
+
+  sep.lowIdEnd_ = (triangulation.*getLowFuncs[sep.dims_.back()])(
+    sep.geometry_.back(), offsets, triangulation);
+
+  /*if(sep.onBoundary_) {
     if(sep.critIdStart_ != -1) {
       sep.lowIdStart_ = sep.critIdStart_;
     } else if(sep.startAtHighDimSimplex_) {
@@ -3251,7 +3259,15 @@ void ttk::MorseSmaleComplexQuasi::computeSeparatrixLowIds(
       sep.lowIdEnd_
         = getSmallesVertexOfTri(sep.geometry_.back(), offsets, triangulation);
     }
-  }
+  }*/
+}
+
+template <typename dataType, typename triangulationType>
+SimplexId ttk::MorseSmaleComplexQuasi::getSmallesVertexOfVertex(
+  const SimplexId vertexId,
+  const dataType *const offsets,
+  const triangulationType &triangulation) const {
+  return vertexId;
 }
 
 template <typename dataType, typename triangulationType>
@@ -3334,8 +3350,6 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
 
   const size_t sepsSize = separatrices.size();
 
-  this->printMsg("Started sep loop");
-
   for(size_t sep = 0; sep < sepsSize; sep++) {
     mscq::Separatrix &sepRef = separatrices[sep];
     sepRef.Id_ = sep;
@@ -3350,7 +3364,7 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
       int index = criticalPoints[vertexToCritId[sepRef.critIdEnd_]].index_;
       if(index == 2) {
         if(offsets[end] <= offsets[sepRef.critIdStart_]) {
-          sspQueue.push(mscq::SaddleSaddlePath(start, end, sepRef));
+          sspQueue.push(mscq::SaddleSaddlePath(start, end, sepRef, false));
         }
       } else if(index != 1) {
         // skip 1-seps that end in maxima or minima
@@ -3361,7 +3375,7 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
       int index = criticalPoints[vertexToCritId[sepRef.critIdEnd_]].index_;
       if(index == 2) {
         if(offsets[start] <= offsets[sepRef.critIdEnd_]) {
-          sspQueue.push(mscq::SaddleSaddlePath(end, start, sepRef));
+          sspQueue.push(mscq::SaddleSaddlePath(end, start, sepRef, true));
         }
       } else if(index != 1) {
         // skip 1-seps that end in maxima or minima
@@ -3369,24 +3383,38 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
       }
     }
 
-    // Check if id already exists
-    if(vertexEdges.find(start) == vertexEdges.end()) {
-      vertexEdges.insert({start, std::vector<mscq::Separatrix*>()});
+    // Check if id already exists and insert function value decreasing direction 
+    if(offsets[start] >= offsets[end]) {
+      if(vertexEdges.find(start) == vertexEdges.end()) {
+        vertexEdges.insert({start, std::vector<mscq::Separatrix *>()});
+      }
+      vertexEdges[start].push_back(&sepRef);
     }
-    if(vertexEdges.find(end) == vertexEdges.end()) {
-      vertexEdges.insert({end, std::vector<mscq::Separatrix*>()});
+    if(offsets[end] >= offsets[start]) {
+      if(vertexEdges.find(end) == vertexEdges.end()) {
+        vertexEdges.insert({end, std::vector<mscq::Separatrix *>()});
+      }
+      vertexEdges[end].push_back(&sepRef);
+    }
+  }
+
+  /*for(auto &vertSeps : vertexEdges) {
+    if(vertSeps.second.size() < 2) {
+      continue;
     }
 
-    vertexEdges[start].push_back(&sepRef);
-    vertexEdges[end].push_back(&sepRef);
-  }
+    mscq::Separatrix &se0 = &vertSeps.second[0], se1 = &vertSeps.second[1];
+
+    SimplexId centerId
+
+  }*/
 
   this->printMsg("Queue size: " + std::to_string(sspQueue.size()));
   size_t maxQueueSize = sspQueue.size();
 
   std::map<SimplexId, size_t> critPairToSSP;
 
-  while(!sspQueue.empty()) {
+  /*while(!sspQueue.empty()) {
 
     if(sspQueue.size() > maxQueueSize) {
       maxQueueSize = sspQueue.size();
@@ -3422,59 +3450,44 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
 
     const size_t numFilteredSeps = shortestSeps.size();
 
-    this->printMsg(std::to_string(sspQueue.size()) + " / " +
-      std::to_string(numFilteredSeps) + " o " + std::to_string(numSeps));
-
     for(size_t i = 0; i < numFilteredSeps; ++i) {
-      if(offsets[endSepIds[i]] <= offsets[ref.lastId_]) {
-        if(vertexToCritId.find(endSepIds[i]) != vertexToCritId.end()) {
-          if(criticalPoints[vertexToCritId[endSepIds[i]]].index_ == 1) {
-            // path complete
-            ref.insertPathPiece(shortestSeps[i], endSepIds[i]);
+      //if(offsets[endSepIds[i]] <= offsets[ref.lastId_]) {
+      if(vertexToCritId.find(endSepIds[i]) != vertexToCritId.end()) {
+        if(criticalPoints[vertexToCritId[endSepIds[i]]].index_ == 1) {
+          // path complete
+          ref.insertPathPiece(shortestSeps[i], endSepIds[i]);
 
-            const SimplexId uniqueCritId
-              = (vertexToCritId[ref.saddleVertId_] * criticalPoints.size())
-              + vertexToCritId[endSepIds[i]];
+          const SimplexId uniqueCritId
+            = (vertexToCritId[ref.saddleVertId_] * criticalPoints.size())
+            + vertexToCritId[endSepIds[i]];
 
-            this->printMsg("Fin: " + std::to_string(offsets[endSepIds[i]])
-                           + " i " + std::to_string(offsets[ref.lastId_])
-                           + " ! " + std::to_string(endSepIds[i]) + " i "
-                           + std::to_string(ref.lastId_) + " x "
-                           + std::to_string(uniqueCritId));
-
-            if(critPairToSSP.find(uniqueCritId) == critPairToSSP.end()) {
-              this->printMsg("A1");
-              ssPaths.push_back(ref);
-              this->printMsg("A2");
-              critPairToSSP.insert({uniqueCritId, ssPaths.size() - 1 });
-              this->printMsg("A3");
-            } else {
-              this->printMsg("B1");
-              if(ssPaths[critPairToSSP[uniqueCritId]].length_ > ref.length_) {
-                this->printMsg("B2");
-                ssPaths[critPairToSSP[uniqueCritId]] = ref;
-              }
-              this->printMsg("B3");
+          if(critPairToSSP.find(uniqueCritId) == critPairToSSP.end()) {
+            ssPaths.push_back(ref);
+            critPairToSSP.insert({uniqueCritId, ssPaths.size() - 1 });
+          } else {
+            if(ssPaths[critPairToSSP[uniqueCritId]].length_ > ref.length_) {
+              ssPaths[critPairToSSP[uniqueCritId]] = ref;
             }
           }
-        } else { // extend path
-          if(ref.visitedIds_.find(vertexEdges[ref.lastId_][i]->Id_)
-             == ref.visitedIds_.end()) {
-            this->printMsg("Ext: " + std::to_string(offsets[endSepIds[i]])
-                           + " i " + std::to_string(offsets[ref.lastId_])
-                           + " ! " + std::to_string(endSepIds[i]) + " i "
-                           + std::to_string(ref.lastId_));
+        }
+      } else { // extend path
+        if(ref.visitedIds_.find(vertexEdges[ref.lastId_][i]->Id_)
+           == ref.visitedIds_.end()) {
+          /*this->printMsg("Ext: " + std::to_string(offsets[endSepIds[i]])
+                         + " i " + std::to_string(offsets[ref.lastId_])
+                         + " ! " + std::to_string(endSepIds[i]) + " i "
+                         + std::to_string(ref.lastId_));
 
-            mscq::SaddleSaddlePath newPath(ref);
-            newPath.insertPathPiece(vertexEdges[ref.lastId_][i], endSepIds[i]);
-            sspQueue.push(newPath);
-          }
+          mscq::SaddleSaddlePath newPath(ref);
+          newPath.insertPathPiece(vertexEdges[ref.lastId_][i], endSepIds[i]);
+          sspQueue.push(newPath);
         }
       }
+      //}
     }
 
     sspQueue.pop();
-  }
+  }*/
 
   this->printMsg("Max Queue size: " + std::to_string(maxQueueSize));
 
@@ -3554,7 +3567,45 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
     outputSeparatrices1_cells_isOnBoundary_->resize(numSep);
 
-  auto highDimCenterFunction = &triangulationType::getTetraIncenter;
+  int (triangulationType::*getPosFuncs[4])(SimplexId, float *) const
+    = {&triangulationType::getVertexCoordinates,
+       &triangulationType::getEdgeIncenter,
+       &triangulationType::getTriangleIncenter,
+       &triangulationType::getTetraIncenter};
+
+  SimplexId currPId = prevNpoints * 3, currCId = prevNcells * 2;
+  for(size_t i = 0; i < numSep; ++i) {
+    const auto &sep = separatrices[i];
+
+    std::array<float, 3> pt{};
+
+    (triangulation.*getPosFuncs[sep.dims_[0]])(sep.geometry_[0], pt.data());
+
+    points[3 * currPId + 0] = pt[0];
+    points[3 * currPId + 1] = pt[1];
+    points[3 * currPId + 2] = pt[2];
+
+    currPId += 1;
+
+    for(size_t j = 1; j < sep.geometry_.size(); ++j) {
+      (triangulation.*getPosFuncs[sep.dims_[j]])(sep.geometry_[j], pt.data());
+
+      points[3 * currPId + 0] = pt[0];
+      points[3 * currPId + 1] = pt[1];
+      points[3 * currPId + 2] = pt[2];
+
+      cellsConn[2 * currCId + 0] = currPId - 1;
+      cellsConn[2 * currCId + 1] = currPId;
+
+      currPId += 1;
+      currCId += 1;
+    }
+
+    if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
+      (*outputSeparatrices1_cells_isOnBoundary_)[i] = false;
+  }
+
+  /*auto highDimCenterFunction = &triangulationType::getTetraIncenter;
   auto lowDimCenterFunction = &triangulationType::getTriangleIncenter;
 
   SimplexId currPId = prevNpoints * 3, currCId = prevNcells * 2;
@@ -3651,7 +3702,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
 
     if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
       (*outputSeparatrices1_cells_isOnBoundary_)[i] = false;
-  }
+  }*/
 
   // update pointers
   *outputSeparatrices1_numberOfPoints_ = prevNpoints + npoints;
@@ -3910,9 +3961,9 @@ int ttk::MorseSmaleComplexQuasi::createBorderPath_3D(
   SimplexId startEdge,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
-  
-  separatrix.geometry_.push_back(startTriangle);
-  separatrix.geometry_.push_back(startEdge);
+
+  separatrix.insertGeometry(startTriangle, 2);
+  separatrix.insertGeometry(startEdge, 1);
 
   SimplexId currTriangle;
   SimplexId currEdge;
@@ -3957,13 +4008,13 @@ int ttk::MorseSmaleComplexQuasi::createBorderPath_3D(
       }
     }
 
-    separatrix.geometry_.push_back(currEdge);
+    separatrix.insertGeometry(currEdge, 1);
 
     prevEdge = currEdge;
     prevTriangle = currTriangle;
   }
 
-  separatrix.geometry_.push_back(currTriangle);
+  separatrix.insertGeometry(currTriangle, 2);
 
   return 1;
 }
