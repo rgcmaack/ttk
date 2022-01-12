@@ -221,59 +221,6 @@ namespace ttk {
       std::set<SimplexId> regionIds_;
     };
 
-    struct PLIntegralLine {
-      // default :
-      explicit PLIntegralLine() : geometry_{}, pathType_{-1} {
-      }
-
-      // initialization with one segment :
-      explicit PLIntegralLine(const SimplexId segmentGeometry) {
-        geometry_.push_back(segmentGeometry);
-      }
-
-      explicit PLIntegralLine(const SimplexId segmentGeometry,
-                              const int pathType) {
-        geometry_.push_back(segmentGeometry);
-        pathType_ = pathType;
-      }
-
-      explicit PLIntegralLine(const PLIntegralLine &plIntLine)
-        : geometry_{plIntLine.geometry_}, pathType_{plIntLine.pathType_} {
-      }
-
-      explicit PLIntegralLine(PLIntegralLine &&plIntLine) noexcept
-        : geometry_{std::move(plIntLine.geometry_)}, pathType_{
-                                                       plIntLine.pathType_} {
-      }
-
-      PLIntegralLine &operator=(PLIntegralLine &&plIntLine) noexcept {
-        geometry_ = std::move(plIntLine.geometry_);
-        pathType_ = plIntLine.pathType_;
-
-        return *this;
-      }
-
-      PLIntegralLine &operator=(const PLIntegralLine &plIntLine) noexcept {
-        geometry_ = std::move(plIntLine.geometry_);
-        pathType_ = plIntLine.pathType_;
-
-        return *this;
-      }
-
-      /**
-       * Container of ids. Each id addresses a separate
-       * container corresponding to a dense representation
-       * of the geometry (i.e. separatricesGeometry).
-       */
-      std::vector<SimplexId> geometry_;
-
-      /**
-       * Type of integral line
-       *
-       */
-      int pathType_{-1};
-    };
-
     struct DoublyLinkedElement {
       explicit DoublyLinkedElement() {
       }
@@ -663,7 +610,7 @@ namespace ttk {
 
     template <typename dataType, typename triangulationType>
     int computeIntegralLines(
-      std::vector<mscq::PLIntegralLine> &plIntLines,
+      std::vector<mscq::Separatrix> &plIntLines,
       const SimplexId *const ascendingNeighbor,
       const SimplexId *const descendingNeighbor,
       const SimplexId *const ascendingManifold,
@@ -679,11 +626,6 @@ namespace ttk {
     int setSaddleSaddleConnectors_3D(
         const std::vector<mscq::SaddleSaddlePath> &ssp,
         const triangulationType &triangulation) const;
-
-    template <typename triangulationType>
-    int setIntegralLines_3D(
-      const std::vector<mscq::PLIntegralLine> &separatrices,
-      const triangulationType &triangulation) const;
 
     int setSeparatrices2_3D(std::vector<std::array<float, 9>> &trianglePos,
                             std::vector<SimplexId> &caseData) const;
@@ -954,7 +896,7 @@ int ttk::MorseSmaleComplexQuasi::execute(
           std::unordered_map<long long, std::vector<
             std::tuple<SimplexId, SimplexId, bool>>> pieces1separatrices;
           std::unordered_set<SimplexId> borderSeeds;
-          std::vector<mscq::PLIntegralLine> plIntLines;
+          std::vector<mscq::Separatrix> plIntLines;
       
           if(fastSeparatrices) {
             computeSeparatrices_3D_fast<dataType, triangulationType>(
@@ -979,13 +921,15 @@ int ttk::MorseSmaleComplexQuasi::execute(
             compute1SeparatricesBorder_3D<triangulationType>(
               borderSeeds, separatrices1, sepManifold, triangulation);
 
-            /*split1SeparatricesAtCrit_3D<triangulationType>(
-              criticalPoints, separatrices1, sepManifold, triangulation);
-
             computeIntegralLines<dataType, triangulationType>(
               plIntLines, ascendingNeighbor, descendingNeighbor,
               ascendingManifold, descendingManifold, criticalPoints,
               triangulation);
+
+            /*split1SeparatricesAtCrit_3D<triangulationType>(
+              criticalPoints, separatrices1, sepManifold, triangulation);
+
+            
 
             findSaddleSaddleConnectors<dataType, triangulationType>(
               criticalPoints, separatrices1, ssp, triangulation);
@@ -997,6 +941,8 @@ int ttk::MorseSmaleComplexQuasi::execute(
 
             //setIntegralLines_3D<triangulationType>(
             //  plIntLines, triangulation);
+
+            setSeparatrices1_3D<triangulationType>(plIntLines, triangulation);
 
             setSeparatrices1_3D<triangulationType>(
               separatrices1, triangulation);
@@ -3531,7 +3477,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
 #endif
 
   this->printMsg("Writing 1-separatrices", 1, localTimer.getElapsedTime(),
-                 this->threadNumber_); //,ttk::debug::LineMode::REPLACE);
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
   // previous points and cell sizes
   const size_t prevNpoints = *outputSeparatrices1_numberOfPoints_,
@@ -3546,8 +3492,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   for(size_t i = 0; i < numSep; ++i) {
     const auto &sep = separatrices[i];
 
-    int numSepPts = sep.geometry_.size() + (int)(sep.critIdStart_ != -1)
-                    + (int)(sep.critIdEnd_ != -1);
+    const int numSepPts = sep.geometry_.size();
 
     npoints += numSepPts;
     numCells += numSepPts - 1;
@@ -3573,7 +3518,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
        &triangulationType::getTriangleIncenter,
        &triangulationType::getTetraIncenter};
 
-  SimplexId currPId = prevNpoints * 3, currCId = prevNcells * 2;
+  SimplexId currPId = prevNpoints, currCId = prevNcells;
   for(size_t i = 0; i < numSep; ++i) {
     const auto &sep = separatrices[i];
 
@@ -3605,111 +3550,12 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
       (*outputSeparatrices1_cells_isOnBoundary_)[i] = false;
   }
 
-  /*auto highDimCenterFunction = &triangulationType::getTetraIncenter;
-  auto lowDimCenterFunction = &triangulationType::getTriangleIncenter;
-
-  SimplexId currPId = prevNpoints * 3, currCId = prevNcells * 2;
-  for(size_t i = 0; i < numSep; ++i) {
-    const auto &sep = separatrices[i];
-
-    if(sep.geometry_.size() == 0) {
-      continue;
-    }
-
-    std::array<float, 3> pt{};
-
-    if(!sep.onBoundary_) { // inner separatrix
-      highDimCenterFunction = &triangulationType::getTetraIncenter;
-      lowDimCenterFunction = &triangulationType::getTriangleIncenter;
-    } else {
-      highDimCenterFunction = &triangulationType::getTriangleIncenter;
-      lowDimCenterFunction = &triangulationType::getEdgeIncenter;
-    }
-
-    const size_t geomSize
-      = sep.geometry_.size() == 0 ? 0 : sep.geometry_.size() - 1;
-
-    size_t startIndex = 0;
-
-    if(sep.critIdStart_ != -1) {
-      triangulation.getVertexPoint(sep.critIdStart_, pt[0], pt[1], pt[2]);
-    } else {
-      if(sep.startAtHighDimSimplex_) {
-        (triangulation.*highDimCenterFunction)(
-          sep.geometry_.front(), pt.data());
-      } else {
-        (triangulation.*lowDimCenterFunction)(sep.geometry_.front(), pt.data());
-      }
-
-      startIndex = 1;
-    }
-
-    points[3 * currPId + 0] = pt[0];
-    points[3 * currPId + 1] = pt[1];
-    points[3 * currPId + 2] = pt[2];
-
-    currPId += 1;
-
-    for(size_t j = startIndex; j < geomSize; ++j) {
-
-      (triangulation.*lowDimCenterFunction)(sep.geometry_[j], pt.data());
-
-      points[3 * currPId + 0] = pt[0];
-      points[3 * currPId + 1] = pt[1];
-      points[3 * currPId + 2] = pt[2];
-
-      cellsConn[2 * currCId + 0] = currPId - 1;
-      cellsConn[2 * currCId + 1] = currPId;
-
-      currPId += 1;
-      currCId += 1;
-    }
-
-    if(geomSize != 0) {
-      if(sep.critIdEnd_ != -1) {
-        (triangulation.*lowDimCenterFunction)(sep.geometry_.back(), pt.data());
-
-        points[3 * currPId + 0] = pt[0];
-        points[3 * currPId + 1] = pt[1];
-        points[3 * currPId + 2] = pt[2];
-
-        cellsConn[2 * currCId + 0] = currPId - 1;
-        cellsConn[2 * currCId + 1] = currPId;
-
-        currPId += 1;
-        currCId += 1;
-
-        triangulation.getVertexPoint(sep.critIdEnd_, pt[0], pt[1], pt[2]);
-
-      } else if(sep.endAtHighDimSimplex_) {
-        (triangulation.*highDimCenterFunction)(
-          sep.geometry_[geomSize], pt.data());
-      } else {
-        (triangulation.*lowDimCenterFunction)(
-          sep.geometry_[geomSize], pt.data());
-      }
-    }
-
-    points[3 * currPId + 0] = pt[0];
-    points[3 * currPId + 1] = pt[1];
-    points[3 * currPId + 2] = pt[2];
-
-    cellsConn[2 * currCId + 0] = currPId - 1;
-    cellsConn[2 * currCId + 1] = currPId;
-
-    currPId += 1;
-    currCId += 1;
-
-    if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
-      (*outputSeparatrices1_cells_isOnBoundary_)[i] = false;
-  }*/
-
   // update pointers
   *outputSeparatrices1_numberOfPoints_ = prevNpoints + npoints;
   *outputSeparatrices1_numberOfCells_ = prevNcells + numCells;
 
-  this->printMsg("Wrote 1-separatrices", 1, localTimer.getElapsedTime(),
-                 this->threadNumber_);
+  this->printMsg("Wrote " + std::to_string(numSep) + "1-separatrices",
+    1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
 }
@@ -4021,7 +3867,7 @@ int ttk::MorseSmaleComplexQuasi::createBorderPath_3D(
 
 template <typename dataType, typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeIntegralLines(
-  std::vector<mscq::PLIntegralLine> &plIntLines,
+  std::vector<mscq::Separatrix> &plIntLines,
   const SimplexId *const ascendingNeighbor,
   const SimplexId *const descendingNeighbor,
   const SimplexId *const ascendingManifold,
@@ -4097,37 +3943,35 @@ int ttk::MorseSmaleComplexQuasi::computeIntegralLines(
   }
 
   for(const auto& c : critsByIndex[0]) { // 1-saddle -> minimum
-    mscq::PLIntegralLine plIntLine;
+    mscq::Separatrix plIntLine;
 
     SimplexId currentVert = std::get<1>(c);
-    plIntLine.geometry_.push_back(std::get<0>(c));
+    plIntLine.insertGeometry(std::get<0>(c), 0);
 
     while(critMap.find(currentVert) == critMap.end()) {
-      plIntLine.geometry_.push_back(currentVert);
+      plIntLine.insertGeometry(currentVert, 0);
 
       currentVert = ascendingNeighbor[currentVert];
     }
 
-    plIntLine.geometry_.push_back(currentVert);
-    plIntLine.pathType_ = 0;
+    plIntLine.insertGeometry(currentVert, 0);
 
     plIntLines.push_back(plIntLine);
   }
 
   for(const auto& c : critsByIndex[1]) { // 2-saddle maximum
-    mscq::PLIntegralLine plIntLine;
+    mscq::Separatrix plIntLine;
 
     SimplexId currentVert = std::get<1>(c);
-    plIntLine.geometry_.push_back(std::get<0>(c));
+    plIntLine.insertGeometry(std::get<0>(c), 0);
 
     while(critMap.find(currentVert) == critMap.end()) {
-      plIntLine.geometry_.push_back(currentVert);
+      plIntLine.insertGeometry(currentVert, 0);
 
       currentVert = descendingNeighbor[currentVert];
     }
 
-    plIntLine.geometry_.push_back(currentVert);
-    plIntLine.pathType_ = 2;
+    plIntLine.insertGeometry(currentVert, 0);
 
     plIntLines.push_back(plIntLine);
   }
@@ -4136,123 +3980,6 @@ int ttk::MorseSmaleComplexQuasi::computeIntegralLines(
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 1;
-}
-
-template <typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::setIntegralLines_3D(
-  const std::vector<mscq::PLIntegralLine> &intLines,
-  const triangulationType &triangulation) const {
-
-  ttk::Timer localTimer;
-
-#ifndef TTK_ENABLE_KAMIKAZE
-  if(outputSeparatrices1_numberOfPoints_ == nullptr) {
-    this->printErr("1-separatrices pointer to numberOfPoints is null.");
-    return -1;
-  }
-  if(outputSeparatrices1_points_ == nullptr) {
-    this->printErr("1-separatrices pointer to points is null.");
-    return -1;
-  }
-  if(outputSeparatrices1_numberOfCells_ == nullptr) {
-    this->printErr("1-separatrices pointer to numberOfCells is null.");
-    return -1;
-  }
-  if(outputSeparatrices1_cells_connectivity_ == nullptr) {
-    this->printErr("1-separatrices pointer to cells is null.");
-    return -1;
-  }
-  if(inputOrderField_ == nullptr) {
-    this->printErr(
-      " 1-separatrices pointer to the input scalar field is null.");
-    return -1;
-  }
-#endif 
-
-  this->printMsg("Writing extrema saddle connectors",
-                  1,
-                  localTimer.getElapsedTime(),
-                  this->threadNumber_,
-                  ttk::debug::LineMode::REPLACE);
-
-  // previous points and cell sizes
-  const size_t prevNpoints = *outputSeparatrices1_numberOfPoints_,
-               prevNcells = *outputSeparatrices1_numberOfCells_;
-
-  // number of separatrices
-  size_t numSep = intLines.size();
-  size_t npoints = 0;
-  size_t numCells = 0;
-
-  // count total number of points and cells, flatten geometryId loops
-  for(size_t i = 0; i < numSep; ++i) {
-    const auto &sep = intLines[i];
-
-    npoints += sep.geometry_.size() + 0; // +0?
-    numCells += sep.geometry_.size() - 1; // -1?
-  }
-
-  // resize arrays
-  outputSeparatrices1_points_->resize((prevNpoints + npoints) * 3);
-  auto &points = *outputSeparatrices1_points_;
-  outputSeparatrices1_cells_connectivity_->resize((prevNcells + numCells) * 2);
-  auto &cellsConn = *outputSeparatrices1_cells_connectivity_;
-  if(outputSeparatrices1_cells_sourceIds_ != nullptr)
-    outputSeparatrices1_cells_sourceIds_->resize(numSep);
-  if(outputSeparatrices1_cells_destinationIds_ != nullptr)
-    outputSeparatrices1_cells_destinationIds_->resize(numSep);
-  if(outputSeparatrices1_cells_separatrixIds_ != nullptr)
-    outputSeparatrices1_cells_separatrixIds_->resize(numSep);
-  if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
-    outputSeparatrices1_cells_isOnBoundary_->resize(numSep);
-
-  SimplexId currPId = prevNpoints * 3, currCId = prevNcells * 2;
-  for(size_t i = 0; i < numSep; ++i) {
-    const auto &sep = intLines[i];
-
-    float x, y, z;
-    triangulation.getVertexPoint(sep.geometry_[0], x, y, z);
-
-    points[3 * currPId + 0] = x;
-    points[3 * currPId + 1] = y;
-    points[3 * currPId + 2] = z;
-
-    currPId += 1;
-
-    const size_t geomSize = sep.geometry_.size();
-
-    for(size_t j = 1; j < geomSize; ++j) {
-      triangulation.getVertexPoint(sep.geometry_[j], x, y, z);
-
-      points[3 * currPId + 0] = x;
-      points[3 * currPId + 1] = y;
-      points[3 * currPId + 2] = z;
-
-      cellsConn[2 * currCId + 0] = currPId - 1;
-      cellsConn[2 * currCId + 1] = currPId;
-
-      currPId += 1;
-      currCId += 1;
-    }
-
-    bool isAscending = false;
-
-    if(sep.pathType_ == 1 || sep.pathType_ == 3) {
-      isAscending = true;
-    }
-
-    if(outputSeparatrices1_cells_isOnBoundary_ != nullptr)
-      (*outputSeparatrices1_cells_isOnBoundary_)[i] = isAscending;
-  }
-
-  // update pointers
-  *outputSeparatrices1_numberOfPoints_ = prevNpoints + npoints;
-  *outputSeparatrices1_numberOfCells_ = prevNcells + numCells;
-
-  this->printMsg("Wrote extrema saddle connectors", 1,
-                 localTimer.getElapsedTime(), this->threadNumber_);
-
-  return 0;
 }
 
 int ttk::MorseSmaleComplexQuasi::setSeparatrices2_3D(
