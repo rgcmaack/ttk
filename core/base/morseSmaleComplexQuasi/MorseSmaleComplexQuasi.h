@@ -926,12 +926,10 @@ int ttk::MorseSmaleComplexQuasi::execute(
               ascendingManifold, descendingManifold, criticalPoints,
               triangulation);
 
-            /*split1SeparatricesAtCrit_3D<triangulationType>(
+            split1SeparatricesAtCrit_3D<triangulationType>(
               criticalPoints, separatrices1, sepManifold, triangulation);
 
-            
-
-            findSaddleSaddleConnectors<dataType, triangulationType>(
+            /*findSaddleSaddleConnectors<dataType, triangulationType>(
               criticalPoints, separatrices1, ssp, triangulation);
 
             setSaddleSaddleConnectors_3D<triangulationType>(ssp, triangulation);*/
@@ -2929,15 +2927,19 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
   ttk::Timer localTimer;
   this->printMsg("Splitting 1-Separatrices at crits",
                  0, // progress form 0-1
-                 0, // elapsed time so far
+                 localTimer.getElapsedTime(), // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
-  std::unordered_map<SimplexId, std::set<SimplexId>> tetCritMap;
-  std::unordered_map<SimplexId, std::set<SimplexId>> triCritMap;
+  std::unordered_map<SimplexId, std::set<SimplexId>> vertCritMap;
   std::unordered_map<SimplexId, std::set<SimplexId>> edgeCritMap;
+  std::unordered_map<SimplexId, std::set<SimplexId>> triCritMap;
+  std::unordered_map<SimplexId, std::set<SimplexId>> tetCritMap;
 
   // Create lookup maps for tets, tris and edges that contain critical points
   for(const auto& c: criticalPoints) {
+    vertCritMap.insert({c.id_, std::set<SimplexId>()});
+    vertCritMap[c.id_].insert(c.id_);
+
     const SimplexId numTris = triangulation.getVertexTriangleNumber(c.id_);
     SimplexId triId;
 
@@ -2977,6 +2979,10 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
     }
   }
 
+  std::unordered_map<SimplexId, std::set<SimplexId>>* critMaps[4] = {
+    &vertCritMap, &edgeCritMap, &triCritMap, &tetCritMap
+  };
+
   std::vector<mscq::Separatrix> oldSeparatrices(separatrices1);
   separatrices1.clear();
   separatrices1.reserve(2 * oldSeparatrices.size());
@@ -2984,33 +2990,15 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
   const size_t numSep = oldSeparatrices.size();
 
   for(size_t i = 0; i < numSep; ++i) {
-    std::unordered_map<SimplexId, std::set<SimplexId>> *upperCritMap;
-    std::unordered_map<SimplexId, std::set<SimplexId>> *lowerCritMap;
-    std::unordered_map<SimplexId, std::set<SimplexId>> *endCritMap;
+    const auto &sep = oldSeparatrices[i];
 
     std::vector<size_t> splitPoints;
     std::vector<std::set<SimplexId>> splitPointCriticalPoints;
     std::set<SimplexId> foundCriticalPoints;
 
-    const auto &sep = oldSeparatrices[i];
-
-    if(sep.onBoundary_) {
-      upperCritMap = &triCritMap;
-      lowerCritMap = &edgeCritMap;
-    } else {
-      upperCritMap = &tetCritMap;
-      lowerCritMap = &triCritMap;
-    }
-
-    if(!sep.endAtHighDimSimplex_) {
-      endCritMap = lowerCritMap;
-    } else {
-      endCritMap = upperCritMap;
-    }
-
     // first simplex contains a critical point?
-    auto critIdFront = upperCritMap->find(sep.geometry_.front());
-    if(critIdFront != upperCritMap->end()) {
+    auto critIdFront = critMaps[sep.dims_[0]]->find(sep.geometry_[0]);
+    if(critIdFront != critMaps[sep.dims_[0]]->end()) {
       splitPoints.push_back(0);
       splitPointCriticalPoints.push_back(critIdFront->second);
       for(auto critE : critIdFront->second) {
@@ -3021,8 +3009,8 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
     // find geometry parts containing a critical point
     const size_t geoSize = sep.geometry_.size() - 2;
     for(size_t geo = 2; geo < geoSize; ++geo) {
-      auto critIdsMid = lowerCritMap->find(sep.geometry_[geo]);
-      if(critIdsMid != lowerCritMap->end()) {
+      auto critIdsMid = critMaps[sep.dims_[geo]]->find(sep.geometry_[geo]);
+      if(critIdsMid != critMaps[sep.dims_[geo]]->end()) {
         std::set<SimplexId> newCritSet;
         for(auto c : critIdsMid->second) {
           if(foundCriticalPoints.find(c) ==
@@ -3040,8 +3028,8 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
     }
 
     // last simplex contains a critical point?
-    auto critIdsBack = endCritMap->find(sep.geometry_.back());
-    if(critIdsBack != endCritMap->end()) {
+    auto critIdsBack = critMaps[sep.dims_.back()]->find(sep.geometry_.back());
+    if(critIdsBack != critMaps[sep.dims_.back()]->end()) {
       std::set<SimplexId> newCritSet;
       for(auto c : critIdsBack->second) {
         if(foundCriticalPoints.find(sep.geometry_.back()) ==
@@ -3099,6 +3087,7 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
                 newSep.dims_.end(), sep.dims_.begin() + nextInsertion,
                 sep.dims_.begin() + (splitPoints[splitPointIdx]));
             }
+            newSep.insertGeometry(spcp, 0);
 
             newSep.onBoundary_ = sep.onBoundary_;
             separatrices1.push_back(newSep);
@@ -3108,7 +3097,7 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
         startSeps.clear();
 
         for(const auto &spcp : splitPointCriticalPoints[splitPointIdx]) {
-          mscq::Separatrix newSep;
+          mscq::Separatrix newSep(spcp, 0);
           newSep.startAtHighDimSimplex_ = false;
           newSep.onBoundary_ = sep.onBoundary_;
           newSep.critIdStart_ = spcp;
@@ -3138,7 +3127,7 @@ int ttk::MorseSmaleComplexQuasi::split1SeparatricesAtCrit_3D(
   }
 
   this->printMsg("Splitted 1-Separatrices at crits",
-                 0, // progress form 0-1
+                 1, // progress form 0-1
                  localTimer.getElapsedTime(), // elapsed time so far
                  this->threadNumber_);
 
@@ -3163,49 +3152,6 @@ void ttk::MorseSmaleComplexQuasi::computeSeparatrixLowIds(
 
   sep.lowIdEnd_ = (triangulation.*getLowFuncs[sep.dims_.back()])(
     sep.geometry_.back(), offsets, triangulation);
-
-  /*if(sep.onBoundary_) {
-    if(sep.critIdStart_ != -1) {
-      sep.lowIdStart_ = sep.critIdStart_;
-    } else if(sep.startAtHighDimSimplex_) {
-      sep.lowIdStart_
-        = getSmallesVertexOfTri(sep.geometry_.front(), offsets, triangulation);
-    } else {
-      sep.lowIdStart_
-        = getSmallesVertexOfEdge(sep.geometry_.front(), offsets, triangulation);
-    }
-
-    if(sep.critIdEnd_ != -1) {
-      sep.lowIdEnd_ = sep.critIdEnd_;
-    } else if(sep.startAtHighDimSimplex_) {
-      sep.lowIdEnd_
-        = getSmallesVertexOfTri(sep.geometry_.back(), offsets, triangulation);
-    } else {
-      sep.lowIdEnd_
-        = getSmallesVertexOfEdge(sep.geometry_.back(), offsets, triangulation);
-    }
-
-  } else {
-    if(sep.critIdStart_ != -1) {
-      sep.lowIdStart_ = sep.critIdStart_;
-    } else if(sep.startAtHighDimSimplex_) {
-      sep.lowIdStart_
-        = getSmallesVertexOfTet(sep.geometry_.front(), offsets, triangulation);
-    } else {
-      sep.lowIdStart_
-        = getSmallesVertexOfTri(sep.geometry_.front(), offsets, triangulation);
-    }
-
-    if(sep.critIdEnd_ != -1) {
-      sep.lowIdEnd_ = sep.critIdEnd_;
-    } else if(sep.startAtHighDimSimplex_) {
-      sep.lowIdEnd_
-        = getSmallesVertexOfTet(sep.geometry_.back(), offsets, triangulation);
-    } else {
-      sep.lowIdEnd_
-        = getSmallesVertexOfTri(sep.geometry_.back(), offsets, triangulation);
-    }
-  }*/
 }
 
 template <typename dataType, typename triangulationType>
@@ -3554,7 +3500,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   *outputSeparatrices1_numberOfPoints_ = prevNpoints + npoints;
   *outputSeparatrices1_numberOfCells_ = prevNcells + numCells;
 
-  this->printMsg("Wrote " + std::to_string(numSep) + "1-separatrices",
+  this->printMsg("Wrote " + std::to_string(numSep) + " 1-separatrices",
     1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
