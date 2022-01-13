@@ -425,6 +425,8 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
       return -1;
     }
 #endif
+
+    cellData->AddArray(separatrixTypes);
   }
 
   // 2-separatrices
