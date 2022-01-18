@@ -212,6 +212,10 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
   criticalPoints_points_cellDimensions.clear();
   criticalPoints_points_cellIds.clear();
 
+  this->setOutputCriticalPoints(
+    &criticalPoints_points, &criticalPoints_points_cellDimensions,
+    &criticalPoints_points_cellIds);
+
   // 1-separatrices
   SimplexId s1_numberOfPoints{};
   SimplexId s1_numberOfCells{};
@@ -228,16 +232,6 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
   std::vector<ttk::SimplexId> s1_separatrixFunctionMaxima{};
   std::vector<ttk::SimplexId> s1_separatrixFunctionMinima{};
 
-  // 2-separatrices
-  SimplexId s2_numberOfPoints{};
-  SimplexId s2_numberOfCells{};
-  separatrices2_points.clear();
-  separatrices2_cells_connectivity.clear();
-
-  this->setOutputCriticalPoints(
-    &criticalPoints_points, &criticalPoints_points_cellDimensions,
-    &criticalPoints_points_cellIds);
-
   this->setOutputSeparatrices1(
     &s1_numberOfPoints, &separatrices1_points,
     &separatrices1_points_smoothingMask, &separatrices1_points_cellDimensions,
@@ -247,10 +241,17 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     &separatrices1_cells_separatrixTypes, &s1_separatrixFunctionMaxima,
     &s1_separatrixFunctionMinima, &separatrices1_cells_isOnBoundary);
 
+  // 2-separatrices
+  SimplexId s2_numberOfPoints{};
+  SimplexId s2_numberOfCells{};
+  separatrices2_points.clear();
+  separatrices2_cells_mscIds.clear();
+  separatrices2_cells_caseTypes.clear();
+
   this->setOutputSeparatrices2(
     &s2_numberOfPoints, &separatrices2_points,
     &s2_numberOfCells, &separatrices2_cells_connectivity,
-    &separatrices2_cells_caseTypes);
+    &separatrices2_cells_mscIds,&separatrices2_cells_caseTypes);
 
   const int ret = this->execute<dataType, triangulationType>(
     triangulation, SeparatricesManifold, ComputeSeparatrices,
@@ -432,15 +433,6 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
   // 2-separatrices
   {
     vtkNew<vtkFloatArray> pointsCoords{};
-    vtkNew<ttkSimplexIdTypeArray> caseTypes{};
-    
-#ifndef TTK_ENABLE_KAMIKAZE
-    if(!pointsCoords || !caseTypes) {
-      this->printErr("2-separatrices vtkDataArray allocation problem.");
-      return -1;
-    }
-#endif
-
     pointsCoords->SetNumberOfComponents(3);
     setArray(pointsCoords, separatrices2_points);
 
@@ -450,6 +442,12 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     connectivity->SetNumberOfComponents(1);
     setArray(connectivity, separatrices2_cells_connectivity);
 
+    vtkNew<ttkSimplexIdTypeArray> mscIds{};
+    mscIds->SetNumberOfComponents(1);
+    mscIds->SetName("MSCIds");
+    setArray(mscIds, separatrices2_cells_mscIds);
+
+    vtkNew<ttkSimplexIdTypeArray> caseTypes{};
     caseTypes->SetNumberOfComponents(1);
     caseTypes->SetName("CaseType");
     setArray(caseTypes, separatrices2_cells_caseTypes);
@@ -464,6 +462,7 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     vtkNew<vtkPoints> points{};
     points->SetData(pointsCoords);
     outputSeparatrices2->SetPoints(points);
+
     vtkNew<vtkCellArray> cells{};
 #ifndef TTK_ENABLE_64BIT_IDS
     cells->Use32BitStorage();
@@ -472,6 +471,7 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     outputSeparatrices2->SetPolys(cells);
 
     auto cellData = outputSeparatrices2->GetCellData();
+    cellData->AddArray(mscIds);
     cellData->AddArray(caseTypes);
   }
 

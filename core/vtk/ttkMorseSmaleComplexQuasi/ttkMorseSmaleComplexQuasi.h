@@ -129,5 +129,6 @@ private:
   // 2-separatrices data
   std::vector<float> separatrices2_points{};
   std::vector<ttk::SimplexId> separatrices2_cells_connectivity{};
+  std::vector<ttk::SimplexId> separatrices2_cells_mscIds{};
   std::vector<ttk::SimplexId> separatrices2_cells_caseTypes{};
 };
