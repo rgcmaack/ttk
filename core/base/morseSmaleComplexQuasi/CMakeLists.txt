@@ -6,4 +6,5 @@ ttk_add_base_library(morseSmaleComplexQuasi
   DEPENDS
     triangulation
     unionFind
+    scalarFieldCriticalPoints
 )
