@@ -76,11 +76,11 @@ public:
   vtkSetMacro(ComputeSeparatrices, bool);
   vtkGetMacro(ComputeSeparatrices, bool);
 
-  vtkSetMacro(SeperateExtrema, bool);
-  vtkGetMacro(SeperateExtrema, bool);
+  vtkSetMacro(Fast1Separatrices, bool);
+  vtkGetMacro(Fast1Separatrices, bool);
 
-  vtkSetMacro(FastSeparatrices, bool);
-  vtkGetMacro(FastSeparatrices, bool);
+  vtkSetMacro(Fast2Separatrices, bool);
+  vtkGetMacro(Fast2Separatrices, bool);
 
 protected:
   ttkMorseSmaleComplexQuasi();
@@ -104,8 +104,8 @@ private:
   bool ComputeAscendingSegmentation{true};
   bool ComputeDescendingSegmentation{true};
   bool ComputeFinalSegmentation{true};
-  bool SeperateExtrema{true};
-  bool FastSeparatrices{false};
+  bool Fast1Separatrices{false};
+  bool Fast2Separatrices{false};
   SEPARATRICES_MANIFOLD SeparatricesManifold
     {SEPARATRICES_MANIFOLD::MORSESMALE};
 

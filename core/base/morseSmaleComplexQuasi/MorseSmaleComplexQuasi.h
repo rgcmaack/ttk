@@ -592,7 +592,8 @@ namespace ttk {
       const triangulationType &triangulation, 
       SEPARATRICES_MANIFOLD sepManifoldType,
       const bool computeSeparatrices,
-      const bool fastSeparatrices);
+      const bool fast1Separatrices,
+      const bool fast2Separatrices);
 
     template <typename dataType, typename triangulationType>
     int computeManifold(
@@ -716,6 +717,14 @@ namespace ttk {
       std::vector<mscq::Separatrix> &plIntLines,
       const SimplexId *const ascendingNeighbor,
       const SimplexId *const descendingNeighbor,
+      const SimplexId *const ascendingManifold,
+      const SimplexId *const descendingManifold,
+      const std::vector<mscq::Simplex> &criticalPoints,
+      const triangulationType &triangulation) const;
+
+    template <typename dataType, typename triangulationType>
+    int computeIntegralLinesFast(
+      std::vector<mscq::Separatrix> &plIntLines,
       const SimplexId *const ascendingManifold,
       const SimplexId *const descendingManifold,
       const std::vector<mscq::Simplex> &criticalPoints,
@@ -931,7 +940,8 @@ int ttk::MorseSmaleComplexQuasi::execute(
   const triangulationType &triangulation, 
   SEPARATRICES_MANIFOLD sepManifoldType,
   const bool computeSeparatrices,
-  const bool fastSeparatrices)
+  const bool fast1Separatrices,
+  const bool fast2Separatrices)
 {
 #ifndef TTK_ENABLE_KAMIKAZE
   if(!inputOrderField_) {
@@ -1066,7 +1076,7 @@ int ttk::MorseSmaleComplexQuasi::execute(
           std::unordered_set<SimplexId> borderSeeds;
           std::vector<mscq::Separatrix> plIntLines;
       
-          if(fastSeparatrices) {
+          if(fast2Separatrices) {
             computeSeparatrices_3D_fast<dataType, triangulationType>(
                                       trianglePos, caseData,
                                       sepManifold, triangulation);
@@ -1086,20 +1096,34 @@ int ttk::MorseSmaleComplexQuasi::execute(
             findSaddlesFromCadidates<dataType, triangulationType>(
               criticalPoints, saddleCandidates, triangulation);
 
-            /*compute1SeparatricesInner_3D<dataType, triangulationType>(
+            if(fast1Separatrices) {
+              computeIntegralLinesFast<dataType, triangulationType>(
+              plIntLines, ascendingManifold, descendingManifold, criticalPoints,
+              triangulation);
+            } else {
+              computeIntegralLines<dataType, triangulationType>(
+              plIntLines, ascendingNeighbor, descendingNeighbor,
+              ascendingManifold, descendingManifold, criticalPoints,
+              triangulation);
+            }
+
+            setCriticalPoints<dataType, triangulationType>(
+              criticalPoints, triangulation);
+
+            setSeparatrices1_3D<triangulationType>(plIntLines, triangulation);            
+
+            setSeparatrices2_3D(trianglePos, caseData, mscLabelMap);
+
+            /*
+            compute1SeparatricesInner_3D<dataType, triangulationType>(
               pieces1separatrices, separatrices1, borderSeeds,
               sepManifold, triangulation);
 
             compute1SeparatricesBorder_3D<triangulationType>(
               borderSeeds, separatrices1, numberOfMSCRegions, sepManifold,
-              triangulation);*/
-
-            computeIntegralLines<dataType, triangulationType>(
-              plIntLines, ascendingNeighbor, descendingNeighbor,
-              ascendingManifold, descendingManifold, criticalPoints,
               triangulation);
 
-            /*setSeparatrices1_3D<triangulationType>(
+            setSeparatrices1_3D<triangulationType>(
               separatrices1, triangulation);
 
             split1SeparatricesAtCrit_3D<triangulationType>(
@@ -1108,14 +1132,8 @@ int ttk::MorseSmaleComplexQuasi::execute(
             findSaddleSaddleConnectors<dataType, triangulationType>(
               criticalPoints, separatrices1, ssp, triangulation);
 
-            setSaddleSaddleConnectors_3D<triangulationType>(ssp, triangulation);*/
-
-            setCriticalPoints<dataType, triangulationType>(
-              criticalPoints, triangulation);
-
-            setSeparatrices1_3D<triangulationType>(plIntLines, triangulation);            
-
-            setSeparatrices2_3D(trianglePos, caseData, mscLabelMap);
+            setSaddleSaddleConnectors_3D<triangulationType>(ssp, triangulation);
+            */
           }
         }
       }
@@ -1245,14 +1263,14 @@ if(!db_omp) {
     }
 
     // make indices dense
-    for(SimplexId i = 0; i < nVertices; i++) {
+    /*for(SimplexId i = 0; i < nVertices; i++) {
       manifold[i] = maxima[manifold[i]];
-    }
+    }*/
 }
 //#else // TTK_ENABLE_OPENMP
 else {
-    const size_t numCacheLineEntries =
-      hardware_destructive_interference_size / sizeof(SimplexId);
+    //const size_t numCacheLineEntries =
+    //  hardware_destructive_interference_size / sizeof(SimplexId);
 
     #pragma omp parallel num_threads(this->threadNumber_) \
             shared(iterations, maxima, numberOfMaxima, \
@@ -1371,10 +1389,10 @@ else {
       }
 
       // set critical point indices
-      #pragma omp for schedule(dynamic, numCacheLineEntries)
+      /*#pragma omp for schedule(dynamic, numCacheLineEntries)
       for(SimplexId i = 0; i < nVertices; i++) {
         manifold[i] = maxima.at(manifold[i]);
-      }
+      }*/
     }
 } //#endif // TTK_ENABLE_OPENMP
 
@@ -1913,7 +1931,7 @@ int ttk::MorseSmaleComplexQuasi::compute2Separatrices_3D(
   this->printMsg("Computing 2-Separatrices 3D",
                  0, // progress form 0-1
                  0, // elapsed time so far
-                 this->threadNumber_);//, ttk::debug::LineMode::REPLACE);
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
   if(outputSeparatrices2_numberOfPoints_ == nullptr) {
     this->printErr("2-separatrices pointer to numberOfPoints is null.");
@@ -2218,14 +2236,6 @@ if(!db_omp) {
       const int *tetEdgeIndices = tetraederLookup[lookupIndex];
       const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
-      #pragma omp critical
-      {
-        if (tetEdgeIndices[0] != -1)
-        {
-          this->printMsg(std::to_string(tet) + "\t" + std::to_string(tetEdgeIndices[0] == 10));
-        }
-      }
-
       if(tetEdgeIndices[0] == -1) { // 1 label on tetraeder
         continue;
       } else {
@@ -2447,7 +2457,6 @@ if(!db_omp) {
 
     #pragma omp critical
     {
-      this->printMsg("Write 1");
       trianglePos.insert(trianglePos.end(),
         trianglePosLocal.begin(), trianglePosLocal.end());
       caseData.insert(caseData.end(),
@@ -2456,14 +2465,12 @@ if(!db_omp) {
 
     #pragma omp critical
     {
-      this->printMsg("Write 2");
       mscLabels.insert(mscLabels.end(),
         mscLabelsLocal.begin(), mscLabelsLocal.end());
     }
 
     #pragma omp critical
     {
-      this->printMsg("Write 3");
       for(auto& it_sepPcs1 : sepPcsLocal){
         const long long &sparseID = std::get<0>(it_sepPcs1);
         if(pieces1separatrices.find(sparseID) == pieces1separatrices.end()) { // new sparseID
@@ -2481,7 +2488,6 @@ if(!db_omp) {
 
     #pragma omp critical
     {
-      this->printMsg("Write 4");
       std::copy(saddleCandidatesLocal.begin(), saddleCandidatesLocal.end(),
         std::inserter(*saddleCandidates, saddleCandidates->end()));
     }
@@ -4065,6 +4071,59 @@ int ttk::MorseSmaleComplexQuasi::computeIntegralLines(
 
   this->printMsg("Computed integral lines",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
+
+  return 1;
+}
+
+template <typename dataType, typename triangulationType>
+int ttk::MorseSmaleComplexQuasi::computeIntegralLinesFast(
+  std::vector<mscq::Separatrix> &plIntLines,
+  const SimplexId *const ascendingManifold,
+  const SimplexId *const descendingManifold,
+  const std::vector<mscq::Simplex> &criticalPoints,
+  const triangulationType &triangulation) const {
+    
+  ttk::Timer localTimer;
+
+  // print the progress of the current subprocedure (currently 0%)
+  this->printMsg("Computing extrema saddle connectors",
+                 0, // progress form 0-1
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+  for(const auto& crit : criticalPoints) {
+    const bool isSaddle1 = crit.index_ == 1;
+    const bool isSaddle2 = crit.index_ == 2;
+
+    if(isSaddle1 || isSaddle2) {
+      SimplexId numNeighbors = triangulation.getVertexNeighborNumber(crit.id_);
+      std::set<SimplexId> neigborSet;
+
+      for(SimplexId i = 0; i < numNeighbors; ++i) {
+        SimplexId neighbor;
+        triangulation.getVertexNeighbor(crit.id_, i, neighbor);
+
+        if(isSaddle1) {
+          neighbor = ascendingManifold[neighbor];
+        } else {
+          neighbor = descendingManifold[neighbor];
+        }
+
+        if(neigborSet.find(neighbor) == neigborSet.end()) {
+          mscq::Separatrix plIntLine(crit.id_, 0);
+          plIntLine.insertGeometry(neighbor, 0);
+          plIntLines.push_back(plIntLine);
+
+          neigborSet.insert(neighbor);
+        }
+      }
+    }
+  }
+
+  this->printMsg("Computed extrema saddle connectors",
+                 0, // progress form 0-1
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
   return 1;
 }

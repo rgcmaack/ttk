@@ -111,21 +111,21 @@
         </Documentation>
       </IntVectorProperty>
 
-      <IntVectorProperty name="SeperateExtrema"
-        label="Seperate Extrema"
-        command="SetSeperateExtrema"
+      <IntVectorProperty name="Fast1Separatrices"
+        label="Fast 1-Separatrices"
+        command="SetFast1Separatrices"
         number_of_elements="1"
-        default_values="1"
+        default_values="0"
         panel_visibility="default">
         <BooleanDomain name="bool"/>
         <Documentation>
-          Isolate Extrema with Separatrices and in Manifolds.
+          Create 1-Separatrices as straight lines.
         </Documentation>
       </IntVectorProperty>
 
-      <IntVectorProperty name="FastSeparatrices"
-        label="Fast Separatrices"
-        command="SetFastSeparatrices"
+      <IntVectorProperty name="Fast2Separatrices"
+        label="Fast 2-Separatrices"
+        command="SetFast2Separatrices"
         number_of_elements="1"
         default_values="0"
         panel_visibility="default">
@@ -140,8 +140,8 @@
         <Property name="ComputeDescendingSegmentation"/>
         <Property name="ComputeFinalSegmentation"/>
         <Property name="ComputeSeparatrices"/>
-        <Property name="SeperateExtrema"/>
-        <Property name="FastSeparatrices"/>
+        <Property name="Fast1Separatrices"/>
+        <Property name="Fast2Separatrices"/>
       </PropertyGroup>
 
       <OutputPort name="Critical Points" index="0" id="port0"/>
