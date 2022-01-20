@@ -126,7 +126,7 @@ const size_t tetraederNumTriangles[27] = {
   {5}  // (3) 1,2,2 -26
 };
 
-/*const bool tetraederLookupFast[28] = {
+const bool tetraederLookupFastSaddle[28] = {
   false, // (1) 0,0,0 - 0
   false, // (-) 0,0,1 - 1
   false, // (-) 0,0,2 - 2 
@@ -155,7 +155,7 @@ const size_t tetraederNumTriangles[27] = {
   true,  // (3) 1,2,1 -25
   true,  // (3) 1,2,2 -26
   true   // (4) 1,2,3 -27
-};*/
+};
 
 const int tetraederLookupFast[28] = {
   {-1}, // (1) 0,0,0 - 0
@@ -683,7 +683,7 @@ namespace ttk {
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
-    int compute2Separatrices_3D(
+    int computeSeparatrices2_3D(
       std::vector<std::array<float, 9>> &trianglePos,
       std::vector<SimplexId> &caseData,
       std::vector<long long> &mscLabels,
@@ -731,10 +731,11 @@ namespace ttk {
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
-    int computeSeparatrices_3D_fast(
+    int computeSeparatrices2_3D_fast(
       std::vector<std::array<float, 9>> &trianglePos,
       std::vector<SimplexId> &caseData,
       std::vector<long long> &mscLabels,
+      std::unordered_set<SimplexId> *saddleCandidates,
       const SimplexId &numMSCRegions,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
@@ -747,8 +748,8 @@ namespace ttk {
                             const triangulationType &triangulation) const;
 
     template <typename triangulationType>
-    int computeIntegralLines(
-      std::vector<mscq::Separatrix> &plIntLines,
+    int computeCritConnectors_3D(
+      std::vector<mscq::Separatrix> &sadExtrConns,
       const SimplexId *const ascendingNeighbor,
       const SimplexId *const descendingNeighbor,
       const SimplexId *const ascendingManifold,
@@ -757,8 +758,8 @@ namespace ttk {
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
-    int computeIntegralLinesFast(
-      std::vector<mscq::Separatrix> &plIntLines,
+    int computeCritConnectors_3D_fast(
+      std::vector<mscq::Separatrix> &sadExtrConns,
       const SimplexId *const ascendingManifold,
       const SimplexId *const descendingManifold,
       const std::vector<mscq::Simplex> &criticalPoints,
@@ -1103,71 +1104,68 @@ int ttk::MorseSmaleComplexQuasi::execute(
           std::unordered_map<long long, std::vector<
             std::tuple<SimplexId, SimplexId, bool>>> pieces1separatrices;
           std::unordered_set<SimplexId> borderSeeds;
-          std::vector<mscq::Separatrix> plIntLines;
+          std::vector<mscq::Separatrix> sadExtrConns;
+          std::vector<mscq::SaddleSaddlePath> ssp;
       
           if(fast2Separatrices) {
-            computeSeparatrices_3D_fast<triangulationType>(
+            computeSeparatrices2_3D_fast<triangulationType>(
                                       trianglePos, caseData, mscLabels,
-                                      numberOfMSCRegions, sepManifold,
-                                      triangulation);
+                                      &saddleCandidates, numberOfMSCRegions,
+                                      sepManifold, triangulation);
    
             for(int i = -1; i < numberOfMSCRegions; ++i) {
               mscLabelMap.insert({i,i});
             }
-
-            setSeparatrices2_3D(trianglePos, caseData, mscLabels, mscLabelMap);
           } else {
-            std::vector<mscq::SaddleSaddlePath> ssp;
-
-            compute2Separatrices_3D<triangulationType>(
+            computeSeparatrices2_3D<triangulationType>(
               trianglePos, caseData, mscLabels, &saddleCandidates, 
               pieces1separatrices, numberOfMSCRegions, sepManifold,
               triangulation);
 
             computeMSCLabelMap(mscLabels, mscLabelMap);
-
-            findSaddlesFromCadidates<triangulationType>(
-              criticalPoints, saddleCandidates, triangulation);
-
-            if(fast1Separatrices) {
-              computeIntegralLinesFast<triangulationType>(
-              plIntLines, ascendingManifold, descendingManifold, criticalPoints,
-              triangulation);
-            } else {
-              computeIntegralLines<triangulationType>(
-              plIntLines, ascendingNeighbor, descendingNeighbor,
-              ascendingManifold, descendingManifold, criticalPoints,
-              triangulation);
-            }
-
-            setCriticalPoints<triangulationType>(
-              criticalPoints, triangulation);
-
-            setSeparatrices1_3D<triangulationType>(plIntLines, triangulation);            
-
-            setSeparatrices2_3D(trianglePos, caseData, mscLabels, mscLabelMap);
-
-            /*
-            compute1SeparatricesInner_3D<triangulationType>(
-              pieces1separatrices, separatrices1, borderSeeds,
-              sepManifold, triangulation);
-
-            compute1SeparatricesBorder_3D<triangulationType>(
-              borderSeeds, separatrices1, numberOfMSCRegions, sepManifold,
-              triangulation);
-
-            setSeparatrices1_3D<triangulationType>(
-              separatrices1, triangulation);
-
-            split1SeparatricesAtCrit_3D<triangulationType>(
-              criticalPoints, separatrices1, sepManifold, triangulation);
-
-            findSaddleSaddleConnectors<triangulationType>(
-              criticalPoints, separatrices1, ssp, triangulation);
-
-            setSaddleSaddleConnectors_3D<triangulationType>(ssp, triangulation);
-            */
           }
+
+          findSaddlesFromCadidates<triangulationType>(
+            criticalPoints, saddleCandidates, triangulation);
+
+          if(fast1Separatrices) {
+            computeCritConnectors_3D_fast<triangulationType>(
+            sadExtrConns, ascendingManifold, descendingManifold, criticalPoints,
+            triangulation);
+          } else {
+            computeCritConnectors_3D<triangulationType>(
+            sadExtrConns, ascendingNeighbor, descendingNeighbor,
+            ascendingManifold, descendingManifold, criticalPoints,
+            triangulation);
+          }
+
+          setCriticalPoints<triangulationType>(
+            criticalPoints, triangulation);
+
+          setSeparatrices1_3D<triangulationType>(sadExtrConns, triangulation);            
+
+          setSeparatrices2_3D(trianglePos, caseData, mscLabels, mscLabelMap);
+
+          /*
+          compute1SeparatricesInner_3D<triangulationType>(
+            pieces1separatrices, separatrices1, borderSeeds,
+            sepManifold, triangulation);
+
+          compute1SeparatricesBorder_3D<triangulationType>(
+            borderSeeds, separatrices1, numberOfMSCRegions, sepManifold,
+            triangulation);
+
+          setSeparatrices1_3D<triangulationType>(
+            separatrices1, triangulation);
+
+          split1SeparatricesAtCrit_3D<triangulationType>(
+            criticalPoints, separatrices1, sepManifold, triangulation);
+
+          findSaddleSaddleConnectors<triangulationType>(
+            criticalPoints, separatrices1, ssp, triangulation);
+
+          setSaddleSaddleConnectors_3D<triangulationType>(ssp, triangulation);
+          */
         }
       }
     }
@@ -1804,7 +1802,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Inner_2D(
   }
   
   this->printMsg("Computed inner 1-separatrices",
-                 0, // progress form 0-1
+                 1, // progress form 0-1
                  localTimer.getElapsedTime(), // elapsed time so far
                  this->threadNumber_);
 
@@ -1828,7 +1826,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Border_2D(
 
 
   this->printMsg("Computed border 1-separatrices",
-                 0, // progress form 0-1
+                 1, // progress form 0-1
                  localTimer.getElapsedTime(), // elapsed time so far
                  this->threadNumber_);
   
@@ -1842,8 +1840,8 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
 
   ttk::Timer localTimer;
 
-  this->printMsg("Writing 1-separatrices:" + std::to_string(separatrices.size()),
-                 1, 0, this->threadNumber_,
+  this->printMsg("Writing 1-separatrices",
+                 0, 0, this->threadNumber_,
                  ttk::debug::LineMode::REPLACE);
 
 #ifndef TTK_ENABLE_KAMIKAZE
@@ -1946,7 +1944,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_2D(
 }
 
 template <typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::compute2Separatrices_3D(
+int ttk::MorseSmaleComplexQuasi::computeSeparatrices2_3D(
   std::vector<std::array<float, 9>> &trianglePos,
   std::vector<SimplexId> &caseData,
   std::vector<long long> &mscLabels,
@@ -2535,17 +2533,17 @@ int ttk::MorseSmaleComplexQuasi::computeMSCLabelMap(
 }
 
 template <typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D_fast(
+int ttk::MorseSmaleComplexQuasi::computeSeparatrices2_3D_fast(
   std::vector<std::array<float, 9>> &trianglePos,    
   std::vector<SimplexId> &caseData,
   std::vector<long long> &mscLabels,
+  std::unordered_set<SimplexId> *saddleCandidates,
   const SimplexId &numMSCRegions,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
   ttk::Timer localTimer;
 
-  this->printMsg(ttk::debug::Separator::L1);
-  this->printMsg("Computing 2-Separatrices 3D Fast",
+  this->printMsg("Computing 2-Separatrices 3D[F]",
                  0, // progress form 0-1
                  0, // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
@@ -2568,6 +2566,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D_fast(
   }
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
+  const bool findSaddles = saddleCandidates != nullptr;
 
 //#ifndef TTK_ENABLE_OPENMP
 if(!db_omp) {
@@ -2591,53 +2590,61 @@ if(!db_omp) {
 
     const unsigned char lookupIndex = index1 | index2 | index3;
 
-    if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 labels on tetraeder
-      float vertPos[4][3];
-      triangulation.getVertexPoint(
-        vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
-      triangulation.getVertexPoint(
-        vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
-      triangulation.getVertexPoint(
-        vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
-      triangulation.getVertexPoint(
-        vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
-
-      switch(tetraederLookupFast[lookupIndex]) {
-        case 0:
-          trianglePos.push_back({
-            vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-            vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-            vertPos[2][0], vertPos[2][1], vertPos[2][2]
-          });
-          mscLabels.push_back(msm[0]);
-          break;
-        case 1:
-          trianglePos.push_back({
-            vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-            vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-            vertPos[3][0], vertPos[3][1], vertPos[3][2]
-          });
-          mscLabels.push_back(msm[0]);
-          break;
-        case 2:
-          trianglePos.push_back({
-            vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-            vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-            vertPos[3][0], vertPos[3][1], vertPos[3][2]
-          });
-          mscLabels.push_back(msm[0]);
-          break;
-        case 3:
-          trianglePos.push_back({
-            vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-            vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-            vertPos[3][0], vertPos[3][1], vertPos[3][2]
-          });
-          mscLabels.push_back(msm[1]);
-          break;
+    if(tetraederLookupFastSaddle[lookupIndex]) {
+      if(findSaddles) {
+        saddleCandidates->insert(vertices[0]);
+        saddleCandidates->insert(vertices[1]);
+        saddleCandidates->insert(vertices[2]);
+        saddleCandidates->insert(vertices[3]);
       }
+      if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 labels on tetraeder
+        float vertPos[4][3];
+        triangulation.getVertexPoint(
+          vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+        triangulation.getVertexPoint(
+          vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+        triangulation.getVertexPoint(
+          vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+        triangulation.getVertexPoint(
+          vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-      caseData.push_back(lookupIndex);
+        switch(tetraederLookupFast[lookupIndex]) {
+          case 0:
+            trianglePos.push_back({
+              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+              vertPos[2][0], vertPos[2][1], vertPos[2][2]
+            });
+            mscLabels.push_back(msm[0]);
+            break;
+          case 1:
+            trianglePos.push_back({
+              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+              vertPos[3][0], vertPos[3][1], vertPos[3][2]
+            });
+            mscLabels.push_back(msm[0]);
+            break;
+          case 2:
+            trianglePos.push_back({
+              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
+              vertPos[3][0], vertPos[3][1], vertPos[3][2]
+            });
+            mscLabels.push_back(msm[0]);
+            break;
+          case 3:
+            trianglePos.push_back({
+              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
+              vertPos[3][0], vertPos[3][1], vertPos[3][2]
+            });
+            mscLabels.push_back(msm[1]);
+            break;
+        }
+
+        caseData.push_back(lookupIndex);
+      }
     }
   }
 //#else // TTK_ENABLE_OPENMP
@@ -2647,6 +2654,7 @@ if(!db_omp) {
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
     std::vector<long long> mscLabelsLocal;
+    std::vector<SimplexId> saddleCandidatesLocal;
 
     #pragma omp for schedule(static) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
@@ -2669,53 +2677,61 @@ if(!db_omp) {
 
       const unsigned char lookupIndex = index1 | index2 | index3;
 
-      if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 label on tetraeder
-        float vertPos[4][3];
-        triangulation.getVertexPoint(
-          vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
-        triangulation.getVertexPoint(
-          vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
-        triangulation.getVertexPoint(
-          vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
-        triangulation.getVertexPoint(
-          vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
-
-        switch(tetraederLookupFast[lookupIndex]) {
-          case 0:
-            trianglePosLocal.push_back({
-              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-              vertPos[2][0], vertPos[2][1], vertPos[2][2]
-            });
-            mscLabelsLocal.push_back(msm[0]);
-            break;
-          case 1:
-            trianglePosLocal.push_back({
-              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-              vertPos[3][0], vertPos[3][1], vertPos[3][2]
-            });
-            mscLabelsLocal.push_back(msm[0]);
-            break;
-          case 2:
-            trianglePosLocal.push_back({
-              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-              vertPos[3][0], vertPos[3][1], vertPos[3][2]
-            });
-            mscLabelsLocal.push_back(msm[0]);
-            break;
-          case 3:
-            trianglePosLocal.push_back({
-              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-              vertPos[3][0], vertPos[3][1], vertPos[3][2]
-            });
-            mscLabelsLocal.push_back(msm[1]);
-            break;
+      if(tetraederLookupFastSaddle[lookupIndex]) {
+        if(findSaddles) {
+          saddleCandidatesLocal.push_back(vertices[0]);
+          saddleCandidatesLocal.push_back(vertices[1]);
+          saddleCandidatesLocal.push_back(vertices[2]);
+          saddleCandidatesLocal.push_back(vertices[3]);
         }
+        if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 label on tetraeder
+          float vertPos[4][3];
+          triangulation.getVertexPoint(
+            vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+          triangulation.getVertexPoint(
+            vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+          triangulation.getVertexPoint(
+            vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+          triangulation.getVertexPoint(
+            vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-        caseDataLocal.push_back(lookupIndex);
+          switch(tetraederLookupFast[lookupIndex]) {
+            case 0:
+              trianglePosLocal.push_back({
+                vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+                vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+                vertPos[2][0], vertPos[2][1], vertPos[2][2]
+              });
+              mscLabelsLocal.push_back(msm[0]);
+              break;
+            case 1:
+              trianglePosLocal.push_back({
+                vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+                vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+                vertPos[3][0], vertPos[3][1], vertPos[3][2]
+              });
+              mscLabelsLocal.push_back(msm[0]);
+              break;
+            case 2:
+              trianglePosLocal.push_back({
+                vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+                vertPos[2][0], vertPos[2][1], vertPos[2][2], 
+                vertPos[3][0], vertPos[3][1], vertPos[3][2]
+              });
+              mscLabelsLocal.push_back(msm[0]);
+              break;
+            case 3:
+              trianglePosLocal.push_back({
+                vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+                vertPos[2][0], vertPos[2][1], vertPos[2][2], 
+                vertPos[3][0], vertPos[3][1], vertPos[3][2]
+              });
+              mscLabelsLocal.push_back(msm[1]);
+              break;
+          }
+
+          caseDataLocal.push_back(lookupIndex);
+        }
       }
     }
 
@@ -2728,17 +2744,16 @@ if(!db_omp) {
       mscLabels.insert(mscLabels.end(),
         mscLabelsLocal.begin(), mscLabelsLocal.end());
     }
+
+    #pragma omp critical
+    {
+      std::copy(saddleCandidatesLocal.begin(), saddleCandidatesLocal.end(),
+        std::inserter(*saddleCandidates, saddleCandidates->end()));
+    }
   }
 } // TTK_ENABLE_OPENMP
-  this->printMsg("Computed Separatrices 3D FAST",
+  this->printMsg("Computed 2-Separatrices 3D[F]",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
-
-  this->printMsg("#2-sep triangles: " + std::to_string(trianglePos.size()),
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
-
-  this->printMsg("Completed",
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
-  this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
 
   return 0;
 }
@@ -3588,7 +3603,6 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
       }
     }
 
-    //this->printMsg("Incline: " + std::to_string(sepRef.incline_));
     {
       if(simpSepMap.find(start) == simpSepMap.end()) {
         simpSepMap.insert({start, std::vector<mscq::Separatrix *>()});
@@ -3610,12 +3624,6 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
       simpSepMap[end].push_back(&sepRef);
     }
   }
-
-  /*for(auto &simsep : simpSepMap) {
-    this->printMsg("SSsize of " + std::to_string(simsep.first.id_) + "("
-                   + std::to_string(simsep.first.index_)
-                   + ") : " + std::to_string(simsep.second.size()));
-  }*/
 
   // filter separatrices with the same start and end / take the shortest one
   for(auto & simsep : simpSepMap) {
@@ -3653,12 +3661,8 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
       }
       simsep.second.push_back(shortestSep);
     }
-
-    //this->printMsg("Sepnum: " + std::to_string(simsep.second.size()) + " / "
-    //               + std::to_string(simsepsize));
   }
 
-  this->printMsg("Queue size: " + std::to_string(sspQueue.size()));
   size_t maxQueueSize = sspQueue.size();
 
   std::map<SimplexId, size_t> critPairToSSP;
@@ -3695,9 +3699,6 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
 
     const size_t numSeps = simpSepMap[refSSP.lastId_].size();
 
-    //this->printMsg("Queuesize: " + std::to_string(sspQueue.size())
-    //               + " : numSeps " + std::to_string(numSeps));
-
     // enqueue extended paths
     for(size_t i = 0; i < numSeps; ++i) {
       mscq::Separatrix *sepPtr = simpSepMap[refSSP.lastId_][i];
@@ -3731,9 +3732,420 @@ int ttk::MorseSmaleComplexQuasi::findSaddleSaddleConnectors(
   this->printMsg("#Paths: " + std::to_string(ssPaths.size()));
 
   this->printMsg("Computed saddle saddle connectors",
-                 0, // progress form 0-1
+                 1, // progress form 0-1
                  localTimer.getElapsedTime(), // elapsed time so far
                  this->threadNumber_);
+
+  return 1;
+}
+
+template <typename triangulationType>
+int ttk::MorseSmaleComplexQuasi::setSaddleSaddleConnectors_3D(
+  const std::vector<mscq::SaddleSaddlePath> &ssp,
+  const triangulationType &triangulation) const {
+
+  ttk::Timer localTimer;
+
+#ifndef TTK_ENABLE_KAMIKAZE
+  if(outputSeparatrices1_numberOfPoints_ == nullptr) {
+    this->printErr("1-separatrices pointer to numberOfPoints is null.");
+    return -1;
+  }
+  if(outputSeparatrices1_points_ == nullptr) {
+    this->printErr("1-separatrices pointer to points is null.");
+    return -1;
+  }
+  if(outputSeparatrices1_numberOfCells_ == nullptr) {
+    this->printErr("1-separatrices pointer to numberOfCells is null.");
+    return -1;
+  }
+  if(outputSeparatrices1_cells_connectivity_ == nullptr) {
+    this->printErr("1-separatrices pointer to cells is null.");
+    return -1;
+  }
+  if(inputOrderField_ == nullptr) {
+    this->printErr(
+      " 1-separatrices pointer to the input scalar field is null.");
+    return -1;
+  }
+#endif
+
+  this->printMsg("Writing saddle saddle connectors", 0, localTimer.getElapsedTime(),
+                 this->threadNumber_); //,ttk::debug::LineMode::REPLACE);
+
+  // previous points and cell sizes
+  const size_t prevNpoints = *outputSeparatrices1_numberOfPoints_,
+               prevNcells = *outputSeparatrices1_numberOfCells_;
+
+  // number of separatrices
+  const size_t numSSPaths = ssp.size(); // separatrices.size();
+  size_t npoints = 0;
+  size_t numCells = 0;
+
+  // count total number of points and cells
+  for(size_t i = 0; i < numSSPaths; ++i) {
+    const size_t numSeps = ssp[i].path_.size();
+    for(size_t j = 0; j < numSeps; ++j) {
+      mscq::Separatrix *sep = ssp[i].path_[j];
+
+      int numSepPts = sep->geometry_.size();
+
+      npoints += numSepPts;
+      numCells += numSepPts - 1;
+    }
+
+    npoints -= (numSeps - 1);
+  }
+
+  // resize arrays
+  outputSeparatrices1_points_->resize((prevNpoints + npoints) * 3);
+  auto &points = *outputSeparatrices1_points_;
+  outputSeparatrices1_cells_connectivity_->resize((prevNcells + numCells) * 2);
+  auto &cellsConn = *outputSeparatrices1_cells_connectivity_;
+  if(outputSeparatrices1_cells_separatrixTypes_ != nullptr)
+    outputSeparatrices1_cells_separatrixTypes_->resize((prevNcells + numCells));
+
+  int (triangulationType::*getPosFuncs[4])(SimplexId, float *) const
+    = {&triangulationType::getVertexCoordinates,
+       &triangulationType::getEdgeIncenter,
+       &triangulationType::getTriangleIncenter,
+       &triangulationType::getTetraIncenter};
+
+  std::array<float, 3> pt{};
+
+  SimplexId currPId = prevNpoints, currCId = prevNcells;
+  for(size_t i = 0; i < numSSPaths; ++i) {
+
+    const size_t numSeps = ssp[i].path_.size();
+
+    (triangulation.*getPosFuncs[ssp[i].path_[0]->dims_.back()])(
+      ssp[i].path_[0]->geometry_.back(), pt.data());
+
+    points[3 * currPId + 0] = pt[0];
+    points[3 * currPId + 1] = pt[1];
+    points[3 * currPId + 2] = pt[2];
+
+    currPId += 1;
+
+    for(size_t j = 0; j < numSeps; ++j) {
+      mscq::Separatrix *sep = ssp[i].path_[j];
+
+      if(sep->geometry_.size() == 0) {
+        continue;
+      }
+
+      const bool reversed = ssp[i].reversed_[j];
+
+      if(reversed) {
+        for(size_t k = 1; k < sep->geometry_.size(); ++k) {
+          const int index = sep->geometry_.size() - k - 1;
+          (triangulation.*getPosFuncs[sep->dims_[index]])(
+            sep->geometry_[index], pt.data());
+
+          points[3 * currPId + 0] = pt[0];
+          points[3 * currPId + 1] = pt[1];
+          points[3 * currPId + 2] = pt[2];
+
+          cellsConn[2 * currCId + 0] = currPId - 1;
+          cellsConn[2 * currCId + 1] = currPId;
+
+          if(outputSeparatrices1_cells_separatrixTypes_ != nullptr)
+            (*outputSeparatrices1_cells_separatrixTypes_)[currCId] = 1;
+
+          currPId += 1;
+          currCId += 1;
+        }
+      } else {
+        for(size_t k = 1; k < sep->geometry_.size(); ++k) {
+          (triangulation.*getPosFuncs[sep->dims_[k]])(
+            sep->geometry_[k], pt.data());
+
+          points[3 * currPId + 0] = pt[0];
+          points[3 * currPId + 1] = pt[1];
+          points[3 * currPId + 2] = pt[2];
+
+          cellsConn[2 * currCId + 0] = currPId - 1;
+          cellsConn[2 * currCId + 1] = currPId;
+
+          if(outputSeparatrices1_cells_separatrixTypes_ != nullptr)
+            (*outputSeparatrices1_cells_separatrixTypes_)[currCId] = 1;
+
+          currPId += 1;
+          currCId += 1;
+        }
+      }
+    }
+  }
+
+  // update pointers
+  *outputSeparatrices1_numberOfPoints_ = prevNpoints + npoints;
+  *outputSeparatrices1_numberOfCells_ = prevNcells + numCells;
+
+  this->printMsg("Wrote saddle saddle connectors", 1, localTimer.getElapsedTime(),
+                 this->threadNumber_);
+
+  return 0;
+}
+
+template <typename triangulationType>
+int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
+  std::vector<mscq::Separatrix> &sadExtrConns,
+  const SimplexId *const ascNeighbor,
+  const SimplexId *const descNeighbor,
+  const SimplexId *const ascManifold,
+  const SimplexId *const descManifold,
+  const std::vector<mscq::Simplex> &criticalPoints,
+  const triangulationType &triangulation) const {
+    
+  ttk::Timer localTimer;
+
+  // print the progress of the current subprocedure (currently 0%)
+  this->printMsg("Computing crit point connectors",
+                 0, // progress form 0-1
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+  std::vector<std::pair<SimplexId, SimplexId>> reachableExtrema[2];
+  std::unordered_map<SimplexId, int> critMap;
+
+  for(size_t c = 0; c < criticalPoints.size(); ++c) {
+    const mscq::Simplex &crit = criticalPoints[c];
+    critMap.insert({crit.id_, c});
+    
+    const bool isSaddle1 = crit.index_ == 1;
+    const bool isSaddle2 = crit.index_ == 2;
+    const int type = isSaddle1 ? 0 : 1;
+
+    if(isSaddle1 || isSaddle2) {
+      SimplexId numNeighbors = triangulation.getVertexNeighborNumber(crit.id_);
+      std::set<SimplexId> neigborSet;
+
+      for(SimplexId i = 0; i < numNeighbors; ++i) {
+        SimplexId neighbor;
+        triangulation.getVertexNeighbor(crit.id_, i, neighbor);
+
+        neigborSet.insert(neighbor);
+      }
+
+      for(SimplexId i = 0; i < numNeighbors; ++i) {
+        SimplexId neighbor;
+        triangulation.getVertexNeighbor(crit.id_, i, neighbor);
+
+        if(isSaddle1) { // negative integration
+          if(ascNeighbor[neighbor] != crit.id_
+             && neigborSet.find(ascNeighbor[neighbor]) == neigborSet.end()
+             && neigborSet.find(ascNeighbor[ascNeighbor[neighbor]])
+                == neigborSet.end()) {
+            reachableExtrema[type].push_back(
+              std::make_pair(crit.id_, neighbor));
+          }
+        } else { // positive integration
+          if(descNeighbor[neighbor] != crit.id_
+             && neigborSet.find(descNeighbor[neighbor])
+                == neigborSet.end()
+             && neigborSet.find(descNeighbor[descNeighbor[neighbor]])
+                == neigborSet.end()) {
+            reachableExtrema[type].push_back(
+              std::make_pair(crit.id_, neighbor));
+          }
+        }
+      }
+    }
+  }
+
+  std::map<long long, size_t> s1ToMin;
+  for(const auto& c : reachableExtrema[0]) { // 1-saddle -> minimum
+    mscq::Separatrix sadExtrConn(c.first, 0);
+
+    SimplexId currentVert = c.second;
+
+    while(ascNeighbor[currentVert] != currentVert) {
+      sadExtrConn.insertGeometry(currentVert, 0);
+      currentVert = ascNeighbor[currentVert];
+    }
+
+    sadExtrConn.insertGeometry(currentVert, 0);
+    sadExtrConn.type_ = 0;
+
+    long long uniqueId = getSparseId(
+      critMap[c.first], critMap[currentVert], criticalPoints.size());
+
+    if(s1ToMin.find(uniqueId) == s1ToMin.end()) {
+      s1ToMin.insert({uniqueId, sadExtrConns.size()});
+      sadExtrConns.push_back(sadExtrConn);
+    } else if(sadExtrConns[s1ToMin[uniqueId]].length() > sadExtrConn.length()) {
+      sadExtrConns[s1ToMin[uniqueId]] = sadExtrConn;
+    }
+  }
+
+  std::map<long long, size_t> s2ToMax;
+  for(const auto& c : reachableExtrema[1]) { // 2-saddle maximum
+    mscq::Separatrix sadExtrConn(c.first, 0);
+
+    SimplexId currentVert = c.second;
+
+    while(descNeighbor[currentVert] != currentVert) {
+      sadExtrConn.insertGeometry(currentVert, 0);
+      currentVert = descNeighbor[currentVert];
+    }
+
+    sadExtrConn.insertGeometry(currentVert, 0);
+    sadExtrConn.type_ = 0;
+
+    long long uniqueId = getSparseId(
+      critMap[c.first], critMap[currentVert], criticalPoints.size());
+
+    if(s2ToMax.find(uniqueId) == s2ToMax.end()) {
+      s2ToMax.insert({uniqueId, sadExtrConns.size()});
+      sadExtrConns.push_back(sadExtrConn);
+    } else if(sadExtrConns[s2ToMax[uniqueId]].length() > sadExtrConn.length()) {
+      sadExtrConns[s2ToMax[uniqueId]] = sadExtrConn;
+    }
+  }
+
+  this->printMsg("Computed crit point connectors",
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
+
+  return 1;
+}
+
+template <typename triangulationType>
+int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D_fast(
+  std::vector<mscq::Separatrix> &sadExtrConns,
+  const SimplexId *const ascendingManifold,
+  const SimplexId *const descendingManifold,
+  const std::vector<mscq::Simplex> &criticalPoints,
+  const triangulationType &triangulation) const {
+    
+  ttk::Timer localTimer;
+
+  // print the progress of the current subprocedure (currently 0%)
+  this->printMsg("Computing crit point connectors[F]",
+                 0, // progress form 0-1
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+  for(const auto& crit : criticalPoints) {
+    const bool isSaddle1 = crit.index_ == 1;
+    const bool isSaddle2 = crit.index_ == 2;
+
+    if(isSaddle1 || isSaddle2) {
+      SimplexId numNeighbors = triangulation.getVertexNeighborNumber(crit.id_);
+      std::set<SimplexId> neigborSet;
+
+      for(SimplexId i = 0; i < numNeighbors; ++i) {
+        SimplexId neighbor;
+        triangulation.getVertexNeighbor(crit.id_, i, neighbor);
+
+        if(isSaddle1) {
+          neighbor = ascendingManifold[neighbor];
+        } else {
+          neighbor = descendingManifold[neighbor];
+        }
+
+        if(neigborSet.find(neighbor) == neigborSet.end()) {
+          mscq::Separatrix sadExtrConn(crit.id_, 0);
+          sadExtrConn.insertGeometry(neighbor, 0);
+          sadExtrConns.push_back(sadExtrConn);
+
+          neigborSet.insert(neighbor);
+        }
+      }
+    }
+  }
+
+  this->printMsg("Computed crit point connectors[F]",
+                 1, // progress form 0-1
+                 localTimer.getElapsedTime(), // elapsed time so far
+                 this->threadNumber_);
+
+  return 1;
+}
+
+template <typename triangulationType>
+int ttk::MorseSmaleComplexQuasi::findSaddlesFromCadidates(
+  std::vector<mscq::Simplex> &criticalPoints, 
+  const std::unordered_set<SimplexId> &saddleCandidates,
+  const triangulationType &triangulation) const {
+
+  ttk::Timer localTimer;
+
+  const int dim = triangulation.getDimensionality();
+
+  const SimplexId * inputField = static_cast<const SimplexId *>(inputOrderField_);
+
+  //int numSaddles = 0;
+
+  this->printMsg("Computing for saddles",
+                 0, localTimer.getElapsedTime(), this->threadNumber_,
+                 ttk::debug::LineMode::REPLACE);
+
+  ScalarFieldCriticalPoints sfcp;
+  sfcp.setDomainDimension(dim);
+  
+if(!db_omp) {
+  for(SimplexId candidate: saddleCandidates) {
+    const CriticalType critC = (CriticalType)sfcp.getCriticalType(candidate, inputField,
+      (AbstractTriangulation*)&triangulation);
+
+    if(critC == CriticalType::Saddle1) {
+      criticalPoints.push_back(mscq::Simplex(candidate, 1));
+    } else if(critC == CriticalType::Saddle2) {
+      criticalPoints.push_back(mscq::Simplex(candidate, 2));
+    }
+  }
+} else {
+  #pragma omp parallel
+  {
+    #pragma omp single
+    {
+      for(auto it = saddleCandidates.begin();
+        it != saddleCandidates.end(); it++) {
+        #pragma omp task
+        {
+          const CriticalType critC = (CriticalType)sfcp.getCriticalType(
+            *it, inputField, (AbstractTriangulation*)&triangulation);
+          
+          if(critC == CriticalType::Saddle1) {
+            criticalPoints.push_back(mscq::Simplex(*it, 1));
+          } else if(critC == CriticalType::Saddle2) {
+            criticalPoints.push_back(mscq::Simplex(*it, 2));
+          }
+        }
+      }
+    }
+  }
+}
+
+  this->printMsg("Computed saddles" ,
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
+
+  return 1;
+}
+
+template <typename triangulationType>
+int ttk::MorseSmaleComplexQuasi::setCriticalPoints(
+  std::vector<mscq::Simplex> &criticalPoints,
+  const triangulationType &triangulation) const {
+
+  ttk::Timer localTimer;
+
+  this->printMsg("Writing critical points",
+                 0, localTimer.getElapsedTime(), this->threadNumber_,
+                 ttk::debug::LineMode::REPLACE);
+  
+  float x, y, z;
+
+  for(const auto crit : criticalPoints) {
+    triangulation.getVertexPoint(crit.id_, x, y, z);
+    outputCriticalPoints_points_->push_back({x, y, z});
+    outputCriticalPoints_points_cellDimensions_->push_back(crit.index_);
+    outputCriticalPoints_points_cellIds_->push_back(crit.id_);
+  }
+
+  this->printMsg("Wrote " + std::to_string(criticalPoints.size()) +
+                 " critical points",
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 1;
 }
@@ -3847,335 +4259,6 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices1_3D(
   return 0;
 }
 
-template <typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::setSaddleSaddleConnectors_3D(
-  const std::vector<mscq::SaddleSaddlePath> &ssp,
-  const triangulationType &triangulation) const {
-
-  ttk::Timer localTimer;
-
-#ifndef TTK_ENABLE_KAMIKAZE
-  if(outputSeparatrices1_numberOfPoints_ == nullptr) {
-    this->printErr("1-separatrices pointer to numberOfPoints is null.");
-    return -1;
-  }
-  if(outputSeparatrices1_points_ == nullptr) {
-    this->printErr("1-separatrices pointer to points is null.");
-    return -1;
-  }
-  if(outputSeparatrices1_numberOfCells_ == nullptr) {
-    this->printErr("1-separatrices pointer to numberOfCells is null.");
-    return -1;
-  }
-  if(outputSeparatrices1_cells_connectivity_ == nullptr) {
-    this->printErr("1-separatrices pointer to cells is null.");
-    return -1;
-  }
-  if(inputOrderField_ == nullptr) {
-    this->printErr(
-      " 1-separatrices pointer to the input scalar field is null.");
-    return -1;
-  }
-#endif
-
-  this->printMsg("Writing saddle saddle connectors", 1, localTimer.getElapsedTime(),
-                 this->threadNumber_); //,ttk::debug::LineMode::REPLACE);
-
-  // previous points and cell sizes
-  const size_t prevNpoints = *outputSeparatrices1_numberOfPoints_,
-               prevNcells = *outputSeparatrices1_numberOfCells_;
-
-  this->printMsg("PRevpts: " + std::to_string(prevNpoints) + " : "
-                 + std::to_string(prevNcells));
-
-  // number of separatrices
-  const size_t numSSPaths = ssp.size(); // separatrices.size();
-  size_t npoints = 0;
-  size_t numCells = 0;
-
-  // count total number of points and cells
-  for(size_t i = 0; i < numSSPaths; ++i) {
-    const size_t numSeps = ssp[i].path_.size();
-    for(size_t j = 0; j < numSeps; ++j) {
-      mscq::Separatrix *sep = ssp[i].path_[j];
-
-      int numSepPts = sep->geometry_.size();
-
-      npoints += numSepPts;
-      numCells += numSepPts - 1;
-    }
-
-    npoints -= (numSeps - 1);
-  }
-
-  this->printMsg("Npts: " + std::to_string(npoints) + " : "
-                 + std::to_string(numCells));
-
-  // resize arrays
-  outputSeparatrices1_points_->resize((prevNpoints + npoints) * 3);
-  auto &points = *outputSeparatrices1_points_;
-  outputSeparatrices1_cells_connectivity_->resize((prevNcells + numCells) * 2);
-  auto &cellsConn = *outputSeparatrices1_cells_connectivity_;
-  if(outputSeparatrices1_cells_separatrixTypes_ != nullptr)
-    outputSeparatrices1_cells_separatrixTypes_->resize((prevNcells + numCells));
-
-  int (triangulationType::*getPosFuncs[4])(SimplexId, float *) const
-    = {&triangulationType::getVertexCoordinates,
-       &triangulationType::getEdgeIncenter,
-       &triangulationType::getTriangleIncenter,
-       &triangulationType::getTetraIncenter};
-
-  std::array<float, 3> pt{};
-
-  SimplexId currPId = prevNpoints, currCId = prevNcells;
-  for(size_t i = 0; i < numSSPaths; ++i) {
-
-    const size_t numSeps = ssp[i].path_.size();
-
-    (triangulation.*getPosFuncs[ssp[i].path_[0]->dims_.back()])(
-      ssp[i].path_[0]->geometry_.back(), pt.data());
-
-    points[3 * currPId + 0] = pt[0];
-    points[3 * currPId + 1] = pt[1];
-    points[3 * currPId + 2] = pt[2];
-
-    currPId += 1;
-
-    for(size_t j = 0; j < numSeps; ++j) {
-      mscq::Separatrix *sep = ssp[i].path_[j];
-
-      if(sep->geometry_.size() == 0) {
-        continue;
-      }
-
-      const bool reversed = ssp[i].reversed_[j];
-
-      if(reversed) {
-        for(size_t k = 1; k < sep->geometry_.size(); ++k) {
-          const int index = sep->geometry_.size() - k - 1;
-          (triangulation.*getPosFuncs[sep->dims_[index]])(
-            sep->geometry_[index], pt.data());
-
-          points[3 * currPId + 0] = pt[0];
-          points[3 * currPId + 1] = pt[1];
-          points[3 * currPId + 2] = pt[2];
-
-          cellsConn[2 * currCId + 0] = currPId - 1;
-          cellsConn[2 * currCId + 1] = currPId;
-
-          if(outputSeparatrices1_cells_separatrixTypes_ != nullptr)
-            (*outputSeparatrices1_cells_separatrixTypes_)[currCId] = 1;
-
-          currPId += 1;
-          currCId += 1;
-        }
-      } else {
-        for(size_t k = 1; k < sep->geometry_.size(); ++k) {
-          (triangulation.*getPosFuncs[sep->dims_[k]])(
-            sep->geometry_[k], pt.data());
-
-          points[3 * currPId + 0] = pt[0];
-          points[3 * currPId + 1] = pt[1];
-          points[3 * currPId + 2] = pt[2];
-
-          cellsConn[2 * currCId + 0] = currPId - 1;
-          cellsConn[2 * currCId + 1] = currPId;
-
-          if(outputSeparatrices1_cells_separatrixTypes_ != nullptr)
-            (*outputSeparatrices1_cells_separatrixTypes_)[currCId] = 1;
-
-          currPId += 1;
-          currCId += 1;
-        }
-      }
-    }
-  }
-
-  this->printMsg("Pid: " + std::to_string(currPId) + " : "
-                 + std::to_string(currCId));
-
-  // update pointers
-  *outputSeparatrices1_numberOfPoints_ = prevNpoints + npoints;
-  *outputSeparatrices1_numberOfCells_ = prevNcells + numCells;
-
-  this->printMsg("Wrote saddle saddle connectors", 1, localTimer.getElapsedTime(),
-                 this->threadNumber_);
-
-  return 0;
-}
-
-template <typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::computeIntegralLines(
-  std::vector<mscq::Separatrix> &plIntLines,
-  const SimplexId *const ascendingNeighbor,
-  const SimplexId *const descendingNeighbor,
-  const SimplexId *const ascendingManifold,
-  const SimplexId *const descendingManifold,
-  const std::vector<mscq::Simplex> &criticalPoints,
-  const triangulationType &triangulation) const {
-    
-  ttk::Timer localTimer;
-
-  // print the progress of the current subprocedure (currently 0%)
-  this->printMsg("Computing integral lines",
-                 0, // progress form 0-1
-                 localTimer.getElapsedTime(), // elapsed time so far
-                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
-
-  std::vector<std::tuple<SimplexId, SimplexId, int>> critsByIndex[4];
-  std::unordered_map<SimplexId, int> critMap;
-
-  for(const auto& crit : criticalPoints) {
-    std::map<SimplexId, SimplexId> reachableExtrema;
-    const bool isSaddle1 = crit.index_ == 1;
-    const bool isSaddle2 = crit.index_ == 2;
-
-    if(isSaddle1 || isSaddle2) {
-      SimplexId numNeighbors = triangulation.getVertexNeighborNumber(crit.id_);
-      std::set<SimplexId> neigborSet;
-
-      for(SimplexId i = 0; i < numNeighbors; ++i) {
-        SimplexId neighbor;
-        triangulation.getVertexNeighbor(crit.id_, i, neighbor);
-
-        neigborSet.insert(neighbor);
-      }
-
-      for(SimplexId i = 0; i < numNeighbors; ++i) {
-        SimplexId neighbor;
-        triangulation.getVertexNeighbor(crit.id_, i, neighbor);
-
-        if(isSaddle1) { // negative integration
-          if(ascendingNeighbor[neighbor] != crit.id_
-             && neigborSet.find(ascendingNeighbor[neighbor]) == neigborSet.end()
-             && neigborSet.find(ascendingNeighbor[ascendingNeighbor[neighbor]])
-                  == neigborSet.end()) {
-            const SimplexId extremum = ascendingManifold[neighbor];
-            if(reachableExtrema.find(extremum) == reachableExtrema.end()) {
-              reachableExtrema.insert({extremum, neighbor});
-            }
-          }
-        } else { // positive integration
-          if(descendingNeighbor[neighbor] != crit.id_
-             && neigborSet.find(descendingNeighbor[neighbor])
-                == neigborSet.end()
-             && neigborSet.find(
-                descendingNeighbor[descendingNeighbor[neighbor]])
-                == neigborSet.end()) {
-            const SimplexId extremum = descendingManifold[neighbor];
-            if(reachableExtrema.find(extremum) == reachableExtrema.end()) {
-              reachableExtrema.insert({extremum, neighbor});
-            }
-          }
-        }
-
-        const int index = isSaddle1 ? 0 : 1;
-
-        for(const auto& re : reachableExtrema) {
-          critsByIndex[index].push_back(
-            std::make_tuple(crit.id_, std::get<1>(re), crit.index_));
-        }
-      }
-    }
-
-    critMap.insert({crit.id_, crit.index_});
-  }
-
-  for(const auto& c : critsByIndex[0]) { // 1-saddle -> minimum
-    mscq::Separatrix plIntLine;
-
-    SimplexId currentVert = std::get<1>(c);
-    plIntLine.insertGeometry(std::get<0>(c), 0);
-
-    while(critMap.find(currentVert) == critMap.end()) {
-      plIntLine.insertGeometry(currentVert, 0);
-
-      currentVert = ascendingNeighbor[currentVert];
-    }
-
-    plIntLine.insertGeometry(currentVert, 0);
-    plIntLine.type_ = 0;
-
-    plIntLines.push_back(plIntLine);
-  }
-
-  for(const auto& c : critsByIndex[1]) { // 2-saddle maximum
-    mscq::Separatrix plIntLine;
-
-    SimplexId currentVert = std::get<1>(c);
-    plIntLine.insertGeometry(std::get<0>(c), 0);
-
-    while(critMap.find(currentVert) == critMap.end()) {
-      plIntLine.insertGeometry(currentVert, 0);
-
-      currentVert = descendingNeighbor[currentVert];
-    }
-
-    plIntLine.insertGeometry(currentVert, 0);
-    plIntLine.type_ = 2;
-
-    plIntLines.push_back(plIntLine);
-  }
-
-  this->printMsg("Computed integral lines",
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
-
-  return 1;
-}
-
-template <typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::computeIntegralLinesFast(
-  std::vector<mscq::Separatrix> &plIntLines,
-  const SimplexId *const ascendingManifold,
-  const SimplexId *const descendingManifold,
-  const std::vector<mscq::Simplex> &criticalPoints,
-  const triangulationType &triangulation) const {
-    
-  ttk::Timer localTimer;
-
-  // print the progress of the current subprocedure (currently 0%)
-  this->printMsg("Computing extrema saddle connectors",
-                 0, // progress form 0-1
-                 localTimer.getElapsedTime(), // elapsed time so far
-                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
-
-  for(const auto& crit : criticalPoints) {
-    const bool isSaddle1 = crit.index_ == 1;
-    const bool isSaddle2 = crit.index_ == 2;
-
-    if(isSaddle1 || isSaddle2) {
-      SimplexId numNeighbors = triangulation.getVertexNeighborNumber(crit.id_);
-      std::set<SimplexId> neigborSet;
-
-      for(SimplexId i = 0; i < numNeighbors; ++i) {
-        SimplexId neighbor;
-        triangulation.getVertexNeighbor(crit.id_, i, neighbor);
-
-        if(isSaddle1) {
-          neighbor = ascendingManifold[neighbor];
-        } else {
-          neighbor = descendingManifold[neighbor];
-        }
-
-        if(neigborSet.find(neighbor) == neigborSet.end()) {
-          mscq::Separatrix plIntLine(crit.id_, 0);
-          plIntLine.insertGeometry(neighbor, 0);
-          plIntLines.push_back(plIntLine);
-
-          neigborSet.insert(neighbor);
-        }
-      }
-    }
-  }
-
-  this->printMsg("Computed extrema saddle connectors",
-                 0, // progress form 0-1
-                 localTimer.getElapsedTime(), // elapsed time so far
-                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
-
-  return 1;
-}
-
 int ttk::MorseSmaleComplexQuasi::setSeparatrices2_3D(
   const std::vector<std::array<float, 9>> &trianglePos,
   const std::vector<SimplexId> &caseData,
@@ -4185,7 +4268,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices2_3D(
   ttk::Timer localTimer;
 
   this->printMsg("Writing 2-separatrices",
-                  1,
+                  0,
                   localTimer.getElapsedTime(),
                   this->threadNumber_,
                   ttk::debug::LineMode::REPLACE);
@@ -4207,7 +4290,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices2_3D(
   cellsCase = caseData;
 
 #ifdef TTK_ENABLE_OPENMP
-#pragma omp parallel for schedule(static) if(numTriangles > 1000000)
+#pragma omp parallel for schedule(static) if(numTriangles > 100000)
 #endif
   for(int tri = 0; tri < numTriangles; ++tri) {
     auto &triPos = trianglePos[tri];
@@ -4234,94 +4317,7 @@ int ttk::MorseSmaleComplexQuasi::setSeparatrices2_3D(
   *outputSeparatrices2_numberOfPoints_ = npoints;
   *outputSeparatrices2_numberOfCells_ = numCells;
 
-  this->printMsg("Wrote 2-separatrices",
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
-
-  return 1;
-}
-
-template <typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::findSaddlesFromCadidates(
-  std::vector<mscq::Simplex> &criticalPoints, 
-  const std::unordered_set<SimplexId> &saddleCandidates,
-  const triangulationType &triangulation) const {
-
-  ttk::Timer localTimer;
-
-  const int dim = triangulation.getDimensionality();
-
-  const SimplexId * inputField = static_cast<const SimplexId *>(inputOrderField_);
-
-  //int numSaddles = 0;
-
-  this->printMsg("Searching for saddles",
-                 1, localTimer.getElapsedTime(), this->threadNumber_,
-                 ttk::debug::LineMode::REPLACE);
-
-  ScalarFieldCriticalPoints sfcp;
-  sfcp.setDomainDimension(dim);
-  
-if(!db_omp) {
-  for(SimplexId candidate: saddleCandidates) {
-    const CriticalType critC = (CriticalType)sfcp.getCriticalType(candidate, inputField,
-      (AbstractTriangulation*)&triangulation);
-
-    if(critC == CriticalType::Saddle1) {
-      criticalPoints.push_back(mscq::Simplex(candidate, 1));
-    } else if(critC == CriticalType::Saddle2) {
-      criticalPoints.push_back(mscq::Simplex(candidate, 2));
-    }
-  }
-} else {
-  #pragma omp parallel
-  {
-    #pragma omp single
-    {
-      for(auto it = saddleCandidates.begin();
-        it != saddleCandidates.end(); it++) {
-        #pragma omp task
-        {
-          const CriticalType critC = (CriticalType)sfcp.getCriticalType(*it, inputField,
-            (AbstractTriangulation*)&triangulation);
-          
-          if(critC == CriticalType::Saddle1) {
-            criticalPoints.push_back(mscq::Simplex(*it, 1));
-          } else if(critC == CriticalType::Saddle2) {
-            criticalPoints.push_back(mscq::Simplex(*it, 2));
-          }
-        }
-      }
-    }
-  }
-}
-
-  this->printMsg("Found saddles" ,
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
-
-  return 1;
-}
-
-template <typename triangulationType>
-int ttk::MorseSmaleComplexQuasi::setCriticalPoints(
-  std::vector<mscq::Simplex> &criticalPoints,
-  const triangulationType &triangulation) const {
-
-  ttk::Timer localTimer;
-
-  this->printMsg("Writing saddles",
-                 1, localTimer.getElapsedTime(), this->threadNumber_,
-                 ttk::debug::LineMode::REPLACE);
-  
-  float x, y, z;
-
-  for(const auto crit : criticalPoints) {
-    triangulation.getVertexPoint(crit.id_, x, y, z);
-    outputCriticalPoints_points_->push_back({x, y, z});
-    outputCriticalPoints_points_cellDimensions_->push_back(crit.index_);
-    outputCriticalPoints_points_cellIds_->push_back(crit.id_);
-  }
-
-  this->printMsg("Wrote saddles",
+  this->printMsg("Wrote " + std::to_string(numTriangles) + "2-separatrices",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 1;
