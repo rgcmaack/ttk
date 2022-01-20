@@ -126,7 +126,7 @@ const size_t tetraederNumTriangles[27] = {
   {5}  // (3) 1,2,2 -26
 };
 
-const bool tetraederLookupFast[28] = {
+/*const bool tetraederLookupFast[28] = {
   false, // (1) 0,0,0 - 0
   false, // (-) 0,0,1 - 1
   false, // (-) 0,0,2 - 2 
@@ -155,6 +155,37 @@ const bool tetraederLookupFast[28] = {
   true,  // (3) 1,2,1 -25
   true,  // (3) 1,2,2 -26
   true   // (4) 1,2,3 -27
+};*/
+
+const int tetraederLookupFast[28] = {
+  {-1}, // (1) 0,0,0 - 0
+  {-1}, // (-) 0,0,1 - 1
+  {-1}, // (-) 0,0,2 - 2 
+  { 0},  // (2) 0,0,3 - 3
+  {-1}, // (-) 0,1,0 - 4
+  {-1}, // (-) 0,1,1 - 5 
+  {-1}, // (-) 0,1,2 - 6
+  {-1}, // (-) 0,1,3 - 7
+  { 1},  // (2) 0,2,0 - 8
+  {-1}, // (-) 0,2,1 - 9
+  {-1},  // (2) 0,2,2 -10
+  {-1},  // (3) 0,2,3 -11
+  {-1}, // (-) 0,3,0 -12
+  {-1}, // (-) 0,3,1 -13
+  {-1}, // (-) 0,3,2 -14
+  {-1}, // (-) 0,3,3 -15
+  { 2},  // (2) 1,0,0 -16
+  {-1},  // (2) 1,0,1 -17
+  {-1}, // (-) 1,0,2 -18
+  {-1},  // (3) 1,0,3 -19
+  {-1},  // (2) 1,1,0 -20
+  { 3},  // (2) 1,1,1 -21
+  {-1}, // (-) 1,1,2 -22
+  {-1},  // (3) 1,1,3 -23
+  {-1},  // (3) 1,2,0 -24
+  {-1},  // (3) 1,2,1 -25
+  {-1},  // (3) 1,2,2 -26
+  {-1}   // (4) 1,2,3 -27
 };
 namespace ttk {
 
@@ -703,6 +734,8 @@ namespace ttk {
     int computeSeparatrices_3D_fast(
       std::vector<std::array<float, 9>> &trianglePos,
       std::vector<SimplexId> &caseData,
+      std::vector<long long> &mscLabels,
+      const SimplexId &numMSCRegions,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
@@ -1074,10 +1107,13 @@ int ttk::MorseSmaleComplexQuasi::execute(
       
           if(fast2Separatrices) {
             computeSeparatrices_3D_fast<triangulationType>(
-                                      trianglePos, caseData,
-                                      sepManifold, triangulation);
-
-            mscLabelMap.insert({0,0});
+                                      trianglePos, caseData, mscLabels,
+                                      numberOfMSCRegions, sepManifold,
+                                      triangulation);
+   
+            for(int i = -1; i < numberOfMSCRegions; ++i) {
+              mscLabelMap.insert({i,i});
+            }
 
             setSeparatrices2_3D(trianglePos, caseData, mscLabels, mscLabelMap);
           } else {
@@ -2502,6 +2538,8 @@ template <typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeSeparatrices_3D_fast(
   std::vector<std::array<float, 9>> &trianglePos,    
   std::vector<SimplexId> &caseData,
+  std::vector<long long> &mscLabels,
+  const SimplexId &numMSCRegions,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
   ttk::Timer localTimer;
@@ -2544,16 +2582,16 @@ if(!db_omp) {
         morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
         morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
 
-    unsigned char index1 = (msm[0] == msm[1]) ? 0x00 : 0x10; // 0 : 1
-    unsigned char index2 = (msm[0] == msm[2]) ? 0x00 :       // 0
-                           (msm[1] == msm[2]) ? 0x04 : 0x08; // 1 : 2
-    unsigned char index3 = (msm[0] == msm[3]) ? 0x00 :       // 0
-                           (msm[1] == msm[3]) ? 0x01 :       // 1
-                           (msm[2] == msm[3]) ? 0x02 : 0x03; // 2 : 3
+    const unsigned char index1 = (msm[0] == msm[1]) ? 0x00 : 0x10; // 0 : 1
+    const unsigned char index2 = (msm[0] == msm[2]) ? 0x00 :       // 0
+                                 (msm[1] == msm[2]) ? 0x04 : 0x08; // 1 : 2
+    const unsigned char index3 = (msm[0] == msm[3]) ? 0x00 :       // 0
+                                 (msm[1] == msm[3]) ? 0x01 :       // 1
+                                 (msm[2] == msm[3]) ? 0x02 : 0x03; // 2 : 3
 
-    unsigned char lookupIndex = index1 | index2 | index3;
+    const unsigned char lookupIndex = index1 | index2 | index3;
 
-    if(tetraederLookupFast[lookupIndex]) { // <= 2 label on tetraeder
+    if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 labels on tetraeder
       float vertPos[4][3];
       triangulation.getVertexPoint(
         vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
@@ -2563,31 +2601,43 @@ if(!db_omp) {
         vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
       triangulation.getVertexPoint(
         vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
-      
-      trianglePos.push_back({
-        vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-        vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-        vertPos[2][0], vertPos[2][1], vertPos[2][2]
-      });
-      trianglePos.push_back({
-        vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-        vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-        vertPos[3][0], vertPos[3][1], vertPos[3][2]
-      });
-      trianglePos.push_back({
-        vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-        vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-        vertPos[3][0], vertPos[3][1], vertPos[3][2]
-      });
-      trianglePos.push_back({
-        vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-        vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-        vertPos[3][0], vertPos[3][1], vertPos[3][2]
-      });
 
-      caseData.insert(caseData.end(),{
-        lookupIndex, lookupIndex, lookupIndex, lookupIndex
-      });
+      switch(tetraederLookupFast[lookupIndex]) {
+        case 0:
+          trianglePos.push_back({
+            vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+            vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+            vertPos[2][0], vertPos[2][1], vertPos[2][2]
+          });
+          mscLabels.push_back(msm[0]);
+          break;
+        case 1:
+          trianglePos.push_back({
+            vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+            vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+            vertPos[3][0], vertPos[3][1], vertPos[3][2]
+          });
+          mscLabels.push_back(msm[0]);
+          break;
+        case 2:
+          trianglePos.push_back({
+            vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+            vertPos[2][0], vertPos[2][1], vertPos[2][2], 
+            vertPos[3][0], vertPos[3][1], vertPos[3][2]
+          });
+          mscLabels.push_back(msm[0]);
+          break;
+        case 3:
+          trianglePos.push_back({
+            vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+            vertPos[2][0], vertPos[2][1], vertPos[2][2], 
+            vertPos[3][0], vertPos[3][1], vertPos[3][2]
+          });
+          mscLabels.push_back(msm[1]);
+          break;
+      }
+
+      caseData.push_back(lookupIndex);
     }
   }
 //#else // TTK_ENABLE_OPENMP
@@ -2596,6 +2646,7 @@ if(!db_omp) {
   {
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
+    std::vector<long long> mscLabelsLocal;
 
     #pragma omp for schedule(static) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
@@ -2609,16 +2660,16 @@ if(!db_omp) {
         morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
         morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
 
-      unsigned char index1 = (msm[0] == msm[1]) ? 0x00 : 0x10; // 0 : 1
-      unsigned char index2 = (msm[0] == msm[2]) ? 0x00 :       // 0
-                             (msm[1] == msm[2]) ? 0x04 : 0x08; // 1 : 2
-      unsigned char index3 = (msm[0] == msm[3]) ? 0x00 :       // 0
-                             (msm[1] == msm[3]) ? 0x01 :       // 1
-                             (msm[2] == msm[3]) ? 0x02 : 0x03; // 2 : 3
+      const unsigned char index1 = (msm[0] == msm[1]) ? 0x00 : 0x10; // 0 : 1
+      const unsigned char index2 = (msm[0] == msm[2]) ? 0x00 :       // 0
+                                   (msm[1] == msm[2]) ? 0x04 : 0x08; // 1 : 2
+      const unsigned char index3 = (msm[0] == msm[3]) ? 0x00 :       // 0
+                                   (msm[1] == msm[3]) ? 0x01 :       // 1
+                                   (msm[2] == msm[3]) ? 0x02 : 0x03; // 2 : 3
 
-      unsigned char lookupIndex = index1 | index2 | index3;
+      const unsigned char lookupIndex = index1 | index2 | index3;
 
-      if(tetraederLookupFast[lookupIndex]) { // <= 2 label on tetraeder
+      if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 label on tetraeder
         float vertPos[4][3];
         triangulation.getVertexPoint(
           vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
@@ -2629,30 +2680,42 @@ if(!db_omp) {
         triangulation.getVertexPoint(
           vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-        trianglePosLocal.push_back({
-          vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-          vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-          vertPos[2][0], vertPos[2][1], vertPos[2][2]
-        });
-        trianglePosLocal.push_back({
-          vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-          vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-          vertPos[3][0], vertPos[3][1], vertPos[3][2]
-        });
-        trianglePosLocal.push_back({
-          vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-          vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-          vertPos[3][0], vertPos[3][1], vertPos[3][2]
-        });
-        trianglePosLocal.push_back({
-          vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-          vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-          vertPos[3][0], vertPos[3][1], vertPos[3][2]
-        });
+        switch(tetraederLookupFast[lookupIndex]) {
+          case 0:
+            trianglePosLocal.push_back({
+              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+              vertPos[2][0], vertPos[2][1], vertPos[2][2]
+            });
+            mscLabelsLocal.push_back(msm[0]);
+            break;
+          case 1:
+            trianglePosLocal.push_back({
+              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+              vertPos[3][0], vertPos[3][1], vertPos[3][2]
+            });
+            mscLabelsLocal.push_back(msm[0]);
+            break;
+          case 2:
+            trianglePosLocal.push_back({
+              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
+              vertPos[3][0], vertPos[3][1], vertPos[3][2]
+            });
+            mscLabelsLocal.push_back(msm[0]);
+            break;
+          case 3:
+            trianglePosLocal.push_back({
+              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
+              vertPos[3][0], vertPos[3][1], vertPos[3][2]
+            });
+            mscLabelsLocal.push_back(msm[1]);
+            break;
+        }
 
-        caseDataLocal.insert(caseDataLocal.end(),{
-          lookupIndex, lookupIndex, lookupIndex, lookupIndex
-        });
+        caseDataLocal.push_back(lookupIndex);
       }
     }
 
@@ -2662,6 +2725,8 @@ if(!db_omp) {
         trianglePosLocal.begin(), trianglePosLocal.end());
       caseData.insert(caseData.end(),
         caseDataLocal.begin(), caseDataLocal.end());
+      mscLabels.insert(mscLabels.end(),
+        mscLabelsLocal.begin(), mscLabelsLocal.end());
     }
   }
 } // TTK_ENABLE_OPENMP
