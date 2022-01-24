@@ -3910,7 +3910,7 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
   const SimplexId * inputField = static_cast<const SimplexId *>(inputOrderField_);
-  std::vector<std::pair<SimplexId, SimplexId>> reachableExtrema[4];
+  std::vector<std::pair<SimplexId, SimplexId>> reachableExtrema[2];
   std::unordered_map<SimplexId, int> critMap;
 
   for(size_t c = 0; c < criticalPoints.size(); ++c) {
@@ -3922,55 +3922,42 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
     const int type = isSaddle1 ? 0 : 1;
 
     if(isSaddle1 || isSaddle2) {
-      SimplexId numNeighbors = triangulation.getVertexNeighborNumber(crit.id_);
-      std::set<SimplexId> neigborSet;
-
-      for(SimplexId i = 0; i < numNeighbors; ++i) {
-        SimplexId neighbor;
-        triangulation.getVertexNeighbor(crit.id_, i, neighbor);
-
-        neigborSet.insert(neighbor);
-      }
+      const SimplexId numNeighbors
+        = triangulation.getVertexNeighborNumber(crit.id_);
+      std::map<SimplexId, SimplexId> neigborSeeds;
 
       for(SimplexId i = 0; i < numNeighbors; ++i) {
         SimplexId neighbor;
         triangulation.getVertexNeighbor(crit.id_, i, neighbor);
 
         if(isSaddle1) { // negative integration
-          if(ascNeighbor[neighbor] != crit.id_
-             && neigborSet.find(ascNeighbor[neighbor]) == neigborSet.end()
-             && neigborSet.find(ascNeighbor[ascNeighbor[neighbor]])
-                == neigborSet.end()) {
-            reachableExtrema[type].push_back(
-              std::make_pair(crit.id_, neighbor));
-          }
-          if(descNeighbor[neighbor] != crit.id_
-             && neigborSet.find(descNeighbor[neighbor]) == neigborSet.end()
-             && neigborSet.find(descNeighbor[descNeighbor[neighbor]])
-                == neigborSet.end()
-             && saddleCandidates->find(neighbor) != saddleCandidates->end()) {
-            reachableExtrema[type + 2].push_back(
-              std::make_pair(crit.id_, neighbor));
+          if(inputField[neighbor] < inputField[crit.id_]) {
+            if(neigborSeeds.find(ascManifold[neighbor]) == neigborSeeds.end()) {
+              neigborSeeds.insert({ascManifold[neighbor], neighbor});
+            } else {
+              if(inputField[neigborSeeds[ascManifold[neighbor]]]
+                > inputField[neighbor]) {
+                neigborSeeds[ascManifold[neighbor]] = neighbor;
+              }
+            }
           }
         } else { // positive integration
-          if(descNeighbor[neighbor] != crit.id_
-             && neigborSet.find(descNeighbor[neighbor])
-                == neigborSet.end()
-             && neigborSet.find(descNeighbor[descNeighbor[neighbor]])
-                == neigborSet.end()) {
-            reachableExtrema[type].push_back(
-              std::make_pair(crit.id_, neighbor));
-          }
-          if(ascNeighbor[neighbor] != crit.id_
-             && neigborSet.find(ascNeighbor[neighbor])
-                == neigborSet.end()
-             && neigborSet.find(ascNeighbor[ascNeighbor[neighbor]])
-                == neigborSet.end()
-             && saddleCandidates->find(neighbor) != saddleCandidates->end()) {
-            reachableExtrema[type + 2].push_back(
-              std::make_pair(crit.id_, neighbor));
+          if(inputField[neighbor] > inputField[crit.id_]) {
+            if(neigborSeeds.find(descManifold[neighbor]) == neigborSeeds.end())
+            {
+              neigborSeeds.insert({descManifold[neighbor], neighbor});
+            } else {
+              if(inputField[neigborSeeds[descManifold[neighbor]]]
+                > inputField[neighbor]) {
+                neigborSeeds[descManifold[neighbor]] = neighbor;
+              }
+            }
           }
         }
+      }
+
+      for(const auto& s : neigborSeeds) {
+        reachableExtrema[type].push_back(std::make_pair(crit.id_, s.second));
       }
     }
   }
@@ -4025,111 +4012,6 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
       sadExtrConns[s2ToMax[uniqueId]] = sadExtrConn;
     }
   }
-
-  std::map<long long, size_t> s1ToS2;
-  for(const auto& c : reachableExtrema[2]) { // 1-saddle -> 2-saddle
-    mscq::Separatrix sadExtrConn(c.first, 0);
-    sadExtrConn.type_ = 3;
-
-    SimplexId currentVert = c.second;
-    SimplexId nextVert = descNeighbor[currentVert];
-
-    while(true) {
-      // check if we found a critical point
-      if(critMap.find(currentVert) == critMap.end()) {
-        sadExtrConn.insertGeometry(currentVert, 0);
-      } else {
-        if(true) {//criticalPoints[critMap[currentVert]].index_ == 2) { // is 2-saddle?
-          sadExtrConn.insertGeometry(currentVert, 0);
-          long long uniqueId = getSparseId(
-          critMap[c.first], critMap[currentVert], criticalPoints.size());
-
-          if(s1ToS2.find(uniqueId) == s1ToS2.end()) {
-            s1ToS2.insert({uniqueId, sadExtrConns.size()});
-            sadExtrConns.push_back(sadExtrConn);
-          } else if(sadExtrConns[s1ToS2[uniqueId]].length()
-              > sadExtrConn.length()) {
-            sadExtrConns[s1ToS2[uniqueId]] = sadExtrConn;
-          }
-        }
-
-        break;
-      }
-
-      if(saddleCandidates->find(nextVert) == saddleCandidates->end()) {
-        SimplexId numNeighbors
-          = triangulation.getVertexNeighborNumber(currentVert);
-        nextVert = currentVert;
-        for(SimplexId i = 0; i < numNeighbors; ++i) {
-          SimplexId neighbor;
-          triangulation.getVertexNeighbor(currentVert, i, neighbor);
-          if(saddleCandidates->find(neighbor) != saddleCandidates->end()
-            && inputField[neighbor] > inputField[nextVert]) {
-              nextVert = neighbor;
-          }
-        }
-        if(currentVert == nextVert) {
-          break;
-        }
-      }
-      
-      currentVert = nextVert;
-      nextVert = descNeighbor[nextVert];
-    }
-  }
-
-  std::map<long long, size_t> s2ToS1;
-  for(const auto& c : reachableExtrema[3]) { // 2-saddle -> 1-saddle
-    mscq::Separatrix sadExtrConn(c.first, 0);
-    sadExtrConn.type_ = 4;
-
-    SimplexId currentVert = c.second;
-    SimplexId nextVert = ascNeighbor[currentVert];
-
-    while(true) {
-      // check if we found a critical point
-      if(critMap.find(currentVert) == critMap.end()) {
-        sadExtrConn.insertGeometry(currentVert, 0);
-      } else {
-        if(true) {//criticalPoints[critMap[currentVert]].index_ == 1) { // is 1-saddle?
-          sadExtrConn.insertGeometry(currentVert, 0);
-          long long uniqueId = getSparseId(
-          critMap[c.first], critMap[currentVert], criticalPoints.size());
-
-          if(s2ToS1.find(uniqueId) == s2ToS1.end()) {
-            s2ToS1.insert({uniqueId, sadExtrConns.size()});
-            sadExtrConns.push_back(sadExtrConn);
-          } else if(sadExtrConns[s2ToS1[uniqueId]].length()
-              > sadExtrConn.length()) {
-            sadExtrConns[s2ToS1[uniqueId]] = sadExtrConn;
-          }
-        }
-
-        break;
-      }
-
-      if(saddleCandidates->find(nextVert) == saddleCandidates->end()) {
-        SimplexId numNeighbors
-          = triangulation.getVertexNeighborNumber(currentVert);
-        nextVert = currentVert;
-        for(SimplexId i = 0; i < numNeighbors; ++i) {
-          SimplexId neighbor;
-          triangulation.getVertexNeighbor(currentVert, i, neighbor);
-          if(saddleCandidates->find(neighbor) != saddleCandidates->end()
-            && inputField[neighbor] < inputField[nextVert]) {
-              nextVert = neighbor;
-          }
-        }
-        if(currentVert == nextVert) {
-          break;
-        }
-      }
-      
-      currentVert = nextVert;
-      nextVert = ascNeighbor[nextVert];
-    }
-  }
-
 
   this->printMsg("Computed crit point connectors",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
