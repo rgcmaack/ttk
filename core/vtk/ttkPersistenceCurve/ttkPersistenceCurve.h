@@ -31,6 +31,18 @@
 /// \sa ttkPersistenceDiagram
 /// \sa ttkTopologicalSimplification
 /// \sa ttk::PersistenceCurve
+///
+/// \b Online \b examples: \n
+///   - <a href="https://topology-tool-kit.github.io/examples/dragon/">Dragon
+/// example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/morsePersistence/">Morse
+///   Persistence example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/interactionSites/">
+///   Interaction sites</a> \n
+///
+
 #ifndef _TTK_PERSISTENCECURVE_H
 #define _TTK_PERSISTENCECURVE_H
 #pragma once
@@ -102,7 +114,6 @@ private:
                vtkTable *outputSTPersistenceCurve,
                vtkTable *outputCTPersistenceCurve,
                const VTK_TT *inputScalars,
-               int inputOffsetsDataType,
                const void *inputOffsets,
                const TTK_TT *triangulation);
 };

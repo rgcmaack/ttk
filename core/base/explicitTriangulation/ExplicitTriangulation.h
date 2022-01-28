@@ -25,6 +25,11 @@ namespace ttk {
 
     virtual ~ExplicitTriangulation();
 
+    ExplicitTriangulation(const ExplicitTriangulation &) = default;
+    ExplicitTriangulation(ExplicitTriangulation &&) = default;
+    ExplicitTriangulation &operator=(const ExplicitTriangulation &) = default;
+    ExplicitTriangulation &operator=(ExplicitTriangulation &&) = default;
+
     int clear();
 
     size_t footprint(size_t size = 0) const;
@@ -560,11 +565,7 @@ namespace ttk {
 
       // TODO: ASSUME Regular Mesh Here to compute dimension!
       if(cellNumber) {
-        if(cellArray_->getCellVertexNumber(0) == 3) {
-          maxCellDim_ = 2;
-        } else {
-          maxCellDim_ = 3;
-        }
+        maxCellDim_ = cellArray_->getCellVertexNumber(0) - 1;
       }
       return 0;
     }

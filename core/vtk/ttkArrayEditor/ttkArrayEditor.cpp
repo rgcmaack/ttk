@@ -67,15 +67,17 @@ template <typename VTK_T1, typename VTK_T2>
 int copyArrayData(vtkDataArray *target, vtkDataArray *copy) {
   auto targetData = ttkUtils::GetPointer<VTK_T1>(target);
   auto copyData = ttkUtils::GetPointer<VTK_T2>(copy);
-  for(size_t i = 0, n = target->GetNumberOfValues(); i < n; i++)
+  for(size_t i = 0, n = target->GetNumberOfValues(); i < n; i++) {
+    // NOLINTNEXTLINE (bugprone-signed-char-misuse)
     copyData[i] = (VTK_T2)(targetData[i]);
+  }
   return 1;
 }
 
 // =============================================================================
 // RequestData
 // =============================================================================
-int ttkArrayEditor::RequestData(vtkInformation *request,
+int ttkArrayEditor::RequestData(vtkInformation *ttkNotUsed(request),
                                 vtkInformationVector **inputVector,
                                 vtkInformationVector *outputVector) {
 

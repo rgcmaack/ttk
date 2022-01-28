@@ -31,18 +31,10 @@
 #endif
 
 // base code includes
-#include <Wrapper.h>
-//
-#include <PersistenceDiagramAuction.h>
-//
 #include <KDTree.h>
-//
-#include <limits>
-//
 #include <PDBarycenter.h>
-
-using namespace std;
-using namespace ttk;
+#include <PersistenceDiagramAuction.h>
+#include <Wrapper.h>
 
 namespace ttk {
   template <typename dataType>
@@ -61,9 +53,9 @@ namespace ttk {
       epsilon_decreases_ = 1;
       use_progressive_ = 1;
       this->setDebugMsgPrefix("PersistenceDiagramBarycenter");
-    };
+    }
 
-    ~PersistenceDiagramBarycenter(){};
+    ~PersistenceDiagramBarycenter() = default;
 
     void execute(
       std::vector<std::vector<diagramTuple>> &intermediateDiagrams,

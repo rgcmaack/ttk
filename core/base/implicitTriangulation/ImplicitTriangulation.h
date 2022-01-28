@@ -23,6 +23,11 @@ namespace ttk {
     ImplicitTriangulation();
     ~ImplicitTriangulation();
 
+    ImplicitTriangulation(const ImplicitTriangulation &) = default;
+    ImplicitTriangulation(ImplicitTriangulation &&) = default;
+    ImplicitTriangulation &operator=(const ImplicitTriangulation &) = default;
+    ImplicitTriangulation &operator=(ImplicitTriangulation &&) = default;
+
     int getGridDimensions(std::vector<int> &dimensions) override {
 
       dimensions.resize(3);
@@ -61,7 +66,7 @@ namespace ttk {
       // NOTE: the output is always 4 here. let's keep the function in there
       // in case of further generalization to CW-complexes
       return 4;
-    };
+    }
 
     const std::vector<std::vector<SimplexId>> *
       getCellTrianglesInternal() override;
@@ -76,7 +81,7 @@ namespace ttk {
 
     int TTK_TRIANGULATION_INTERNAL(getDimensionality)() const override {
       return dimensionality_;
-    };
+    }
 
     int
       TTK_TRIANGULATION_INTERNAL(getEdgeLink)(const SimplexId &edgeId,
@@ -119,19 +124,19 @@ namespace ttk {
 
     SimplexId TTK_TRIANGULATION_INTERNAL(getNumberOfCells)() const override {
       return cellNumber_;
-    };
+    }
 
     SimplexId getNumberOfEdgesInternal() const override {
       return edgeNumber_;
-    };
+    }
 
     SimplexId getNumberOfTrianglesInternal() const override {
       return triangleNumber_;
-    };
+    }
 
     SimplexId TTK_TRIANGULATION_INTERNAL(getNumberOfVertices)() const override {
       return vertexNumber_;
-    };
+    }
 
     int getTetrahedronEdge(const SimplexId &tetId,
                            const int &id,
@@ -334,7 +339,7 @@ namespace ttk {
 
     inline bool isEmpty() const override {
       return !vertexNumber_;
-    };
+    }
 
     bool TTK_TRIANGULATION_INTERNAL(isTriangleOnBoundary)(
       const SimplexId &triangleId) const override;
@@ -957,6 +962,8 @@ namespace ttk {
     //\endcond
   };
 } // namespace ttk
+
+/// @cond
 
 inline void
   ttk::ImplicitTriangulation::vertexToPosition2d(const SimplexId vertex,
@@ -7203,3 +7210,5 @@ inline ttk::SimplexId ttk::ImplicitTriangulation::getTetrahedronNeighborBDGH(
   }
   return -1;
 }
+
+/// @endcond

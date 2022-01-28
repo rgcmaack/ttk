@@ -193,7 +193,7 @@ int ttkDiscreteGradient::fillGradientGlyphs(
     connectivity->SetTuple1(2 * i + 1, 2 * i + 1);
     pairTypes->SetTuple1(i, gradientGlyphs_cells_pairTypes[i]);
   }
-  offsets->SetTuple1(nCells, nCells);
+  offsets->SetTuple1(nCells, connectivity->GetNumberOfTuples());
 
   vtkNew<vtkCellArray> cells{};
   cells->SetData(offsets, connectivity);
@@ -218,7 +218,7 @@ int ttkDiscreteGradient::fillGradientGlyphs(
   return 0;
 }
 
-int ttkDiscreteGradient::RequestData(vtkInformation *request,
+int ttkDiscreteGradient::RequestData(vtkInformation *ttkNotUsed(request),
                                      vtkInformationVector **inputVector,
                                      vtkInformationVector *outputVector) {
 

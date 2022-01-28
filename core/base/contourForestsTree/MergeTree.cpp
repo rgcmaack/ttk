@@ -104,7 +104,7 @@ void MergeTree::updateSegmentation() {
   }
 }
 
-void MergeTree::parallelUpdateSegmentation(const bool ct) {
+void MergeTree::parallelUpdateSegmentation(const bool ttkNotUsed(ct)) {
   // REMOVE THIS FUNCTION AND USE BOOL
   auto compL
     = [&](const pair<SimplexId, bool> &a, const pair<SimplexId, bool> &b) {
@@ -203,6 +203,7 @@ void MergeTree::parallelInitNodeValence(const int nbThreadValence) {
     node->setDownValence(downVal);
     node->setUpValence(upVal);
   }
+  TTK_FORCE_USE(nbThreadValence);
 }
 
 // }
@@ -1301,12 +1302,12 @@ tuple<idNode, idNode, SimplexId> MergeTree::createReceptArc(
 
 // Operators
 
-ostream &ttk::cf::operator<<(ostream &o, SuperArc const &a) {
+std::ostream &ttk::cf::operator<<(std::ostream &o, ttk::cf::SuperArc const &a) {
   o << a.getDownNodeId() << " <>> " << a.getUpNodeId();
   return o;
 }
 
-ostream &ttk::cf::operator<<(ostream &o, Node const &n) {
+std::ostream &ttk::cf::operator<<(std::ostream &o, ttk::cf::Node const &n) {
   o << n.getNumberOfDownSuperArcs() << " .-. " << n.getNumberOfUpSuperArcs();
   return o;
 }

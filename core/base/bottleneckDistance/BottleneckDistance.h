@@ -44,7 +44,7 @@ namespace ttk {
       this->setDebugMsgPrefix("BottleneckDistance");
     }
 
-    ~BottleneckDistance(){};
+    ~BottleneckDistance() = default;
 
     template <typename dataType>
     int execute(bool usePersistenceMetric);
@@ -217,8 +217,7 @@ namespace ttk {
                            int wasserstein);
   };
 
-// Include in namespace ttk
+} // namespace ttk
+
 #include <BottleneckDistanceImpl.h>
 #include <BottleneckDistanceMainImpl.h>
-
-} // namespace ttk

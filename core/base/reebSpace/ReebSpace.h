@@ -160,7 +160,7 @@ namespace ttk {
       return &currentData_.tet2sheet3_;
     }
 
-    const std::vector<SimplexId> *getEdgeTypes() const {
+    const std::vector<char> *getEdgeTypes() const {
       return &currentData_.edgeTypes_;
     }
 
@@ -282,7 +282,7 @@ namespace ttk {
       double simplificationThreshold_{};
 
       std::vector<SimplexId> edge2sheet1_{};
-      std::vector<SimplexId> edgeTypes_{};
+      std::vector<char> edgeTypes_{};
       std::vector<SimplexId> tet2sheet3_{};
       std::vector<SimplexId> vertex2sheet0_{};
       std::vector<SimplexId> vertex2sheet3_{};
@@ -395,8 +395,7 @@ namespace ttk {
 
     int prepareSimplification();
 
-    int printConnectivity(std::ostream &stream,
-                          const ReebSpaceData &data) const;
+    int printConnectivity(const ReebSpaceData &data) const;
 
     template <typename triangulationType>
     int simplifySheets(const double &simplificationThreshold,
@@ -1646,7 +1645,7 @@ int ttk::ReebSpace::connectSheets(const triangulationType &triangulation) {
 
   this->printMsg("Sheet connectivity established.");
 
-  printConnectivity(std::cout, originalData_);
+  printConnectivity(originalData_);
 
   hasConnectedSheets_ = true;
 
@@ -2069,7 +2068,7 @@ int ttk::ReebSpace::simplifySheets(
 
   // TODO: update segmentation for 1-sheets and 0-sheets?...
 
-  printConnectivity(std::cout, currentData_);
+  printConnectivity(currentData_);
 
   this->printMsg(std::vector<std::vector<std::string>>{
     {"#3-sheets simplified", std::to_string(simplifiedSheets)},

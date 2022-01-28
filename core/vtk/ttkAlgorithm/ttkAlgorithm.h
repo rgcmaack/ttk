@@ -1,4 +1,7 @@
-/// \ingroup vtk
+/// \defgroup vtk vtk
+/// \brief The Topology ToolKit - VTK wrapping code for the processing
+/// packages.
+/// @{
 /// \class ttkAlgorithm
 /// \author Jonas Lukasczyk <jl@jluk.de>
 /// \date 01.09.2019.
@@ -32,6 +35,7 @@ class TTKALGORITHM_EXPORT ttkAlgorithm : public vtkAlgorithm,
 private:
   int ThreadNumber{1};
   bool UseAllCores{true};
+  float CompactTriangulationCacheSize{0.2f};
 
 public:
   static ttkAlgorithm *New();
@@ -55,7 +59,7 @@ public:
   void SetThreadNumber(int threadNumber) {
     this->ThreadNumber = threadNumber;
     this->UpdateThreadNumber();
-  };
+  }
 
   /**
    * Controls if the base code should use all available cores.
@@ -63,7 +67,7 @@ public:
   void SetUseAllCores(bool useAllCores) {
     this->UseAllCores = useAllCores;
     this->UpdateThreadNumber();
-  };
+  }
 
   /**
    * Controls the debug level used by algorithms that are invoked by the VTK
@@ -72,7 +76,15 @@ public:
   void SetDebugLevel(int debugLevel) {
     this->setDebugLevel(debugLevel); // from ttk::Debug
     this->Modified();
-  };
+  }
+
+  /**
+   * Set the cache size of the compact triangulation.
+   */
+  void SetCompactTriangulationCacheSize(float cacheSize) {
+    this->CompactTriangulationCacheSize = cacheSize;
+    this->Modified();
+  }
 
   /// This method retrieves an optional array to process.
   /// The logic of this method is as follows:
@@ -217,9 +229,10 @@ protected:
    * provide information about new vtkImageData output objects, such as
    * their extend, spacing, and origin.
    */
-  virtual int RequestInformation(vtkInformation *request,
-                                 vtkInformationVector **inputVectors,
-                                 vtkInformationVector *outputVector) {
+  virtual int
+    RequestInformation(vtkInformation *ttkNotUsed(request),
+                       vtkInformationVector **ttkNotUsed(inputVectors),
+                       vtkInformationVector *ttkNotUsed(outputVector)) {
     return 1;
   }
 
@@ -229,9 +242,10 @@ protected:
    *
    * In general it should not be necessary to override this method.
    */
-  virtual int RequestUpdateTime(vtkInformation *request,
-                                vtkInformationVector **inputVectors,
-                                vtkInformationVector *outputVector) {
+  virtual int
+    RequestUpdateTime(vtkInformation *ttkNotUsed(request),
+                      vtkInformationVector **ttkNotUsed(inputVectors),
+                      vtkInformationVector *ttkNotUsed(outputVector)) {
     return 1;
   }
 
@@ -241,10 +255,10 @@ protected:
    *
    * In general it should not be necessary to override this method.
    */
-  virtual int
-    RequestUpdateTimeDependentInformation(vtkInformation *request,
-                                          vtkInformationVector **inputVectors,
-                                          vtkInformationVector *outputVector) {
+  virtual int RequestUpdateTimeDependentInformation(
+    vtkInformation *ttkNotUsed(request),
+    vtkInformationVector **ttkNotUsed(inputVectors),
+    vtkInformationVector *ttkNotUsed(outputVector)) {
     return 1;
   }
 
@@ -256,11 +270,12 @@ protected:
    * In general it should not be necessary to override this method unless
    * the filter supports spatial or temporal streaming.
    */
-  virtual int RequestUpdateExtent(vtkInformation *request,
-                                  vtkInformationVector **inputVectors,
-                                  vtkInformationVector *outputVector) {
+  virtual int
+    RequestUpdateExtent(vtkInformation *ttkNotUsed(request),
+                        vtkInformationVector **ttkNotUsed(inputVectors),
+                        vtkInformationVector *ttkNotUsed(outputVector)) {
     return 1;
-  };
+  }
 
   /**
    * This method is called during the sixth pipeline pass in
@@ -269,11 +284,12 @@ protected:
    *
    * In general it should not be necessary to override this method.
    */
-  virtual int RequestDataNotGenerated(vtkInformation *request,
-                                      vtkInformationVector **inputVectors,
-                                      vtkInformationVector *outputVector) {
+  virtual int
+    RequestDataNotGenerated(vtkInformation *ttkNotUsed(request),
+                            vtkInformationVector **ttkNotUsed(inputVectors),
+                            vtkInformationVector *ttkNotUsed(outputVector)) {
     return 1;
-  };
+  }
 
   /**
    * This method is called during the seventh pipeline pass in
@@ -283,11 +299,11 @@ protected:
    * This method has to be overridden in order to implement the purpose of
    * the filter.
    */
-  virtual int RequestData(vtkInformation *request,
-                          vtkInformationVector **inputVectors,
-                          vtkInformationVector *outputVector) {
+  virtual int RequestData(vtkInformation *ttkNotUsed(request),
+                          vtkInformationVector **ttkNotUsed(inputVectors),
+                          vtkInformationVector *ttkNotUsed(outputVector)) {
     return 1;
-  };
+  }
 
   /**
    * This method specifies the required input object data types of the
@@ -297,10 +313,11 @@ protected:
    * This method has to be overridden to specify the required input data
    * types.
    */
-  virtual int FillInputPortInformation(int port,
-                                       vtkInformation *info) override {
+  virtual int
+    FillInputPortInformation(int ttkNotUsed(port),
+                             vtkInformation *ttkNotUsed(info)) override {
     return 0;
-  };
+  }
 
   /**
    * This method specifies in the port information the data type of the
@@ -312,8 +329,11 @@ protected:
    * This method has to be overridden to specify the data types of the
    * outputs.
    */
-  virtual int FillOutputPortInformation(int port,
-                                        vtkInformation *info) override {
+  virtual int
+    FillOutputPortInformation(int ttkNotUsed(port),
+                              vtkInformation *ttkNotUsed(info)) override {
     return 0;
-  };
+  }
 };
+
+/// @}

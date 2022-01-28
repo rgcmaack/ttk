@@ -46,8 +46,11 @@ namespace ttk {
     /// should be equal to the number of vertices in the triangulation. Each
     /// entry is a std::vector listing the identifiers of triangles.
     /// \param cellEdges List of cell edges. The size of this std::vector
-    /// should be equal to the number of triangles. Each entry is a std::vector
+    /// should be equal to the number of triangles. Each entry is a std::array
     /// of identifiers of edges.
+    /// \param edgeList List of edges. The size of this std::vector
+    /// should be equal to the number of edges. Each entry is a std::array
+    /// of vertex identifiers per edge.
     /// \param vertexLinks Output vertex links. The size of this std::vector
     /// will be equal to the number of vertices in the triangulation. Each
     /// entry will be a std::vector listing the edges in the link of the
@@ -68,6 +71,8 @@ namespace ttk {
     /// should be equal to the number of tetrahedra. Each entry is a
     /// std::vector
     /// of identifiers of triangles.
+    /// \param triangleList List of triangles. For each triangle, a
+    /// std::array identifying its three vertices.
     /// \param vertexLinks Output vertex links. The size of this std::vector
     /// will be equal to the number of vertices in the triangulation. Each
     /// entry will be a std::vector listing the triangles in the link of the
@@ -82,25 +87,17 @@ namespace ttk {
     /// Compute the list of neighbors of each vertex of a triangulation.
     /// Unspecified behavior if the input mesh is not a valid triangulation).
     /// \param vertexNumber Number of vertices in the triangulation.
-    /// \param cellArray Cell container allowing to retrieve the vertices ids
-    /// of each cell.
     /// \param vertexNeighbors Output neighbor list. The size of this
     /// std::vector will be equal to the number of vertices in the mesh. Each
     /// entry will be std::vector listing the vertex identifiers of the entry's
     /// vertex' neighbors.
-    /// \param edgeList Optional list of edges. If NULL, the function will
-    /// compute this list anyway and free the related memory upon return. If not
-    /// NULL but pointing to an empty std::vector, the function will fill this
-    /// empty std::vector (useful if this list needs to be used later on by the
-    /// calling program). If not NULL but pointing to a non-empty std::vector,
-    /// this function will use this std::vector as internal edge list. If this
-    /// std::vector is not empty but incorrect, the behavior is unspecified.
+    /// \param edgeList List of edges. If this std::vector is not
+    /// empty but incorrect, the behavior is unspecified.
     /// \return Returns 0 upon success, negative values otherwise.
-    int buildVertexNeighbors(const SimplexId &vertexNumber,
-                             const CellArray &cellArray,
-                             FlatJaggedArray &vertexNeighbors,
-                             std::vector<std::array<SimplexId, 2>> *edgeList
-                             = NULL) const;
+    int buildVertexNeighbors(
+      const SimplexId &vertexNumber,
+      FlatJaggedArray &vertexNeighbors,
+      const std::vector<std::array<SimplexId, 2>> &edgeList) const;
 
     /// Compute the star of each vertex of a triangulation. Unspecified
     /// behavior if the input mesh is not a valid triangulation.

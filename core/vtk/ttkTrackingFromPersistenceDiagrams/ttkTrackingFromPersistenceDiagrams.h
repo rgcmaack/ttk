@@ -159,7 +159,7 @@ int ttkTrackingFromPersistenceDiagrams::buildMesh(
   std::vector<std::vector<diagramTuple>> &inputPersistenceDiagrams,
   bool useGeometricSpacing,
   double spacing,
-  bool DoPostProc,
+  bool ttkNotUsed(DoPostProc),
   std::vector<std::set<int>> &trackingTupleToMerged,
   vtkPoints *points,
   vtkUnstructuredGrid *persistenceDiagram,
@@ -362,7 +362,7 @@ int ttkTrackingFromPersistenceDiagrams::buildMesh(
 
       persistenceScalars->InsertTuple1(currentVertex, cost);
       valueScalars->InsertTuple1(
-        currentVertex, (std::get<10>(tuple1) + std::get<10>(tuple2)) / 2);
+        currentVertex, (std::get<10>(tuple1) + std::get<10>(tuple2)) / 2.0);
       matchingIdScalars->InsertTuple1(currentVertex, currentVertex);
       lengthScalars->InsertTuple1(currentVertex, chainLength);
 

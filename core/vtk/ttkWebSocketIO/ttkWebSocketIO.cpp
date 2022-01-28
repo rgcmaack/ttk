@@ -57,7 +57,7 @@ int ttkWebSocketIO::FillOutputPortInformation(int port, vtkInformation *info) {
   return 0;
 }
 
-int ttkWebSocketIO::RequestData(vtkInformation *request,
+int ttkWebSocketIO::RequestData(vtkInformation *ttkNotUsed(request),
                                 vtkInformationVector **inputVector,
                                 vtkInformationVector *outputVector) {
   const bool neededUpdate = this->GetNeedsUpdate();
@@ -99,7 +99,7 @@ int ttkWebSocketIO::processEvent(const std::string &eventName,
     if(!this->SendVtkDataObject(this->LastInput))
       return 0;
   } else if(eventData.rfind("{\"vtkDataSet", 12) == 0) {
-    if(!this->ParseVtkDataObjectFromJSON(eventData, nullptr))
+    if(!this->ParseVtkDataObjectFromJSON(eventData))
       return 0;
   }
 
@@ -130,8 +130,7 @@ bool jsonHasChild(const boost::property_tree::ptree &pt,
   return pt.find(key) != pt.not_found();
 }
 
-int ttkWebSocketIO::ParseVtkDataObjectFromJSON(const std::string &json,
-                                               vtkDataObject *object) {
+int ttkWebSocketIO::ParseVtkDataObjectFromJSON(const std::string &json) {
   ttk::Timer timer;
   this->printMsg("Parsing vtkDataObject from JSON string", 0, 0,
                  ttk::debug::LineMode::REPLACE);
@@ -246,8 +245,8 @@ int ttkWebSocketIO::ParseVtkDataObjectFromJSON(const std::string &json,
                                      const boost::property_tree::ptree &fdJSON,
                                      const std::string &fdKey) {
       // parse point data
-      for(auto pda : fdJSON.get_child(fdKey)) {
-        auto &jsonArray = pda.second;
+      for(const auto &pda : fdJSON.get_child(fdKey)) {
+        const auto &jsonArray = pda.second;
         size_t nComponents = jsonGetValue<size_t>(jsonArray, "nComponents");
         size_t nTuples = jsonGetValue<size_t>(jsonArray, "nTuples");
 
@@ -368,8 +367,8 @@ int ttkWebSocketIO::SendVtkDataObject(vtkDataObject *object) {
       "Serializing vtkDataObject", 0.4, 0, ttk::debug::LineMode::REPLACE);
 
     // send points if last input is a vtkPointSet
-    if(block->IsA("vtkPointSet")) {
-      auto blockAsPS = vtkPointSet::SafeDownCast(block);
+    auto blockAsPS = vtkPointSet::SafeDownCast(block);
+    if(blockAsPS != nullptr) {
       auto points = blockAsPS->GetPoints();
       this->queueMessage(
         "{"
@@ -383,7 +382,7 @@ int ttkWebSocketIO::SendVtkDataObject(vtkDataObject *object) {
         + ","
           "\"nComponents\": 3"
           "}");
-      if(blockAsPS->GetNumberOfPoints() > 0)
+      if(blockAsPS->GetNumberOfPoints() > 0 && points != nullptr)
         switch(points->GetDataType()) {
           vtkTemplateMacro(this->queueMessage(
             blockAsPS->GetNumberOfPoints() * sizeof(VTK_TT) * 3,

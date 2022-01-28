@@ -92,6 +92,10 @@ int ttkPersistenceDiagramDistanceMatrix::RequestData(
   for(int i = 0; i < nDiags; i++) {
     double max_dimension
       = getPersistenceDiagram(intermediateDiagrams[i], inputDiagrams[i]);
+    if(max_dimension < 0.0) {
+      this->printErr("Could not read Persistence Diagram");
+      return 0;
+    }
     if(max_dimension_total < max_dimension) {
       max_dimension_total = max_dimension;
     }
@@ -147,11 +151,10 @@ double ttkPersistenceDiagramDistanceMatrix::getPersistenceDiagram(
   const auto cd = CTPersistenceDiagram_->GetCellData();
   const auto points = CTPersistenceDiagram_->GetPoints();
 
-#ifndef TTK_ENABLE_KAMIKAZE
-  if(pd == nullptr || points == nullptr) {
-    return -2;
+  if(pd == nullptr || cd == nullptr || points == nullptr) {
+    this->printErr("Missing Diagram PointData, CellData or Points");
+    return -1.0;
   }
-#endif // TTK_ENABLE_KAMIKAZE
 
   const auto vertexIdentifierScalars
     = vtkIntArray::SafeDownCast(pd->GetArray(ttk::VertexScalarFieldName));
@@ -170,12 +173,10 @@ double ttkPersistenceDiagramDistanceMatrix::getPersistenceDiagram(
 
   const bool embed = birthScalars != nullptr && deathScalars != nullptr;
 
-#ifndef TTK_ENABLE_KAMIKAZE
   if(!embed && critCoordinates == nullptr) {
-    // missing data
-    return -2;
+    this->printErr("Malformed Persistence Diagram");
+    return -2.0;
   }
-#endif // TTK_ENABLE_KAMIKAZE
 
   int pairingsSize = (int)pairIdentifierScalars->GetNumberOfTuples();
   // FIX : no more missed pairs
@@ -189,13 +190,12 @@ double ttkPersistenceDiagramDistanceMatrix::getPersistenceDiagram(
   if(*pairIdentifierScalars->GetTuple(pairingsSize - 1) == -1)
     pairingsSize -= 1;
 
-#ifndef TTK_ENABLE_KAMIKAZE
   if(pairingsSize < 1 || !vertexIdentifierScalars || !pairIdentifierScalars
      || !nodeTypeScalars || !persistenceScalars || !extremumIndexScalars
      || !points) {
-    return -2;
+    this->printErr("Missing Persistence Diagram data array");
+    return -3.0;
   }
-#endif // TTK_ENABLE_KAMIKAZE
 
   diagram.resize(pairingsSize + 1);
   int nbNonCompact = 0;
@@ -249,10 +249,10 @@ double ttkPersistenceDiagramDistanceMatrix::getPersistenceDiagram(
 
       } else {
         diagram[pairIdentifier] = std::make_tuple(
-          vertexId1, (BNodeType)nodeType1, vertexId2, (BNodeType)nodeType2,
-          persistence, pairType, birth, coordsBirth[0], coordsBirth[1],
-          coordsBirth[2], death, coordsDeath[0], coordsDeath[1],
-          coordsDeath[2]);
+          vertexId1, static_cast<ttk::CriticalType>(nodeType1), vertexId2,
+          static_cast<ttk::CriticalType>(nodeType2), persistence, pairType,
+          birth, coordsBirth[0], coordsBirth[1], coordsBirth[2], death,
+          coordsDeath[0], coordsDeath[1], coordsDeath[2]);
       }
     }
     if(pairIdentifier >= pairingsSize) {

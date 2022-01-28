@@ -44,7 +44,7 @@ int ttkContourTreeAlignment::FillOutputPortInformation(int port,
   return 0;
 }
 
-int ttkContourTreeAlignment::RequestData(vtkInformation *request,
+int ttkContourTreeAlignment::RequestData(vtkInformation *ttkNotUsed(request),
                                          vtkInformationVector **inputVector,
                                          vtkInformationVector *outputVector) {
 
@@ -231,7 +231,7 @@ int ttkContourTreeAlignment::RequestData(vtkInformation *request,
 
   this->setArcMatchMode(ArcMatchMode);
   if(MatchTime)
-    this->setAlignmenttreeType(lastMatchedValue);
+    this->setAlignmenttreeType(ttk::cta::lastMatchedValue);
   else
     this->setAlignmenttreeType(AlignmenttreeType);
   this->setWeightArcMatch(WeightArcMatch);

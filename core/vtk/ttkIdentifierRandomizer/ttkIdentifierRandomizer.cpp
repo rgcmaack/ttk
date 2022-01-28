@@ -1,3 +1,4 @@
+#include <Shuffle.h>
 #include <ttkIdentifierRandomizer.h>
 
 #include <vtkCellData.h>
@@ -62,7 +63,9 @@ int shuffleScalarFieldValues(const T *const inputField,
   // shuffle them using the seed
   std::mt19937 random_engine{};
   random_engine.seed(seed);
-  std::shuffle(shuffledValues.begin(), shuffledValues.end(), random_engine);
+  // use the Fisher-Yates algorithm instead of std::shuffle, whose
+  // results are platform-dependent
+  ttk::shuffle(shuffledValues, random_engine);
 
   // link original value to shuffled value correspondance
   std::map<T, T> originalToShuffledValues{};
@@ -78,10 +81,11 @@ int shuffleScalarFieldValues(const T *const inputField,
     outputField[i] = originalToShuffledValues[inputField[i]];
   }
 
+  TTK_FORCE_USE(nThreads);
   return 1;
 }
 
-int ttkIdentifierRandomizer::RequestData(vtkInformation *request,
+int ttkIdentifierRandomizer::RequestData(vtkInformation *ttkNotUsed(request),
                                          vtkInformationVector **inputVector,
                                          vtkInformationVector *outputVector) {
 

@@ -56,12 +56,10 @@ namespace ttk {
       // Build Merge treeString using tasks
       Timer precomputeTime;
       int alreadyDone = leafSearch(mesh);
-      printTime(precomputeTime, "leafSearch " + treeString, scalars_->size,
-                3 + alreadyDone);
+      printTime(precomputeTime, "leafSearch " + treeString, 3 + alreadyDone);
 
       Timer buildTime;
       leafGrowth(mesh);
-      int nbProcessed = 0;
 #ifdef TTK_ENABLE_FTM_TREE_PROCESS_SPEED
       // count process
       for(SimplexId i = 0; i < scalars_->size; i++) {
@@ -69,17 +67,17 @@ namespace ttk {
           ++nbProcessed;
       }
 #endif
-      printTime(buildTime, "leafGrowth " + treeString, nbProcessed, 3);
+      printTime(buildTime, "leafGrowth " + treeString, 3);
 
       Timer bbTime;
-      SimplexId bbSize = trunk(mesh, ct);
-      printTime(bbTime, "trunk " + treeString, bbSize, 3);
+      trunk(mesh, ct);
+      printTime(bbTime, "trunk " + treeString, 3);
 
       // Segmentation
       if(ct && params_->segm) {
         Timer segmTime;
         buildSegmentation();
-        printTime(segmTime, "segment " + treeString, scalars_->size, 3);
+        printTime(segmTime, "segment " + treeString, 3);
       }
     }
 
@@ -187,7 +185,7 @@ namespace ttk {
         (*mt_data_.ufs)[v] = new AtomicUF(v);
 
 #ifdef TTK_ENABLE_OPENMP
-#pragma omp task untied OPTIONAL_PRIORITY(isPrior())
+#pragma omp task UNTIED() OPTIONAL_PRIORITY(isPrior())
 #endif
         arcGrowth(mesh, v, n);
       }
@@ -382,12 +380,13 @@ namespace ttk {
 
       // is last
       valence oldVal;
+      valence &tmp = (*mt_data_.valences)[currentState.vertex];
 #ifdef TTK_ENABLE_OPENMP
 #pragma omp atomic capture
 #endif
       {
-        oldVal = (*mt_data_.valences)[currentState.vertex];
-        (*mt_data_.valences)[currentState.vertex] -= decr;
+        oldVal = tmp;
+        tmp -= decr;
       }
       if(oldVal == decr) {
         isLast = true;
@@ -439,7 +438,7 @@ namespace ttk {
       closeSuperArc(lastArc, rootNode);
       getSuperArc(lastArc)->setLastVisited(getNode(rootNode)->getVertexId());
 
-      printTime(bbTimer, "trunk seq.", -1, 4);
+      printTime(bbTimer, "trunk seq.", 4);
       bbTimer.reStart();
 
       // Segmentation
@@ -450,7 +449,7 @@ namespace ttk {
       } else {
         processed = trunkSegmentation(trunkVerts, begin, stop);
       }
-      printTime(bbTimer, "trunk para.", -1, 4);
+      printTime(bbTimer, "trunk para.", 4);
 
       return processed;
     }

@@ -1,5 +1,5 @@
 /// \ingroup baseCode
-/// \class ttk::DiscreteGradient
+/// \class ttk::dcg::DiscreteGradient
 /// \author Guillaume Favelier <guillaume.favelier@lip6.fr>
 /// \author Julien Tierny <julien.tierny@lip6.fr>
 /// \author Pierre Guillou <pierre.guillou@lip6.fr>
@@ -19,6 +19,7 @@
 #include <FTMTree.h>
 #include <Geometry.h>
 #include <Triangulation.h>
+#include <VisitedMask.h>
 
 #include <algorithm>
 #include <array>
@@ -57,15 +58,15 @@ namespace ttk {
         : Cell{dim, id}, lowVerts_{lowVerts}, faces_{faces} {
       }
 
-      // if cell has been paired with another in current lower star
-      bool paired_{false};
-      // lower vertices in current lower star (1 for edges, 2 for triangles, 3
-      // for tetras)
+      // (order field value on) lower vertices in current lower star
+      // (1 for edges, 2 for triangles, 3 for tetras)
       const std::array<SimplexId, 3> lowVerts_{};
       // indices of faces (cells of dimensions dim_ - 1) in lower star
       // structure, only applicable for triangles (2 edge faces)  and tetras (3
       // triangle faces)
       const std::array<uint8_t, 3> faces_{};
+      // if cell has been paired with another in current lower star
+      bool paired_{false};
     };
 
     /**
@@ -272,24 +273,6 @@ namespace ttk {
         }
 
         return (vpathId1 < vpathId2);
-      };
-    };
-
-    struct VisitedMask {
-      std::vector<bool> &isVisited_;
-      std::vector<SimplexId> &visitedIds_;
-
-      VisitedMask(std::vector<bool> &isVisited,
-                  std::vector<SimplexId> &visitedIds)
-        : isVisited_{isVisited}, visitedIds_{visitedIds} {
-      }
-      ~VisitedMask() {
-        // use RAII to clean & reset referenced vectors
-        for(const auto id : this->visitedIds_) {
-          this->isVisited_[id] = false;
-        }
-        // set size to 0 but keep allocated memory
-        this->visitedIds_.clear();
       }
     };
 
@@ -369,16 +352,6 @@ saddle-connectors.
       }
 
       /**
-       * Compute the difference of function values of a pair of cells.
-       */
-      template <typename dataType, typename triangulationType>
-      dataType getPersistence(const Cell &up,
-                              const Cell &down,
-                              const dataType *const scalars,
-                              const SimplexId *const offsets,
-                              const triangulationType &triangulation) const;
-
-      /**
        * Compute the initial gradient field of the input scalar function on the
 triangulation.
        */
@@ -419,12 +392,14 @@ according to them.
           numberOfVertices_ = data->getNumberOfVertices();
 
           data->preconditionBoundaryVertices();
-          data->preconditionBoundaryEdges();
           data->preconditionVertexNeighbors();
           data->preconditionVertexEdges();
           data->preconditionVertexStars();
           data->preconditionEdges();
           data->preconditionEdgeStars();
+          if(dimensionality_ >= 2) {
+            data->preconditionBoundaryEdges();
+          }
           if(dimensionality_ == 2) {
             data->preconditionCellEdges();
           } else if(dimensionality_ == 3) {
@@ -700,6 +675,15 @@ in the gradient.
       template <typename triangulationType>
       int processLowerStars(const SimplexId *const offsets,
                             const triangulationType &triangulation);
+
+      /**
+       * Compute the difference of function values of a pair of cells.
+       */
+      template <typename dataType, typename triangulationType>
+      dataType getPersistence(const Cell &up,
+                              const Cell &down,
+                              const dataType *const scalars,
+                              const triangulationType &triangulation) const;
 
       /**
        * Get the list of maxima candidates for simplification.

@@ -94,7 +94,7 @@ int ttkGridLayout::TranslateObject(vtkDataObject *input,
   return 1;
 }
 
-int ttkGridLayout::RequestData(vtkInformation *request,
+int ttkGridLayout::RequestData(vtkInformation *ttkNotUsed(request),
                                vtkInformationVector **inputVector,
                                vtkInformationVector *outputVector) {
   ttk::Timer globalTimer;
@@ -148,7 +148,7 @@ int ttkGridLayout::RequestData(vtkInformation *request,
   const size_t nRows
     = this->GetNumberOfRows() < 1 ? 0 : (size_t)this->GetNumberOfRows();
   const size_t nColumns
-    = nRows == 0 ? ceil(sqrt(nBlocks)) : ceil(nBlocks / nRows);
+    = nRows == 0 ? std::ceil(std::sqrt(nBlocks)) : std::ceil(nBlocks / nRows);
 
   for(size_t i = 0; i < nBlocks; i++) {
     // get block
@@ -157,7 +157,7 @@ int ttkGridLayout::RequestData(vtkInformation *request,
     auto outBlock = vtkSmartPointer<vtkDataObject>::Take(block->NewInstance());
     this->CopyObject(outBlock, block);
 
-    const size_t row = floor(i / nColumns);
+    const size_t row = std::floor(i / nColumns);
     const size_t col = i % nColumns;
 
     if(!this->TranslateObject(

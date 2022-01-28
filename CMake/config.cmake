@@ -1,4 +1,23 @@
+# --- Prerequisites
+
 set(CMAKE_CXX_STANDARD 11)
+
+# --- Global Options
+
+option(TTK_BUILD_VTK_WRAPPERS "Build the TTK VTK Wrappers" ON)
+cmake_dependent_option(TTK_BUILD_PARAVIEW_PLUGINS "Build the TTK ParaView Plugins" ON "TTK_BUILD_VTK_WRAPPERS" OFF)
+option(TTK_BUILD_STANDALONE_APPS "Build the TTK Standalone Applications" ON)
+option(TTK_WHITELIST_MODE "Explicitely enable each filter" OFF)
+mark_as_advanced(TTK_WHITELIST_MODE BUILD_SHARED_LIBS)
+
+# This option allows library to be built dynamic
+# like the TopologyToolKit.so file for paraview
+option(BUILD_SHARED_LIBS "Build TTK as shared lib" ON)
+
+if(TTK_BUILD_STANDALONE_APPS AND NOT TTK_BUILD_VTK_WRAPPERS)
+  message(WARNING "Can't build standalones without the VTK wrappers: disable")
+  set(TTK_BUILD_STANDALONE_APPS OFF CACHE BOOL "Build the cmd and gui commands" FORCE)
+endif()
 
 # Set a default build type if none was specified
 get_property(generator_is_multi_config GLOBAL
@@ -9,8 +28,6 @@ if (NOT CMAKE_BUILD_TYPE AND NOT generator_is_multi_config)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
 endif ()
 
-# Options & dependencies
-
 # the 'TTK_CELL_ARRAY_LAYOUT' drive the behavior of TTK to store cell points.
 # This variable has two possible values "SingleArray" and "OffsetAndConnectiviy".
 # * "SingleArray" use a layout compatible with VTK < 9 were the cell array store the
@@ -20,6 +37,13 @@ endif ()
 set(TTK_CELL_ARRAY_LAYOUT "SingleArray" CACHE STRING "Layout for the cell array.")
 set_property(CACHE TTK_CELL_ARRAY_LAYOUT PROPERTY STRINGS "SingleArray" "OffsetAndConnectivity")
 mark_as_advanced(TTK_CELL_ARRAY_LAYOUT)
+
+# issue #605
+# workaround https://gitlab.kitware.com/paraview/paraview/-/issues/20324
+option(TTK_ENABLE_MPI "Enable MPI support" FALSE)
+if (TTK_ENABLE_MPI)
+  find_package(MPI REQUIRED)
+endif()
 
 if(TTK_BUILD_PARAVIEW_PLUGINS OR TTK_BUILD_VTK_WRAPPERS)
   # Find ParaView, otherwise VTK
@@ -94,18 +118,28 @@ if(TTK_BUILD_DOCUMENTATION)
   find_package(Doxygen)
 endif()
 
+# --- Dependencies
+
+# for additional find packages
+list(INSERT CMAKE_MODULE_PATH 0
+  "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
+
+# mandatory packages
+
 find_package(Boost REQUIRED)
 if(Boost_FOUND)
   message(STATUS "Found Boost ${Boost_VERSION} (${Boost_INCLUDE_DIR})")
 endif()
 
+# optional pakages
+
 find_package(ZLIB QUIET)
-if(NOT ZLIB_FOUND)
-  option(TTK_ENABLE_ZLIB "Enable Zlib support" OFF)
-  message(STATUS "Zlib not found, disabling Zlib support in TTK.")
-else()
+if(ZLIB_FOUND)
   option(TTK_ENABLE_ZLIB "Enable Zlib support" ON)
   message(STATUS "Found Zlib ${ZLIB_VERSION_STRING} (${ZLIB_LIBRARIES})")
+else()
+  option(TTK_ENABLE_ZLIB "Enable Zlib support" OFF)
+  message(STATUS "Zlib not found, disabling Zlib support in TTK.")
 endif()
 
 find_package(EMBREE 3.4 QUIET)
@@ -117,63 +151,15 @@ else()
   message(STATUS "EMBREE library not found, disabling embree support in TTK.")
 endif()
 
-# START_FIND_GRAPHVIZ
-find_path(GRAPHVIZ_INCLUDE_DIR
-  NAMES
-    graphviz/cgraph.h
-  HINTS
-    ${_GRAPHVIZ_INCLUDE_DIR}
-    )
-
-find_library(GRAPHVIZ_CDT_LIBRARY
-  NAMES
-    cdt
-  HINTS
-    ${_GRAPHVIZ_LIBRARY_DIR}
-    )
-
-find_library(GRAPHVIZ_GVC_LIBRARY
-  NAMES
-    gvc
-  HINTS
-    ${_GRAPHVIZ_LIBRARY_DIR}
-    )
-
-find_library(GRAPHVIZ_CGRAPH_LIBRARY
-  NAMES
-    cgraph
-  HINTS
-    ${_GRAPHVIZ_LIBRARY_DIR}
-    )
-
-find_library(GRAPHVIZ_PATHPLAN_LIBRARY
-  NAMES
-    pathplan
-  HINTS
-    ${_GRAPHVIZ_LIBRARY_DIR}
-    )
-
-if(GRAPHVIZ_INCLUDE_DIR
-    AND GRAPHVIZ_CDT_LIBRARY
-    AND GRAPHVIZ_GVC_LIBRARY
-    AND GRAPHVIZ_CGRAPH_LIBRARY
-    AND GRAPHVIZ_PATHPLAN_LIBRARY
-    )
-  set(GRAPHVIZ_FOUND "YES")
-else()
-  set(GRAPHVIZ_FOUND "NO")
-endif()
-
-if(GRAPHVIZ_FOUND)
+find_package(Graphviz QUIET)
+if(Graphviz_FOUND)
   option(TTK_ENABLE_GRAPHVIZ "Enable GraphViz support" ON)
-  message(STATUS "Found GraphViz (${GRAPHVIZ_CDT_LIBRARY})")
+  message(STATUS "Found GraphViz (${Graphviz_CGRAPH_LIBRARY})")
 else()
   option(TTK_ENABLE_GRAPHVIZ "Enable GraphViz support" OFF)
   message(STATUS "GraphViz not found, disabling GraphViz support in TTK.")
 endif()
-# END_FIND_GRAPHVIZ
 
-# FindSQLite3 supported since CMake 3.14
 find_package(SQLite3 QUIET)
 if(SQLite3_FOUND)
   option(TTK_ENABLE_SQLITE3 "Enable SQLITE3 support" ON)
@@ -204,14 +190,14 @@ if(EIGEN3_FOUND)
   option(TTK_ENABLE_EIGEN "Enable Eigen3 support" ON)
   message(STATUS "Found Eigen ${Eigen3_VERSION} (${EIGEN3_INCLUDE_DIR})")
 
-  find_package(Spectra QUIET)
+  find_package(Spectra 1.0.0 QUIET)
   if(Spectra_FOUND)
     option(TTK_ENABLE_SPECTRA "Enable Spectra support" ON)
     get_property(SPECTRA_INCLUDES TARGET Spectra::Spectra PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
     message(STATUS "Found Spectra ${Spectra_VERSION} (${SPECTRA_INCLUDES})")
   else()
     option(TTK_ENABLE_SPECTRA "Enable Spectra support" OFF)
-    message(STATUS "Spectra >=0.9.0 not found, disabling Spectra support in TTK.")
+    message(STATUS "Spectra >=1.0.0 not found, disabling Spectra support in TTK.")
   endif()
 else()
   option(TTK_ENABLE_EIGEN "Enable Eigen3 support" OFF)
@@ -222,7 +208,6 @@ else()
 endif()
 
 find_package(Python3 COMPONENTS Development NumPy QUIET)
-
 if(Python3_FOUND AND Python3_NumPy_FOUND)
   include_directories(SYSTEM ${Python3_INCLUDE_DIRS})
   set(TTK_PYTHON_MAJOR_VERSION "${Python3_VERSION_MAJOR}"
@@ -242,9 +227,6 @@ if(MSVC)
 else()
   option(TTK_ENABLE_OPENMP "Enable OpenMP support" TRUE)
 endif()
-
-option(TTK_ENABLE_MPI "Enable MPI support" FALSE)
-
 if(TTK_ENABLE_OPENMP)
   find_package(OpenMP REQUIRED)
   if(OpenMP_CXX_FOUND)
@@ -279,20 +261,17 @@ else()
   endif()
 endif()
 
-if (TTK_ENABLE_MPI)
-  find_package(MPI REQUIRED)
-endif()
 
 find_package(WEBSOCKETPP QUIET)
-if(NOT WEBSOCKETPP_FOUND)
-  option(TTK_ENABLE_WEBSOCKETPP "Enable WebSocketIO module" OFF)
-  message(STATUS "WebSocketPP not found, disabling WebSocketIO module in TTK.")
-else()
+if(WEBSOCKETPP_FOUND)
   option(TTK_ENABLE_WEBSOCKETPP "Enable WebSocketIO module" ON)
   message(STATUS "Found WebSocketPP ${WEBSOCKETPP_VERSION} (${WEBSOCKETPP_INCLUDE_DIR}), enabling WebSocketIO module in TTK.")
+else()
+  option(TTK_ENABLE_WEBSOCKETPP "Enable WebSocketIO module" OFF)
+  message(STATUS "WebSocketPP not found, disabling WebSocketIO module in TTK.")
 endif()
 
-# Install path
+# --- Install path
 
 include(GNUInstallDirs)
 if(NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
