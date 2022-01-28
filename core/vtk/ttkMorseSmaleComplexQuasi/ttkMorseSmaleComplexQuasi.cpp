@@ -73,11 +73,11 @@ int ttkMorseSmaleComplexQuasi::RequestData(vtkInformation *request,
     return -1;
   }
 #endif
-
-  vtkDataArray *inputArray = this->GetOrderArray(input, 0);
+  const auto inputScalars = this->GetInputArrayToProcess(0, inputVector);
+  vtkDataArray *orderArray = this->GetOrderArray(input, 0);
 
 #ifndef TTK_ENABLE_KAMIKAZE  
-  if(!inputArray) {
+  if(!orderArray) {
     this->printErr("Unable to retrieve input array.");
     return 0;
   }
@@ -85,13 +85,13 @@ int ttkMorseSmaleComplexQuasi::RequestData(vtkInformation *request,
     this->printErr("Input array needs to be a point data array.");
     return 0;
   }
-  if(inputArray->GetNumberOfComponents() != 1) {
+  if(orderArray->GetNumberOfComponents() != 1) {
     this->printErr("Input array needs to be a scalar array.");
     return 0;
   }
 #endif
-
-  this->setInputOrderField(ttkUtils::GetVoidPointer(inputArray));
+  this->setInputScalarField(ttkUtils::GetVoidPointer(inputScalars));
+  this->setInputOrderField(ttkUtils::GetVoidPointer(orderArray));
 
   const auto triangulation = ttkAlgorithm::GetTriangulation(input);
 
@@ -151,15 +151,14 @@ int ttkMorseSmaleComplexQuasi::RequestData(vtkInformation *request,
 
   // If all checks pass then log which array is going to be processed.
   this->printMsg("MSC Order computation starting...");
-  this->printMsg("  Scalar Array: " + std::string(inputArray->GetName()));
+  this->printMsg("  Scalar Array: " + std::string(orderArray->GetName()));
 
   int status = 0;
 
-  ttkVtkTemplateMacro(inputArray->GetDataType(), triangulation->getType(),
+  ttkVtkTemplateMacro(inputScalars->GetDataType(), triangulation->getType(),
                      (status = dispatch<VTK_TT, TTK_TT>(
-                      inputArray, outputCriticalPoints,
-                      outputSeparatrices1,
-                      outputSeparatrices2,
+                      inputScalars, orderArray, outputCriticalPoints,
+                      outputSeparatrices1, outputSeparatrices2,
                       *static_cast<TTK_TT *>(triangulation->getData())
                       )));
 
@@ -198,14 +197,15 @@ void setArray(vtkArrayType &vtkArray, vectorType &vector) {
 }
 
 template <typename dataType, typename triangulationType>
-int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
+int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputScalars,
+                                        vtkDataArray *const inputOffsets,
                                         vtkPolyData *const outputCriticalPoints,
                                         vtkPolyData *const outputSeparatrices1,
                                         vtkPolyData *const outputSeparatrices2,
                                         const triangulationType &triangulation)
                                         {
-  const auto scalars
-    = static_cast<dataType *>(ttkUtils::GetVoidPointer(inputArray));
+  const auto orderArr
+    = static_cast<SimplexId *>(ttkUtils::GetVoidPointer(inputOffsets));
   
   // critical points
   criticalPoints_points.clear();
@@ -253,7 +253,7 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     &s2_numberOfCells, &separatrices2_cells_connectivity,
     &separatrices2_cells_mscIds,&separatrices2_cells_caseTypes);
 
-  const int ret = this->execute<triangulationType>(
+  const int ret = this->execute<dataType, triangulationType>(
     triangulation, SeparatricesManifold, ComputeSeparatrices,
     Fast1Separatrices, Fast2Separatrices
   );
@@ -270,7 +270,7 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     vtkNew<vtkPoints> points{};
     vtkNew<vtkSignedCharArray> cellDimensions{};
     vtkNew<ttkSimplexIdTypeArray> cellIds{};
-    vtkSmartPointer<vtkDataArray> cellScalars{inputArray->NewInstance()};
+    vtkSmartPointer<vtkDataArray> cellScalars{inputOffsets->NewInstance()};
     const auto nPoints = criticalPoints_points.size();
 
 #ifndef TTK_ENABLE_KAMIKAZE
@@ -291,7 +291,7 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
     setArray(cellIds, criticalPoints_points_cellIds);
 
     cellScalars->SetNumberOfComponents(1);
-    cellScalars->SetName(inputArray->GetName());
+    cellScalars->SetName(inputOffsets->GetName());
     cellScalars->SetNumberOfTuples(nPoints);
 
 #ifdef TTK_ENABLE_OPENMP
@@ -299,7 +299,7 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputArray,
 #endif // TTK_ENABLE_OPENMP
     for(size_t i = 0; i < nPoints; ++i) {
       points->SetPoint(i, criticalPoints_points[i].data());
-      cellScalars->SetTuple1(i, scalars[criticalPoints_points_cellIds[i]]);
+      cellScalars->SetTuple1(i, orderArr[criticalPoints_points_cellIds[i]]);
     }
 
     outputCriticalPoints->SetPoints(points);

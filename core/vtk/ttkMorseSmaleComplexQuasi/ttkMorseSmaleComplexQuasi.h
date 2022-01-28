@@ -93,7 +93,8 @@ protected:
                   vtkInformationVector *outputVector) override;
 
   template <typename scalarType, typename triangulationType>
-  int dispatch(vtkDataArray *const inputArray,
+  int dispatch(vtkDataArray *const inputScalars,
+               vtkDataArray *const inputOffsets,
                vtkPolyData *const outputCriticalPoints,
                vtkPolyData *const outputSeparatrices1,
                vtkPolyData *const outputSeparatrices2,
