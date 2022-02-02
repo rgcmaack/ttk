@@ -48,7 +48,7 @@ int ttkMorseSmaleComplexQuasi::FillOutputPortInformation(int port,
   return 0;
 }
 
-int ttkMorseSmaleComplexQuasi::RequestData(vtkInformation *request,
+int ttkMorseSmaleComplexQuasi::RequestData(vtkInformation *ttkNotUsed(request),
                                vtkInformationVector **inputVector,
                                vtkInformationVector *outputVector) {
 
@@ -206,6 +206,11 @@ int ttkMorseSmaleComplexQuasi::dispatch(vtkDataArray *const inputScalars,
                                         {
   const auto orderArr
     = static_cast<SimplexId *>(ttkUtils::GetVoidPointer(inputOffsets));
+
+  const auto inputArr
+    = static_cast<dataType *>(ttkUtils::GetVoidPointer(inputScalars));
+
+  this->printMsg(std::to_string(inputArr[0]));
   
   // critical points
   criticalPoints_points.clear();

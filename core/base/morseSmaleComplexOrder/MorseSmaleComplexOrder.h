@@ -65,8 +65,7 @@ namespace ttk {
         }
 
       // initialization with one segment :
-      explicit Separatrix(const bool isValid,
-                          const SimplexId &saddle,
+      explicit Separatrix(const SimplexId &saddle,
                           const SimplexId &extremum,
                           const SimplexId segmentGeometry)
         : source_{saddle}, destination_{extremum},
@@ -75,8 +74,7 @@ namespace ttk {
       }
 
       // initialization with multiple segments :
-      explicit Separatrix(const bool isValid,
-                          const SimplexId &saddle,
+      explicit Separatrix(const SimplexId &saddle,
                           const SimplexId &extremum,
                           const std::vector<SimplexId> &geometry)
         : source_{saddle}, destination_{extremum}, geometry_{geometry},
