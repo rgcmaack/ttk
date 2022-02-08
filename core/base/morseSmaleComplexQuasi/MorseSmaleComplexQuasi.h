@@ -162,31 +162,31 @@ const int tetraederLookupFast[28] = {
   {-1}, // (1) 0,0,0 - 0
   {-1}, // (-) 0,0,1 - 1
   {-1}, // (-) 0,0,2 - 2 
-  { 0},  // (2) 0,0,3 - 3
+  { 0}, // (2) 0,0,3 - 3
   {-1}, // (-) 0,1,0 - 4
   {-1}, // (-) 0,1,1 - 5 
   {-1}, // (-) 0,1,2 - 6
   {-1}, // (-) 0,1,3 - 7
-  { 1},  // (2) 0,2,0 - 8
+  { 1}, // (2) 0,2,0 - 8
   {-1}, // (-) 0,2,1 - 9
-  {-1},  // (2) 0,2,2 -10
-  {-1},  // (3) 0,2,3 -11
+  {-1}, // (2) 0,2,2 -10
+  {-1}, // (3) 0,2,3 -11
   {-1}, // (-) 0,3,0 -12
   {-1}, // (-) 0,3,1 -13
   {-1}, // (-) 0,3,2 -14
   {-1}, // (-) 0,3,3 -15
-  { 2},  // (2) 1,0,0 -16
-  {-1},  // (2) 1,0,1 -17
+  { 2}, // (2) 1,0,0 -16
+  {-1}, // (2) 1,0,1 -17
   {-1}, // (-) 1,0,2 -18
-  {-1},  // (3) 1,0,3 -19
-  {-1},  // (2) 1,1,0 -20
-  { 3},  // (2) 1,1,1 -21
+  {-1}, // (3) 1,0,3 -19
+  {-1}, // (2) 1,1,0 -20
+  { 3}, // (2) 1,1,1 -21
   {-1}, // (-) 1,1,2 -22
-  {-1},  // (3) 1,1,3 -23
-  {-1},  // (3) 1,2,0 -24
-  {-1},  // (3) 1,2,1 -25
-  {-1},  // (3) 1,2,2 -26
-  {-1}   // (4) 1,2,3 -27
+  {-1}, // (3) 1,1,3 -23
+  {-1}, // (3) 1,2,0 -24
+  {-1}, // (3) 1,2,1 -25
+  {-1}, // (3) 1,2,2 -26
+  {-1}  // (4) 1,2,3 -27
 };
 namespace ttk {
 
@@ -656,7 +656,7 @@ namespace ttk {
 
     template <typename triangulationType>
     int computeSeparatrices1Pieces_2D(
-      std::unordered_set<SimplexId> &saddleCandidates,
+      std::unordered_set<SimplexId> &sep2VertSet,
       std::unordered_map<long long, std::vector<
         std::tuple<SimplexId, SimplexId>>*> &sepPieces,
       std::unordered_map<long long, std::vector<
@@ -667,7 +667,7 @@ namespace ttk {
 
     template <typename triangulationType>
     int computeSeparatrices1Inner_2D(
-      std::unordered_set<SimplexId> &saddleCandidates,
+      std::unordered_set<SimplexId> &sep2VertSet,
       std::vector<mscq::Separatrix> &separatrices,
       std::unordered_map<long long,
                          std::vector<std::tuple<SimplexId, SimplexId>> *>
@@ -681,7 +681,7 @@ namespace ttk {
 
     /*template <typename triangulationType>
     int computeSeparatrices1Border_2D(
-      std::unordered_set<SimplexId> &saddleCandidates,   
+      std::unordered_set<SimplexId> &sep2VertSet,   
       std::vector<mscq::Separatrix> &separatrices,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;*/
@@ -696,8 +696,8 @@ namespace ttk {
       std::vector<std::array<float, 9>> &trianglePos,
       std::vector<SimplexId> &caseData,
       std::vector<long long> &mscLabels,
-      std::unordered_set<SimplexId> *saddleCandidates,
-      std::unordered_set<SimplexId> *sep1Candidates,
+      std::unordered_set<SimplexId> *sep2VertSet,
+      std::unordered_set<SimplexId> *sep2ForkSet,
       std::unordered_map<long long,
                          std::vector<std::tuple<SimplexId, SimplexId, bool>>>
         &pieces1separatrices,
@@ -745,7 +745,7 @@ namespace ttk {
       std::vector<std::array<float, 9>> &trianglePos,
       std::vector<SimplexId> &caseData,
       std::vector<long long> &mscLabels,
-      std::unordered_set<SimplexId> *saddleCandidates,
+      std::unordered_set<SimplexId> *sep2VertSet,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
@@ -763,8 +763,10 @@ namespace ttk {
       const SimplexId *const descendingNeighbor,
       const SimplexId *const ascendingManifold,
       const SimplexId *const descendingManifold,
-      std::unordered_set<SimplexId> *ascManifoldCandidates,
-      std::unordered_set<SimplexId> *descManifoldCandidates,
+      std::unordered_set<SimplexId> *ascSep2VertSet,
+      std::unordered_set<SimplexId> *ascSep2ForkSet,
+      std::unordered_set<SimplexId> *dscSep2VertSet,
+      std::unordered_set<SimplexId> *dscSep2ForkSet,
       const std::vector<mscq::Simplex> &criticalPoints,
       const triangulationType &triangulation) const;
 
@@ -782,7 +784,7 @@ namespace ttk {
       std::vector<mscq::Separatrix> &sadSadConns,
       const SimplexId *const morseSmaleManifold,
       const SimplexId *const descManifold,
-      const std::unordered_set<SimplexId> *saddleCandidates,
+      const std::unordered_set<SimplexId> *sep2VertSet,
       const std::vector<mscq::Simplex> &criticalPoints,
       const triangulationType &triangulation) const;
 
@@ -804,7 +806,7 @@ namespace ttk {
     template <typename triangulationType>
     int findSaddlesFromCadidates(
       std::vector<mscq::Simplex> &criticalPoints,
-      const std::unordered_set<SimplexId> &saddleCandidates,
+      const std::unordered_set<SimplexId> &sep2VertSet,
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
@@ -1084,11 +1086,10 @@ int ttk::MorseSmaleComplexQuasi::execute(
       }
 
       if(SepManifoldIsValid) {
-        std::unordered_set<SimplexId> saddleCandidates;
-        std::unordered_set<SimplexId> sep1Candidates;
         std::unordered_set<SimplexId> ascManifoldCandidates;
         std::unordered_set<SimplexId> descManifoldCandidates;
         std::vector<mscq::Separatrix> separatrices1;
+        std::unordered_set<SimplexId> sep2VertSet;
 
         if(dim == 2) {
           // sparseId, vector of edgeID tuples
@@ -1099,19 +1100,19 @@ int ttk::MorseSmaleComplexQuasi::execute(
           std::unordered_map<long long, std::vector<
             std::tuple<SimplexId, SimplexId> >> triConnectors;
           computeSeparatrices1Pieces_2D<triangulationType>(
-            saddleCandidates, sepPieces, triConnectors,
+            sep2VertSet, sepPieces, triConnectors,
             numberOfMSCRegions, sepManifold, triangulation);
 
           computeSeparatrices1Inner_2D<triangulationType>(
-            saddleCandidates, separatrices1, sepPieces, triConnectors,
+            sep2VertSet, separatrices1, sepPieces, triConnectors,
             numberOfMSCRegions, sepManifold, triangulation);
 
           /*computeSeparatrices1Border_2D<triangulationType>(
-            saddleCandidates, separatrices1, sepManifold, triangulation
+            sep2VertSet, separatrices1, sepManifold, triangulation
           );*/
 
           findSaddlesFromCadidates<triangulationType>(
-            criticalPoints, saddleCandidates, triangulation
+            criticalPoints, sep2VertSet, triangulation
           );
 
           setCriticalPoints<triangulationType>(
@@ -1131,11 +1132,16 @@ int ttk::MorseSmaleComplexQuasi::execute(
           std::unordered_set<SimplexId> borderSeeds;
           std::vector<mscq::Separatrix> sadExtrConns;
           std::vector<mscq::SaddleSaddlePath> ssp;
+          std::unordered_set<SimplexId> sep2ForkSet;
+          std::unordered_set<SimplexId> ascSep2VertSet;
+          std::unordered_set<SimplexId> ascSep2ForkSet;
+          std::unordered_set<SimplexId> dscSep2VertSet;
+          std::unordered_set<SimplexId> dscSep2ForkSet;
       
           if(fast2Separatrices) {
             computeSeparatrices2_3D_fast<triangulationType>(
                                       trianglePos, caseData, mscLabels,
-                                      &saddleCandidates,
+                                      &sep2VertSet,
                                       sepManifold, triangulation);
    
             for(int i = -1; i < numberOfMSCRegions; ++i) {
@@ -1143,26 +1149,25 @@ int ttk::MorseSmaleComplexQuasi::execute(
             }
           } else {
             computeSeparatrices2_3D<triangulationType>(
-              trianglePos, caseData, mscLabels, &descManifoldCandidates, 
-              &sep1Candidates,
+              trianglePos, caseData, mscLabels,
+              &dscSep2VertSet, &dscSep2ForkSet,
               pieces1separatrices, numberOfMSCRegions, descendingManifold,
               triangulation);
 
             computeSeparatrices2_3D<triangulationType>(
-              trianglePos, caseData, mscLabels, &ascManifoldCandidates, 
-              &sep1Candidates,
+              trianglePos, caseData, mscLabels,
+              &ascSep2VertSet, &ascSep2ForkSet,
               pieces1separatrices, numberOfMSCRegions, ascendingManifold,
               triangulation);
             
             trianglePos.clear();
             caseData.clear();
             mscLabels.clear();
-            sep1Candidates.clear();
+            sep2ForkSet.clear();
             pieces1separatrices.clear();
 
             computeSeparatrices2_3D<triangulationType>(
-              trianglePos, caseData, mscLabels, &saddleCandidates, 
-              &sep1Candidates,
+              trianglePos, caseData, mscLabels, &sep2VertSet, &sep2ForkSet,
               pieces1separatrices, numberOfMSCRegions, sepManifold,
               triangulation);
 
@@ -1170,7 +1175,7 @@ int ttk::MorseSmaleComplexQuasi::execute(
           }
 
           findSaddlesFromCadidates<triangulationType>(
-            criticalPoints, saddleCandidates, triangulation);
+            criticalPoints, sep2VertSet, triangulation);
 
           if(fast1Separatrices) {
             computeCritConnectors_3D_fast<triangulationType>(
@@ -1181,7 +1186,7 @@ int ttk::MorseSmaleComplexQuasi::execute(
             computeCritConnectors_3D<triangulationType>(
             sadExtrConns, ascendingNeighbor, descendingNeighbor,
             ascendingManifold, descendingManifold,
-            &ascManifoldCandidates, &descManifoldCandidates,
+            &ascSep2VertSet, &ascSep2ForkSet, &dscSep2VertSet, &dscSep2ForkSet,
             criticalPoints, triangulation);
           }
 
@@ -1191,11 +1196,11 @@ int ttk::MorseSmaleComplexQuasi::execute(
           /*if(fast1Separatrices) {
               computeSaddleSaddleConnectors_3D<scalarType, triangulationType>(
               sadExtrConns, sepManifold, sepManifold, 
-              &sep1Candidates, criticalPoints, triangulation);
+              &sep2ForkSet, criticalPoints, triangulation);
           } else {
               computeSaddleSaddleConnectors_3D<scalarType, triangulationType>(
               sadExtrConns, sepManifold, sepManifold, 
-              &saddleCandidates, criticalPoints, triangulation);
+              &sep2VertSet, criticalPoints, triangulation);
           }*/
 
           setCriticalPoints<triangulationType>(
@@ -1252,7 +1257,7 @@ int ttk::MorseSmaleComplexQuasi::computeManifold(
   const triangulationType &triangulation,
   const bool ascending) const {
 
-  const SimplexId *inputField = static_cast<const SimplexId *>(inputOrderField_);
+  const SimplexId *orderArr = static_cast<const SimplexId *>(inputOrderField_);
 
   // start global timer
   ttk::Timer localTimer;
@@ -1300,12 +1305,12 @@ if(!db_omp) {
       for(SimplexId n = 0; n < numNeighbors; n++) {
         triangulation.getVertexNeighbor(i, n, neighborId);
         if(ascending) {
-          if(inputField[neighborId] < inputField[dmi]) {
+          if(orderArr[neighborId] < orderArr[dmi]) {
             dmi = neighborId;
             hasBiggerNeighbor = true;
           }
         } else {
-          if(inputField[neighborId] > inputField[dmi]) {
+          if(orderArr[neighborId] > orderArr[dmi]) {
             dmi = neighborId;
             hasBiggerNeighbor = true;
           }
@@ -1386,12 +1391,12 @@ else {
         for(SimplexId n = 0; n < numNeighbors; n++) {
           triangulation.getVertexNeighbor(i, n, neighborId);
           if(ascending) {
-            if(inputField[neighborId] < inputField[dmi]) {
+            if(orderArr[neighborId] < orderArr[dmi]) {
               dmi = neighborId;
               hasBiggerNeighbor = true;
             }
           } else {
-            if(inputField[neighborId] > inputField[dmi]) {
+            if(orderArr[neighborId] > orderArr[dmi]) {
               dmi = neighborId;
               hasBiggerNeighbor = true;
             }
@@ -1589,7 +1594,7 @@ if(!db_omp) {
 
 template <typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Pieces_2D(
-  std::unordered_set<SimplexId> &saddleCandidates,
+  std::unordered_set<SimplexId> &sep2VertSet,
   std::unordered_map<long long, std::vector<std::tuple<SimplexId, SimplexId>> *>
     &sepPieces,
   std::unordered_map<long long, std::vector<std::tuple<SimplexId, SimplexId>>>
@@ -1647,9 +1652,9 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Pieces_2D(
         triangulation.getTriangleVertex(tri, 1, saddleCandidateVertex[1]);
         triangulation.getTriangleVertex(tri, 2, saddleCandidateVertex[2]);
 
-        saddleCandidates.insert(saddleCandidateVertex[0]);
-        saddleCandidates.insert(saddleCandidateVertex[1]);
-        saddleCandidates.insert(saddleCandidateVertex[2]);
+        sep2VertSet.insert(saddleCandidateVertex[0]);
+        sep2VertSet.insert(saddleCandidateVertex[1]);
+        sep2VertSet.insert(saddleCandidateVertex[2]);
       }
     } else if (sameLabelCount == 1) { // 2 labels on triangle
 
@@ -1686,7 +1691,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Pieces_2D(
 
 template <typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Inner_2D(
-  std::unordered_set<SimplexId> &saddleCandidates,
+  std::unordered_set<SimplexId> &sep2VertSet,
   std::vector<mscq::Separatrix> &separatrices,
   std::unordered_map<long long, std::vector<std::tuple<SimplexId, SimplexId>> *>
     sepPieces,
@@ -1816,8 +1821,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Inner_2D(
         triangulation.getEdgeVertex(dEdge, 0, vert0);
         triangulation.getEdgeVertex(dEdge, 1, vert1);
 
-        saddleCandidates.insert(vert0);
-        saddleCandidates.insert(vert1);
+        sep2VertSet.insert(vert0);
+        sep2VertSet.insert(vert1);
 
         newSep.endAtHighDimSimplex_ = false;
       }
@@ -1828,8 +1833,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Inner_2D(
         triangulation.getEdgeVertex(sEdge, 0, vert0);
         triangulation.getEdgeVertex(sEdge, 1, vert1);
 
-        saddleCandidates.insert(vert0);
-        saddleCandidates.insert(vert1);
+        sep2VertSet.insert(vert0);
+        sep2VertSet.insert(vert1);
 
         newSep.endAtHighDimSimplex_ = false;
 
@@ -1873,7 +1878,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Inner_2D(
 
 /*template <typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::computeSeparatrices1Border_2D(
-  std::unordered_set<SimplexId> &saddleCandidates,   
+  std::unordered_set<SimplexId> &sep2VertSet,   
   std::vector<mscq::Separatrix> &separatrices,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
@@ -2010,8 +2015,8 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices2_3D(
   std::vector<std::array<float, 9>> &trianglePos,
   std::vector<SimplexId> &caseData,
   std::vector<long long> &mscLabels,
-  std::unordered_set<SimplexId> *saddleCandidates,
-  std::unordered_set<SimplexId> *sep1Candidates,
+  std::unordered_set<SimplexId> *sep2VertSet,
+  std::unordered_set<SimplexId> *sep2ForkSet,
   std::unordered_map<long long,
                      std::vector<std::tuple<SimplexId, SimplexId, bool>>>
     &pieces1separatrices,
@@ -2046,7 +2051,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices2_3D(
   }
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
-  const bool findSaddles = saddleCandidates != nullptr;
+  const bool findSaddles = sep2VertSet != nullptr;
 
 //#ifndef TTK_ENABLE_OPENMP
 if(!db_omp) {
@@ -2072,30 +2077,19 @@ if(!db_omp) {
     const int *tetEdgeIndices = tetraederLookup[lookupIndex];
     const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
-    if(tetEdgeIndices[0] == -1) { // 1 label on tetraeder
-      continue;
-    } else {
+    if(tetraederLookupFastSaddle[lookupIndex]) {
       if(findSaddles) {
-        saddleCandidates->insert(vertices[0]);
-        saddleCandidates->insert(vertices[1]);
-        saddleCandidates->insert(vertices[2]);
-        saddleCandidates->insert(vertices[3]);
+        sep2VertSet->insert(vertices[0]);
+        sep2VertSet->insert(vertices[1]);
+        sep2VertSet->insert(vertices[2]);
+        sep2VertSet->insert(vertices[3]);
+
         if(tetraederNumTriangles[lookupIndex] > 2) {
-          sep1Candidates->insert(vertices[0]);
-          sep1Candidates->insert(vertices[1]);
-          sep1Candidates->insert(vertices[2]);
-          sep1Candidates->insert(vertices[3]);
-        } else {
-          if(triangulation.isVertexOnBoundary(vertices[0]))
-            sep1Candidates->insert(vertices[0]);
-          if(triangulation.isVertexOnBoundary(vertices[1]))
-            sep1Candidates->insert(vertices[1]);
-          if(triangulation.isVertexOnBoundary(vertices[2]))
-            sep1Candidates->insert(vertices[2]);
-          if(triangulation.isVertexOnBoundary(vertices[3]))
-            sep1Candidates->insert(vertices[3]);
-        }
-        
+          sep2ForkSet->insert(vertices[0]);
+          sep2ForkSet->insert(vertices[1]);
+          sep2ForkSet->insert(vertices[2]);
+          sep2ForkSet->insert(vertices[3]);
+        }        
       }
 
       float edgeCenters[10][3];
@@ -2316,8 +2310,8 @@ if(!db_omp) {
     std::vector<SimplexId> caseDataLocal;
     std::vector<long long> mscLabelsLocal;
     std::vector<std::tuple<long long, SimplexId, SimplexId, bool>> sepPcsLocal;
-    std::vector<SimplexId> saddleCandidatesLocal;
-    std::vector<SimplexId> sep1CandidatesLocal;
+    std::vector<SimplexId> sep2VertSetLocal;
+    std::vector<SimplexId> sep2ForkSetLocal;
 
     #pragma omp for schedule(static) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
@@ -2342,28 +2336,18 @@ if(!db_omp) {
       const int *tetEdgeIndices = tetraederLookup[lookupIndex];
       const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
-      if(tetEdgeIndices[0] == -1) { // 1 label on tetraeder
-        continue;
-      } else {
+      if(tetraederLookupFastSaddle[lookupIndex]) {
         if(findSaddles) {
-          saddleCandidatesLocal.push_back(vertices[0]);
-          saddleCandidatesLocal.push_back(vertices[1]);
-          saddleCandidatesLocal.push_back(vertices[2]);
-          saddleCandidatesLocal.push_back(vertices[3]);
+          sep2VertSetLocal.push_back(vertices[0]);
+          sep2VertSetLocal.push_back(vertices[1]);
+          sep2VertSetLocal.push_back(vertices[2]);
+          sep2VertSetLocal.push_back(vertices[3]);
+
           if(tetraederNumTriangles[lookupIndex] > 2) {
-            sep1CandidatesLocal.push_back(vertices[0]);
-            sep1CandidatesLocal.push_back(vertices[1]);
-            sep1CandidatesLocal.push_back(vertices[2]);
-            sep1CandidatesLocal.push_back(vertices[3]);
-          } else {
-            if(triangulation.isVertexOnBoundary(vertices[0]))
-              sep1CandidatesLocal.push_back(vertices[0]);
-            if(triangulation.isVertexOnBoundary(vertices[1]))
-              sep1CandidatesLocal.push_back(vertices[1]);
-            if(triangulation.isVertexOnBoundary(vertices[2]))
-              sep1CandidatesLocal.push_back(vertices[2]);
-            if(triangulation.isVertexOnBoundary(vertices[3]))
-              sep1CandidatesLocal.push_back(vertices[3]);
+            sep2ForkSetLocal.push_back(vertices[0]);
+            sep2ForkSetLocal.push_back(vertices[1]);
+            sep2ForkSetLocal.push_back(vertices[2]);
+            sep2ForkSetLocal.push_back(vertices[3]);
           }
         }
 
@@ -2598,14 +2582,14 @@ if(!db_omp) {
 
     #pragma omp critical
     {
-      std::copy(saddleCandidatesLocal.begin(), saddleCandidatesLocal.end(),
-        std::inserter(*saddleCandidates, saddleCandidates->end()));
+      std::copy(sep2VertSetLocal.begin(), sep2VertSetLocal.end(),
+        std::inserter(*sep2VertSet, sep2VertSet->end()));
     }
 
     #pragma omp critical
     {
-      std::copy(sep1CandidatesLocal.begin(), sep1CandidatesLocal.end(),
-        std::inserter(*sep1Candidates, sep1Candidates->end()));
+      std::copy(sep2ForkSetLocal.begin(), sep2ForkSetLocal.end(),
+        std::inserter(*sep2ForkSet, sep2ForkSet->end()));
     }
   }
 } // #if TTK_OMPENMP
@@ -2638,7 +2622,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices2_3D_fast(
   std::vector<std::array<float, 9>> &trianglePos,    
   std::vector<SimplexId> &caseData,
   std::vector<long long> &mscLabels,
-  std::unordered_set<SimplexId> *saddleCandidates,
+  std::unordered_set<SimplexId> *sep2VertSet,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
   ttk::Timer localTimer;
@@ -2666,7 +2650,7 @@ int ttk::MorseSmaleComplexQuasi::computeSeparatrices2_3D_fast(
   }
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
-  const bool findSaddles = saddleCandidates != nullptr;
+  const bool findSaddles = sep2VertSet != nullptr;
 
 //#ifndef TTK_ENABLE_OPENMP
 if(!db_omp) {
@@ -2692,10 +2676,10 @@ if(!db_omp) {
 
     if(tetraederLookupFastSaddle[lookupIndex]) {
       if(findSaddles) {
-        saddleCandidates->insert(vertices[0]);
-        saddleCandidates->insert(vertices[1]);
-        saddleCandidates->insert(vertices[2]);
-        saddleCandidates->insert(vertices[3]);
+        sep2VertSet->insert(vertices[0]);
+        sep2VertSet->insert(vertices[1]);
+        sep2VertSet->insert(vertices[2]);
+        sep2VertSet->insert(vertices[3]);
       }
       if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 labels on tetraeder
         float vertPos[4][3];
@@ -2754,7 +2738,7 @@ if(!db_omp) {
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
     std::vector<long long> mscLabelsLocal;
-    std::vector<SimplexId> saddleCandidatesLocal;
+    std::vector<SimplexId> sep2VertSetLocal;
 
     #pragma omp for schedule(static) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
@@ -2779,10 +2763,10 @@ if(!db_omp) {
 
       if(tetraederLookupFastSaddle[lookupIndex]) {
         if(findSaddles) {
-          saddleCandidatesLocal.push_back(vertices[0]);
-          saddleCandidatesLocal.push_back(vertices[1]);
-          saddleCandidatesLocal.push_back(vertices[2]);
-          saddleCandidatesLocal.push_back(vertices[3]);
+          sep2VertSetLocal.push_back(vertices[0]);
+          sep2VertSetLocal.push_back(vertices[1]);
+          sep2VertSetLocal.push_back(vertices[2]);
+          sep2VertSetLocal.push_back(vertices[3]);
         }
         if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 label on tetraeder
           float vertPos[4][3];
@@ -2847,8 +2831,8 @@ if(!db_omp) {
 
     #pragma omp critical
     {
-      std::copy(saddleCandidatesLocal.begin(), saddleCandidatesLocal.end(),
-        std::inserter(*saddleCandidates, saddleCandidates->end()));
+      std::copy(sep2VertSetLocal.begin(), sep2VertSetLocal.end(),
+        std::inserter(*sep2VertSet, sep2VertSet->end()));
     }
   }
 } // TTK_ENABLE_OPENMP
@@ -3994,23 +3978,21 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
   const SimplexId *const descNeighbor,
   const SimplexId *const ascManifold,
   const SimplexId *const descManifold,
-  std::unordered_set<SimplexId> *ascManifoldCandidates,
-  std::unordered_set<SimplexId> *descManifoldCandidates,
+  std::unordered_set<SimplexId> *ascSep2VertSet,
+  std::unordered_set<SimplexId> *ascSep2ForkSet,
+  std::unordered_set<SimplexId> *dscSep2VertSet,
+  std::unordered_set<SimplexId> *dscSep2ForkSet,
   const std::vector<mscq::Simplex> &criticalPoints,
   const triangulationType &triangulation) const {
     
   ttk::Timer localTimer;
+  this->printMsg("Computing crit point connectors",
+                 0, localTimer.getElapsedTime(), 
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
-  // print the progress of the current subprocedure (currently 0%)
-  this->printMsg("Computing crit point connectorss",
-                 0, // progress form 0-1
-                 localTimer.getElapsedTime(), // elapsed time so far
-                 this->threadNumber_,
-                 ttk::debug::LineMode::REPLACE);
-
-  const SimplexId * inputField
-    = static_cast<const SimplexId *>(inputOrderField_);
-  std::vector<std::pair<SimplexId, SimplexId>> reachableExtrema[4];
+  const SimplexId* orderArr = static_cast<const SimplexId *>(inputOrderField_);
+  std::vector<std::pair<SimplexId, SimplexId>> reachableExtrema[2];
+  std::queue<mscq::Separatrix> saddleSaddleQueue[2];
   std::unordered_map<SimplexId, int> critMap;
   std::set<SimplexId> saddle1Set, saddle2Set;
 
@@ -4024,6 +4006,7 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
 
     if(isSaddle1 || isSaddle2) {
       std::map<SimplexId, SimplexId> neigborSeeds;
+      std::map<SimplexId, SimplexId> neigborSeedsSSC;
 
       if(isSaddle1) {
         saddle1Set.insert(crit.id_);
@@ -4039,34 +4022,57 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
         triangulation.getVertexNeighbor(crit.id_, i, neighbor);
 
         if(isSaddle1) {
-          if(inputField[neighbor] < inputField[crit.id_]) { // s1-min
-            const SimplexId ascManNeigh = ascManifold[neighbor];
+          if(orderArr[neighbor] < orderArr[crit.id_]) { // s1-min
+            const SimplexId& ascManNeigh = ascManifold[neighbor];
             if(neigborSeeds.find(ascManNeigh) == neigborSeeds.end()) {
               neigborSeeds.insert({ascManNeigh, neighbor});
-            } else if(inputField[neigborSeeds[ascManNeigh]] > inputField[neighbor]) {
+            } else if(
+                orderArr[neigborSeeds[ascManNeigh]] > orderArr[neighbor]) {
               neigborSeeds[ascManNeigh] = neighbor;
             }
 
           } else {
-            if(descManifoldCandidates->find(neighbor) != descManifoldCandidates->end()) { // s1-s2
-              reachableExtrema[2].push_back(std::make_pair(crit.id_, neighbor));
+            if(dscSep2VertSet->find(neighbor) != dscSep2VertSet->end()) {
+              const SimplexId& dscManNeigh = ascManifold[neighbor];
+              if(neigborSeedsSSC.find(dscManNeigh)  == neigborSeedsSSC.end()) {
+                neigborSeedsSSC.insert({dscManNeigh, neighbor});
+              } else {
+                if(orderArr[neigborSeedsSSC[dscManNeigh]] < orderArr[neighbor]) {
+                  neigborSeedsSSC[dscManNeigh] = neighbor;
+                }
+              }
             }
           }
 
         } else { // 2-saddle
-          if(inputField[neighbor] > inputField[crit.id_]) { // s2-max
-            if(neigborSeeds.find(descManifold[neighbor])  == neigborSeeds.end()) {
-              neigborSeeds.insert({descManifold[neighbor], neighbor});
+          if(orderArr[neighbor] > orderArr[crit.id_]) { // s2-max
+            const SimplexId& dscManNeigh = ascManifold[neighbor];
+            if(neigborSeeds.find(dscManNeigh)  == neigborSeeds.end()) {
+              neigborSeeds.insert({dscManNeigh, neighbor});
             } else {
-              if(inputField[neigborSeeds[descManifold[neighbor]]]
-                < inputField[neighbor]) {
+              if(orderArr[neigborSeeds[dscManNeigh]] < orderArr[neighbor]) {
                 neigborSeeds[descManifold[neighbor]] = neighbor;
               }
             }
             
           } else {
-            if(ascManifoldCandidates->find(neighbor) != ascManifoldCandidates->end()) { // s2-s1
-              reachableExtrema[3].push_back(std::make_pair(crit.id_, neighbor));
+            if(ascSep2VertSet->find(neighbor) != ascSep2VertSet->end()) {
+
+              if(ascSep2ForkSet->find(neighbor) != ascSep2ForkSet->end()) {
+                mscq::Separatrix newSep(crit.id_, 0);
+                newSep.insertGeometry(neighbor, 0);
+                newSep.type_ = type + 2;
+                saddleSaddleQueue[type].push(newSep);
+                continue;
+              }
+
+              const SimplexId& ascManNeigh = ascManifold[neighbor];
+              if(neigborSeedsSSC.find(ascManNeigh) == neigborSeedsSSC.end()) {
+                neigborSeedsSSC.insert({ascManNeigh, neighbor});
+              } else if(
+                  orderArr[neigborSeedsSSC[ascManNeigh]] > orderArr[neighbor]) {
+                neigborSeedsSSC[ascManNeigh] = neighbor;
+              }
             }
           }
         }
@@ -4075,12 +4081,22 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
       for(const auto& s : neigborSeeds) {
         reachableExtrema[type].push_back(std::make_pair(crit.id_, s.second));
       }
+
+      for(const auto& s : neigborSeedsSSC) {
+        mscq::Separatrix newSep(crit.id_, 0);
+        newSep.insertGeometry(s.second, 0);
+        newSep.type_ = type + 2;
+        saddleSaddleQueue[type].push(newSep);
+      }
     }
   }
 
+  this->printMsg("Computing crit point connectors",
+                 0.25, localTimer.getElapsedTime(), 
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
   std::map<long long, size_t> s1ToMin;
   for(const auto& c : reachableExtrema[0]) { // 1-saddle -> minimum
-    this->printMsg("[0]" + std::to_string(c.first) + " | " + std::to_string(c.second));
     mscq::Separatrix sadExtrConn(c.first, 0);
     sadExtrConn.type_ = 0;
 
@@ -4107,7 +4123,6 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
 
   std::map<long long, size_t> s2ToMax;
   for(const auto& c : reachableExtrema[1]) { // 2-saddle maximum
-    this->printMsg("[1]" + std::to_string(c.first) + " | " + std::to_string(c.second));
     mscq::Separatrix sadExtrConn(c.first, 0);
     sadExtrConn.type_ = 1;
 
@@ -4131,18 +4146,53 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
     }
   }
 
-  std::map<long long, size_t> s1ToS2;
-  for(const auto& c : reachableExtrema[2]) {
-    this->printMsg("[2]" + std::to_string(c.first) + " | " + std::to_string(c.second));
-    mscq::Separatrix sadExtrConn(c.first, 0);
-    sadExtrConn.type_ = 2;
+  this->printMsg("Computing crit point connectors",
+                 0.5, localTimer.getElapsedTime(), 
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
-    SimplexId currentVert = c.second;
-    sadExtrConn.insertGeometry(currentVert, 0);
+  std::unordered_set<SimplexId> splitVerts;
+  std::map<long long, size_t> s2ToS1;
+  while(!saddleSaddleQueue[1].empty()) {// && saddleSaddleQueue[1].size() < 100) {
+    //this->printMsg(std::to_string(saddleSaddleQueue[1].size()));
+    mscq::Separatrix& currSep = saddleSaddleQueue[1].front();
 
-    bool found2Saddle = false;
+    SimplexId currentVert = currSep.geometry_.back();
 
-    while(!found2Saddle) {
+    /*if(currSep.length() > 15) {
+      currSep.type_ = 5;
+      sadExtrConns.push_back(currSep);
+      saddleSaddleQueue[1].pop();
+      continue;
+    }*/
+
+    bool found1Saddle = false;
+
+    while(!found1Saddle) {
+      
+      if(ascSep2ForkSet->find(currentVert) != ascSep2ForkSet->end()
+        && splitVerts.find(currentVert) == splitVerts.end()) {
+        splitVerts.insert(currentVert);
+
+        SimplexId neighborId;
+        const SimplexId numNeighbors =
+          triangulation.getVertexNeighborNumber(currentVert);
+
+        for(SimplexId n = 0; n < numNeighbors; n++) {
+          triangulation.getVertexNeighbor(currentVert, n, neighborId);
+
+          if(ascSep2VertSet->find(neighborId) != ascSep2VertSet->end()
+            && orderArr[currentVert] > orderArr[neighborId]) {
+            mscq::Separatrix newSep(currSep);
+            newSep.insertGeometry(neighborId, 0);
+
+            saddleSaddleQueue[1].push(newSep);
+          }
+        }
+        found1Saddle = true;
+        saddleSaddleQueue[1].pop();
+        break;
+      }
+
       SimplexId neighborId;
       const SimplexId numNeighbors =
         triangulation.getVertexNeighborNumber(currentVert);
@@ -4152,42 +4202,53 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
       for(SimplexId n = 0; n < numNeighbors; n++) {
         triangulation.getVertexNeighbor(currentVert, n, neighborId);
 
-        if(saddle2Set.find(neighborId) != saddle2Set.end()) { // found 2-saddle
-          found2Saddle = true;
-          sadExtrConn.insertGeometry(neighborId, 0);
-          long long uniqueId = getSparseId(
-            critMap[c.first], critMap[neighborId], criticalPoints.size());
+        if(saddle1Set.find(neighborId) != saddle1Set.end()) { // found 1-saddle
+          //this->printMsg("Saddle");
+          found1Saddle = true;
 
-          if(s1ToS2.find(uniqueId) == s1ToS2.end()) {
-            s1ToS2.insert({uniqueId, sadExtrConns.size()});
-            sadExtrConns.push_back(sadExtrConn);
-          } else if(inputField[sadExtrConns[s1ToS2[uniqueId]].geometry_[0]]
-            < inputField[sadExtrConn.geometry_[0]]) {
-            sadExtrConns[s1ToS2[uniqueId]] = sadExtrConn;
+          currSep.insertGeometry(neighborId, 0);
+          long long uniqueId = getSparseId( critMap[currSep.geometry_[0]],
+            critMap[neighborId], criticalPoints.size());
+
+          if(s2ToS1.find(uniqueId) == s2ToS1.end()) {
+            s2ToS1.insert({uniqueId, sadExtrConns.size()});
+            sadExtrConns.push_back(currSep);
+          } else if(orderArr[sadExtrConns[s2ToS1[uniqueId]].geometry_[0]]
+            < orderArr[currSep.geometry_[0]]) {
+            sadExtrConns[s2ToS1[uniqueId]] = currSep;
           }
+          
+          saddleSaddleQueue[1].pop();
+          break;
         }
 
-        if(descManifoldCandidates->find(neighborId) != descManifoldCandidates->end()
-          && inputField[neighborId] < inputField[biggestNeighbor]) {
+        if(ascSep2VertSet->find(neighborId) != ascSep2VertSet->end()
+          && orderArr[neighborId] < orderArr[biggestNeighbor]) {
           biggestNeighbor = neighborId;
-        }        
+        }
       }
 
-      if(found2Saddle) {
+      if(found1Saddle) {
         break;
       }
 
       if(biggestNeighbor == currentVert) {
-        sadExtrConn.type_ = 4;
-        sadExtrConns.push_back(sadExtrConn);
+        currSep.type_ = 5;
+        sadExtrConns.push_back(currSep);
+        saddleSaddleQueue[1].pop();
         break;
       }
 
-      sadExtrConn.insertGeometry(biggestNeighbor, 0);
+      currSep.insertGeometry(biggestNeighbor, 0);
       currentVert = biggestNeighbor;
     }
   }
 
+  this->printMsg("Computing crit point connectors",
+                 0.75, localTimer.getElapsedTime(), 
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+  /*
   std::map<long long, size_t> s2ToS1;
   for(const auto& c : reachableExtrema[3]) {
     this->printMsg("[3]" + std::to_string(c.first) + " | " + std::to_string(c.second));
@@ -4219,14 +4280,15 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
           if(s2ToS1.find(uniqueId) == s2ToS1.end()) {
             s2ToS1.insert({uniqueId, sadExtrConns.size()});
             sadExtrConns.push_back(sadExtrConn);
-          } else if(inputField[sadExtrConns[s2ToS1[uniqueId]].geometry_[0]]
-            > inputField[sadExtrConn.geometry_[0]]) {
+          } else if(orderArr[sadExtrConns[s2ToS1[uniqueId]].geometry_[0]]
+            < orderArr[sadExtrConn.geometry_[0]]) {
             sadExtrConns[s2ToS1[uniqueId]] = sadExtrConn;
           }
+          break;
         }
 
-        if(ascManifoldCandidates->find(neighborId) != ascManifoldCandidates->end()
-          && inputField[neighborId] < inputField[biggestNeighbor]) {
+        if(ascSep2VertSet->find(neighborId) != ascSep2VertSet->end()
+          && orderArr[neighborId] > orderArr[biggestNeighbor]) {
           biggestNeighbor = neighborId;
         }        
       }
@@ -4244,7 +4306,68 @@ int ttk::MorseSmaleComplexQuasi::computeCritConnectors_3D(
       sadExtrConn.insertGeometry(biggestNeighbor, 0);
       currentVert = biggestNeighbor;
     }
+
+  std::map<long long, size_t> s1ToS2;
+  for(const auto& c : reachableExtrema[2]) {
+    this->printMsg("[2]" + std::to_string(c.first) + " | " + std::to_string(c.second));
+    mscq::Separatrix sadExtrConn(c.first, 0);
+    sadExtrConn.type_ = 2;
+
+    SimplexId currentVert = c.second;
+    sadExtrConn.insertGeometry(currentVert, 0);
+
+    bool found2Saddle = false;
+
+    while(!found2Saddle) {
+      SimplexId neighborId;
+      const SimplexId numNeighbors =
+        triangulation.getVertexNeighborNumber(currentVert);
+
+      SimplexId biggestNeighbor = currentVert;
+
+      for(SimplexId n = 0; n < numNeighbors; n++) {
+        triangulation.getVertexNeighbor(currentVert, n, neighborId);
+
+        if(saddle2Set.find(neighborId) != saddle2Set.end()) { // found 1-saddle
+          found2Saddle = true;
+
+          sadExtrConn.insertGeometry(neighborId, 0);
+          long long uniqueId = getSparseId(
+            critMap[c.first], critMap[neighborId], criticalPoints.size());
+
+          if(s1ToS2.find(uniqueId) == s1ToS2.end()) {
+            s1ToS2.insert({uniqueId, sadExtrConns.size()});
+            sadExtrConns.push_back(sadExtrConn);
+          } else if(orderArr[sadExtrConns[s1ToS2[uniqueId]].geometry_[0]]
+            < orderArr[sadExtrConn.geometry_[0]]) {
+            sadExtrConns[s1ToS2[uniqueId]] = sadExtrConn;
+          }
+          break;
+        }
+
+        if(dscSep2VertSet->find(neighborId) != dscSep2VertSet->end()
+          && orderArr[neighborId] > orderArr[biggestNeighbor]) {
+          biggestNeighbor = neighborId;
+        }        
+      }
+
+      if(found2Saddle) {
+        break;
+      }
+
+      if(biggestNeighbor == currentVert) {
+        sadExtrConn.type_ = 4;
+        sadExtrConns.push_back(sadExtrConn);
+        break;
+      }
+
+      sadExtrConn.insertGeometry(biggestNeighbor, 0);
+      currentVert = biggestNeighbor;
+    }
   }
+
+  
+  }*/
 
   this->printMsg("Computed crit point connectors",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
@@ -4355,7 +4478,7 @@ int ttk::MorseSmaleComplexQuasi::computeSaddleSaddleConnectors_3D(
   std::vector<mscq::Separatrix> &sadSadConns,
   const SimplexId *const msManifold,
   const SimplexId *const descManifold,
-  const std::unordered_set<SimplexId> *saddleCandidates,
+  const std::unordered_set<SimplexId> *sep2VertSet,
   const std::vector<mscq::Simplex> &criticalPoints,
   const triangulationType &triangulation) const {
 
@@ -4367,7 +4490,7 @@ int ttk::MorseSmaleComplexQuasi::computeSaddleSaddleConnectors_3D(
                  localTimer.getElapsedTime());//, // elapsed time so far
                  //this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
-  const scalarType * inputField
+  const scalarType * orderArr
     = static_cast<const scalarType *>(inputScalarField_);
   
   const SimplexId nV = triangulation.getNumberOfVertices();
@@ -4391,14 +4514,14 @@ int ttk::MorseSmaleComplexQuasi::computeSaddleSaddleConnectors_3D(
 
       for(SimplexId n = 0; n < numNeighbors; n++) {
         triangulation.getVertexNeighbor(crit.id_, n, neighborId);
-        if(saddleCandidates->find(neighborId) != saddleCandidates->end()) {
+        if(sep2VertSet->find(neighborId) != sep2VertSet->end()) {
 
           if(neigborSeeds.find(msManifold[neighborId]) == neigborSeeds.end()) {
             neigborSeeds.insert({msManifold[neighborId], neighborId});
 
           } else {
-            if(inputField[neigborSeeds[msManifold[neighborId]]]
-              < inputField[neighborId]) {
+            if(orderArr[neigborSeeds[msManifold[neighborId]]]
+              < orderArr[neighborId]) {
               neigborSeeds[msManifold[neighborId]] = neighborId;
             }
           }
@@ -4420,10 +4543,10 @@ int ttk::MorseSmaleComplexQuasi::computeSaddleSaddleConnectors_3D(
 
       for(SimplexId n = 0; n < numNeighbors; n++) {
         triangulation.getVertexNeighbor(crit.id_, n, neighborId);
-        if(inputField[neighborId] < inputField[crit.id_]
-          && saddleCandidates->find(neighborId) != saddleCandidates->end()) {
+        if(orderArr[neighborId] < orderArr[crit.id_]
+          && sep2VertSet->find(neighborId) != sep2VertSet->end()) {
           distanceField[neighborId] = distanceField[crit.id_]
-            + (inputField[crit.id_] - inputField[neighborId]);
+            + (orderArr[crit.id_] - orderArr[neighborId]);
           vertexQueue.push(neighborId);
         }
       }
@@ -4445,10 +4568,10 @@ int ttk::MorseSmaleComplexQuasi::computeSaddleSaddleConnectors_3D(
     for(SimplexId n = 0; n < numNeighbors; n++) {
       triangulation.getVertexNeighbor(q, n, neighborId);
       const scalarType dist
-        = distanceField[q] + (inputField[q] - inputField[neighborId]);
-      if(inputField[neighborId] < inputField[q]
+        = distanceField[q] + (orderArr[q] - orderArr[neighborId]);
+      if(orderArr[neighborId] < orderArr[q]
         && (distanceField[neighborId] == 0 || distanceField[neighborId] > dist)
-        && saddleCandidates->find(neighborId) != saddleCandidates->end()
+        && sep2VertSet->find(neighborId) != sep2VertSet->end()
         && descManifold[q] == descManifold[neighborId]) {
         distanceField[neighborId] = dist;
         if(activeQueueSet.find(neighborId) == activeQueueSet.end()) {
@@ -4471,7 +4594,7 @@ int ttk::MorseSmaleComplexQuasi::computeSaddleSaddleConnectors_3D(
     while(distanceField[lastId] > 0) {
       SimplexId smallestNeighborId = -1;
       //scalarType smallestNeighborDistance = distanceField[lastId];
-      scalarType smallestScalar = inputField[lastId];
+      scalarType smallestScalar = orderArr[lastId];
 
       SimplexId neighborId;
       const SimplexId numNeighbors =
@@ -4482,11 +4605,11 @@ int ttk::MorseSmaleComplexQuasi::computeSaddleSaddleConnectors_3D(
 
         if((descManifold[neighborId] == manifoldId ||
           saddles2.find(neighborId) != saddles2.end())
-        && inputField[neighborId] > smallestScalar
+        && orderArr[neighborId] > smallestScalar
         && distanceField[neighborId] != 0) {
           smallestNeighborId = neighborId;
           //smallestNeighborDistance = distanceField[neighborId];
-          smallestScalar = inputField[neighborId];
+          smallestScalar = orderArr[neighborId];
         }
       }
 
@@ -4505,7 +4628,7 @@ int ttk::MorseSmaleComplexQuasi::computeSaddleSaddleConnectors_3D(
     
   }
 
-  /* saddleCandidates durch set aus 3-label 4-label und randpunkten verwenden*/
+  /* sep2VertSet durch set aus 3-label 4-label und randpunkten verwenden*/
   
   free(distanceField);
 
@@ -4518,14 +4641,14 @@ int ttk::MorseSmaleComplexQuasi::computeSaddleSaddleConnectors_3D(
 template <typename triangulationType>
 int ttk::MorseSmaleComplexQuasi::findSaddlesFromCadidates(
   std::vector<mscq::Simplex> &criticalPoints, 
-  const std::unordered_set<SimplexId> &saddleCandidates,
+  const std::unordered_set<SimplexId> &sep2VertSet,
   const triangulationType &triangulation) const {
 
   ttk::Timer localTimer;
 
   const int dim = triangulation.getDimensionality();
 
-  const SimplexId * inputField
+  const SimplexId * orderArr
     = static_cast<const SimplexId *>(inputOrderField_);
 
   //int numSaddles = 0;
@@ -4538,9 +4661,9 @@ int ttk::MorseSmaleComplexQuasi::findSaddlesFromCadidates(
   sfcp.setDomainDimension(dim);
   
 if(!db_omp) {
-  for(SimplexId candidate: saddleCandidates) {
+  for(SimplexId candidate: sep2VertSet) {
     const CriticalType critC = (CriticalType)sfcp.getCriticalType(
-      candidate, inputField, (AbstractTriangulation*)&triangulation);
+      candidate, orderArr, (AbstractTriangulation*)&triangulation);
 
     if(critC == CriticalType::Saddle1) {
       criticalPoints.push_back(mscq::Simplex(candidate, 1));
@@ -4553,12 +4676,12 @@ if(!db_omp) {
   {
     #pragma omp single
     {
-      for(auto it = saddleCandidates.begin();
-        it != saddleCandidates.end(); it++) {
+      for(auto it = sep2VertSet.begin();
+        it != sep2VertSet.end(); it++) {
         #pragma omp task
         {
           const CriticalType critC = (CriticalType)sfcp.getCriticalType(
-            *it, inputField, (AbstractTriangulation*)&triangulation);
+            *it, orderArr, (AbstractTriangulation*)&triangulation);
           
           if(critC == CriticalType::Saddle1) {
             criticalPoints.push_back(mscq::Simplex(*it, 1));
