@@ -1,0 +1,10 @@
+ttk_add_base_library(morseSmaleSegmentationPL
+  SOURCES
+    MorseSmaleSegmentationPL.cpp
+  HEADERS
+    MorseSmaleSegmentationPL.h
+  DEPENDS
+    triangulation
+    unionFind
+    scalarFieldCriticalPoints
+)

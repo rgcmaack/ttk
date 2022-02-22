@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ServerManagerConfiguration>
+  <ProxyGroup name="filters">
+    <SourceProxy
+      name="ttkMorseSmaleSegmentationPL" class="ttkMorseSmaleSegmentationPL"
+      label="TTK MorseSmaleSegmentationPL">
+      <Documentation 
+        long_help="TTK order morseSmaleSegmentation plugin."
+        short_help="TTK order morseSmaleSegmentation plugin.">
+        TTK plugin for the computation of order Morse-Smale Segmentation only using
+        an order field and a triangulation.
+      </Documentation>
+
+      <!-- INPUT DATA OBJECTS -->
+      <InputProperty name="Input" command="SetInputConnection">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources" />
+          <Group name="filters" />
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkDataSet" />
+        </DataTypeDomain>
+        <InputArrayDomain
+          name="input_array" attribute_type="point" number_of_components="1" />
+        <Documentation>
+          A vtkDataSet that has at least one point data scalar array that can be
+           used to compute the MSC variant.
+        </Documentation>
+      </InputProperty>
+
+      <!-- INPUT PARAMETER WIDGETS -->
+      <StringVectorProperty
+        name="InputArray"
+        label="Input Array"
+        command="SetInputArrayToProcess"
+        element_types="0 0 0 0 2"
+        number_of_elements="5">
+        <ArrayListDomain attribute_type="Scalars" name="array_list">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+          </RequiredProperties>
+        </ArrayListDomain>
+        <Documentation>
+          The scalar array that will be used to compute the MSC variant.
+        </Documentation>
+      </StringVectorProperty>
+
+      <IntVectorProperty
+        name="SeparatricesManifold"
+        label="Separatrices Manifold"
+        command="SetSeparatricesManifold"
+        number_of_elements="1"
+        default_values="0">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="MorseSmaleManifold"/>
+          <Entry value="1" text="AscendingManifold"/>
+          <Entry value="2" text="DescendingManifold"/>
+        </EnumerationDomain>
+        <Documentation>
+          Select the field to compute Separatrices from.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeAscendingSegmentation"
+        label="Ascending Segmentation"
+        command="SetComputeAscendingSegmentation"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Create the Ascending Manifold?
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeDescendingSegmentation"
+        label="Descending Segmentation"
+        command="SetComputeDescendingSegmentation"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Create the Descending Manifold?
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeFinalSegmentation"
+        label="Morse-Smale Complex Segmentation"
+        command="SetComputeFinalSegmentation"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Create the Morse-Smale Manifold?
+          (Needs Ascending and Descending Manifold)
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeSeparatrices"
+        label="Compute Separatrices"
+        command="SetComputeSeparatrices"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Compute Separatrices?
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Fast1Separatrices"
+        label="Fast 1-Separatrices"
+        command="SetFast1Separatrices"
+        number_of_elements="1"
+        default_values="0"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Create 1-Separatrices as straight lines.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Fast2Separatrices"
+        label="Fast 2-Separatrices"
+        command="SetFast2Separatrices"
+        number_of_elements="1"
+        default_values="0"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Output Separatrices as Tetrahedra with atleast 2 labels.
+        </Documentation>
+      </IntVectorProperty>
+
+      <PropertyGroup panel_widget="Line" label="Output options">
+        <Property name="ComputeAscendingSegmentation"/>
+        <Property name="ComputeDescendingSegmentation"/>
+        <Property name="ComputeFinalSegmentation"/>
+        <Property name="ComputeSeparatrices"/>
+        <Property name="Fast1Separatrices"/>
+        <Property name="Fast2Separatrices"/>
+      </PropertyGroup>
+
+      <OutputPort name="Critical Points" index="0" id="port0"/>
+      <OutputPort name="1-Separatrices" index="1" id="port1"/>
+      <OutputPort name="2-Separatrices" index="2" id="port2"/>
+      <OutputPort name="Segmentation" index="3" id="port3"/>
+
+      <!-- DEBUG -->
+      ${DEBUG_WIDGETS}
+
+      <!-- MENU CATEGORY -->
+      <Hints>
+        <ShowInMenu category="TTK - Scalar Data" />
+      </Hints>
+    </SourceProxy>
+  </ProxyGroup>
+</ServerManagerConfiguration>
