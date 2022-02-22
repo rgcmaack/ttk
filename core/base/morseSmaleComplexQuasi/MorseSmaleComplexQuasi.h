@@ -1529,7 +1529,7 @@ int ttk::MorseSmaleComplexQuasi::computeFinalSegmentation(
   const SimplexId *const descendingManifold,
   SimplexId &numManifolds,
   SimplexId *const morseSmaleManifold,
-  const triangulationType &triangulation) const{
+  const triangulationType &triangulation) const {
   ttk::Timer localTimer;
 
   this->printMsg("Computing MSC Manifold",
