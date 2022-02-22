@@ -33,7 +33,7 @@
 #include <ScalarFieldCriticalPoints.h>
 #include <Triangulation.h>
 
-const bool saddleCandidateLookup[28] = {
+const bool saddleCandidateLookup2[28] = {
   false, // (1) 0,0,0 - 0
   false, // (-) 0,0,1 - 1
   false, // (-) 0,0,2 - 2 
@@ -56,6 +56,37 @@ const bool saddleCandidateLookup[28] = {
   true,  // (3) 1,0,3 -19
   true,  // (2) 1,1,0 -20
   true,  // (2) 1,1,1 -21
+  false, // (-) 1,1,2 -22
+  true,  // (3) 1,1,3 -23
+  true,  // (3) 1,2,0 -24
+  true,  // (3) 1,2,1 -25
+  true,  // (3) 1,2,2 -26
+  true   // (4) 1,2,3 -27
+};
+
+const bool saddleCandidateLookup3[28] = {
+  false, // (1) 0,0,0 - 0
+  false, // (-) 0,0,1 - 1
+  false, // (-) 0,0,2 - 2 
+  false,  // (2) 0,0,3 - 3
+  false, // (-) 0,1,0 - 4
+  false, // (-) 0,1,1 - 5 
+  false, // (-) 0,1,2 - 6
+  false, // (-) 0,1,3 - 7
+  false,  // (2) 0,2,0 - 8
+  false, // (-) 0,2,1 - 9
+  false,  // (2) 0,2,2 -10
+  true,  // (3) 0,2,3 -11
+  false, // (-) 0,3,0 -12
+  false, // (-) 0,3,1 -13
+  false, // (-) 0,3,2 -14
+  false, // (-) 0,3,3 -15
+  false,  // (2) 1,0,0 -16
+  false,  // (2) 1,0,1 -17
+  false, // (-) 1,0,2 -18
+  true,  // (3) 1,0,3 -19
+  false,  // (2) 1,1,0 -20
+  false,  // (2) 1,1,1 -21
   false, // (-) 1,1,2 -22
   true,  // (3) 1,1,3 -23
   true,  // (3) 1,2,0 -24
@@ -115,6 +146,8 @@ namespace ttk {
     int findSaddlesFromCadidates(
       const bool *const saddleCandidates,
       const SimplexId *const orderArr,
+      const SimplexId *const ascManifold,
+      const SimplexId *const dscManifold,
       const AbstractTriangulation *triangulation) const;
 
     inline void setDomainDimension(const int &dimension) {
@@ -176,6 +209,8 @@ template <class triangulationType>
 int ttk::ScalarFieldCriticalPointsPL::execute(
   const SimplexId *const offsets, const triangulationType *triangulation) {
 
+  criticalPoints_->clear();
+
   ttk::Timer globalTimer;
   printMsg(ttk::debug::Separator::L1);
 
@@ -191,7 +226,9 @@ int ttk::ScalarFieldCriticalPointsPL::execute(
   computeExtrema(offsets, saddleCandidates, ascManifold, decManifold, numMinima, numMaxima, triangulation);
   computeFinalSegmentation(numMaxima, ascManifold, decManifold, mscManifold, triangulation);
   computeSaddleCandidates_3D(saddleCandidates, mscManifold, triangulation);
-  findSaddlesFromCadidates(saddleCandidates, offsets, triangulation);
+  findSaddlesFromCadidates(saddleCandidates, offsets, ascManifold, decManifold, triangulation);
+
+  displayStats();
 
   this->printMsg("Processed " + std::to_string(nV) + " vertices",
                  0, // progress form 0-1
@@ -514,11 +551,26 @@ if(!db_omp) {
 
     const unsigned char lookupIndex = index1 | index2 | index3;
 
-    if(saddleCandidateLookup[lookupIndex]) {
+    if(saddleCandidateLookup2[lookupIndex]) {
       saddleCandidates[vertices[0]] = true;
       saddleCandidates[vertices[1]] = true;
       saddleCandidates[vertices[2]] = true;
-      saddleCandidates[vertices[3]] = true;      
+      saddleCandidates[vertices[3]] = true;
+      if(saddleCandidateLookup3[lookupIndex]) {
+        saddleCandidates[vertices[0]] = true;
+        saddleCandidates[vertices[1]] = true;
+        saddleCandidates[vertices[2]] = true;
+        saddleCandidates[vertices[3]] = true;
+      } else {
+        if(triangulation->isVertexOnBoundary(vertices[0]))
+          saddleCandidates[vertices[0]] = true;
+        if(triangulation->isVertexOnBoundary(vertices[1]))
+          saddleCandidates[vertices[1]] = true;
+        if(triangulation->isVertexOnBoundary(vertices[2]))
+          saddleCandidates[vertices[2]] = true;
+        if(triangulation->isVertexOnBoundary(vertices[3]))
+          saddleCandidates[vertices[3]] = true;
+      }     
     }
   }
 //#else // TTK_ENABLE_OPENMP
@@ -546,11 +598,22 @@ if(!db_omp) {
 
       const unsigned char lookupIndex = index1 | index2 | index3;
 
-      if(saddleCandidateLookup[lookupIndex]) {
-        saddleCandidates[vertices[0]] = true;
-        saddleCandidates[vertices[1]] = true;
-        saddleCandidates[vertices[2]] = true;
-        saddleCandidates[vertices[3]] = true;
+      if(saddleCandidateLookup2[lookupIndex]) {
+        if(saddleCandidateLookup3[lookupIndex]) {
+          saddleCandidates[vertices[0]] = true;
+          saddleCandidates[vertices[1]] = true;
+          saddleCandidates[vertices[2]] = true;
+          saddleCandidates[vertices[3]] = true;
+        } else {
+          if(triangulation->isVertexOnBoundary(vertices[0]))
+            saddleCandidates[vertices[0]] = true;
+          if(triangulation->isVertexOnBoundary(vertices[1]))
+            saddleCandidates[vertices[1]] = true;
+          if(triangulation->isVertexOnBoundary(vertices[2]))
+            saddleCandidates[vertices[2]] = true;
+          if(triangulation->isVertexOnBoundary(vertices[3]))
+            saddleCandidates[vertices[3]] = true;
+        }    
       }
     }
   }
@@ -564,6 +627,8 @@ if(!db_omp) {
 int ttk::ScalarFieldCriticalPointsPL::findSaddlesFromCadidates(
   const bool *const saddleCandidates,
   const SimplexId *const orderArr,
+  const SimplexId *const ascManifold,
+  const SimplexId *const dscManifold,
   const AbstractTriangulation *triangulation) const {
 
   ttk::Timer localTimer;
@@ -585,8 +650,18 @@ if(!db_omp) {
       const CriticalType critC = (CriticalType)sfcp.getCriticalType(
         i, orderArr, triangulation);
 
-      if(critC == CriticalType::Saddle1 || critC == CriticalType::Saddle2 ||
-        critC == CriticalType::Degenerate) {
+      if(critC == CriticalType::Saddle1 || critC == CriticalType::Saddle2) {
+
+          /*const bool saddle1 == 
+
+          SimplexId 
+          SimplexId neighborID;
+          SimplexId numNeighbors = triangulation->getVertexNeighborNumber();
+
+          for (SimplexId i = 0; i < numNeighbors; i++) {
+            
+          }*/
+          
         criticalPoints_->push_back(std::make_pair(i, (char)(critC)));
       }
     }
@@ -598,8 +673,7 @@ if(!db_omp) {
       const CriticalType critC = (CriticalType)sfcp.getCriticalType(
         i, orderArr, triangulation);
 
-      if(critC == CriticalType::Saddle1 || critC == CriticalType::Saddle2 ||
-        critC == CriticalType::Degenerate) {
+      if(critC == CriticalType::Saddle1 || critC == CriticalType::Saddle2) {
         #pragma omp critical
         criticalPoints_->push_back(std::make_pair(i, (char)(critC)));
       }

@@ -4,7 +4,7 @@ ttk::ScalarFieldCriticalPointsPL::ScalarFieldCriticalPointsPL() {
   this->setDebugMsgPrefix("ScalarFieldCriticalPointsPL");
 }
 
-void ttk::ScalarFieldCriticalPoints::displayStats() {
+void ttk::ScalarFieldCriticalPointsPL::displayStats() {
 
   SimplexId minimumNumber = 0, maximumNumber = 0, saddleNumber = 0,
             oneSaddleNumber = 0, twoSaddleNumber = 0, monkeySaddleNumber = 0;
