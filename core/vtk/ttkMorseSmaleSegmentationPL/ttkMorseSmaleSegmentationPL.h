@@ -61,8 +61,8 @@ public:
   static ttkMorseSmaleSegmentationPL *New();
   vtkTypeMacro(ttkMorseSmaleSegmentationPL, ttkAlgorithm);
 
-  ttkSetEnumMacro(SeparatricesManifold, SEPARATRICES_MANIFOLD);
-  vtkGetEnumMacro(SeparatricesManifold, SEPARATRICES_MANIFOLD);
+  vtkSetMacro(ComputeSaddles, bool);
+  vtkGetMacro(ComputeSaddles, bool);
 
   vtkSetMacro(ComputeAscendingSegmentation, bool);
   vtkGetMacro(ComputeAscendingSegmentation, bool);
@@ -73,14 +73,14 @@ public:
   vtkSetMacro(ComputeFinalSegmentation, bool);
   vtkGetMacro(ComputeFinalSegmentation, bool);
 
-  vtkSetMacro(ComputeSeparatrices, bool);
-  vtkGetMacro(ComputeSeparatrices, bool);
+  ttkSetEnumMacro(SeparatricesManifold, SEPARATRICES_MANIFOLD);
+  vtkGetEnumMacro(SeparatricesManifold, SEPARATRICES_MANIFOLD);
 
-  vtkSetMacro(Fast1Separatrices, bool);
-  vtkGetMacro(Fast1Separatrices, bool);
+  ttkSetEnumMacro(Separaticies1Mode, SEPARATRICES1_MODE);
+  vtkGetEnumMacro(Separaticies1Mode, SEPARATRICES1_MODE);
 
-  vtkSetMacro(Fast2Separatrices, bool);
-  vtkGetMacro(Fast2Separatrices, bool);
+  ttkSetEnumMacro(Separaticies2Mode, SEPARATRICES2_MODE);
+  vtkGetEnumMacro(Separaticies2Mode, SEPARATRICES2_MODE);
 
 protected:
   ttkMorseSmaleSegmentationPL();
@@ -100,14 +100,14 @@ protected:
                const triangulationType &triangulation);
 
 private:
-  bool ComputeSeparatrices{true};
   bool ComputeAscendingSegmentation{true};
   bool ComputeDescendingSegmentation{true};
   bool ComputeFinalSegmentation{true};
-  bool Fast1Separatrices{false};
-  bool Fast2Separatrices{false};
-  SEPARATRICES_MANIFOLD SeparatricesManifold
-    {SEPARATRICES_MANIFOLD::MORSESMALE};
+  bool ComputeSaddles{false};
+  SEPARATRICES_MANIFOLD SeparatricesManifold{SEPARATRICES_MANIFOLD::MORSESMALE};
+  SEPARATRICES1_MODE Separaticies1Mode{SEPARATRICES1_MODE::DETAILED};
+  SEPARATRICES2_MODE Separaticies2Mode{SEPARATRICES2_MODE::WALLS};
+  
 
   // critical points
   std::vector<std::array<float, 3>> criticalPoints_points{};

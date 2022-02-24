@@ -254,9 +254,8 @@ int ttkMorseSmaleSegmentationPL::dispatch(
     &separatrices2_cells_mscIds,&separatrices2_cells_caseTypes);
 
   const int ret = this->execute<triangulationType>(
-    triangulation, SeparatricesManifold, ComputeSeparatrices,
-    Fast1Separatrices, Fast2Separatrices
-  );
+    SeparatricesManifold, Separaticies1Mode, Separaticies2Mode, ComputeSaddles,
+    triangulation);
 
 #ifndef TTK_ENABLE_KAMIKAZE
   if(ret != 0) {

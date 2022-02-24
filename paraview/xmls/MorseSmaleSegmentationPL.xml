@@ -99,39 +99,48 @@
         </Documentation>
       </IntVectorProperty>
 
-      <IntVectorProperty name="ComputeSeparatrices"
-        label="Compute Separatrices"
-        command="SetComputeSeparatrices"
-        number_of_elements="1"
-        default_values="1"
-        panel_visibility="default">
-        <BooleanDomain name="bool"/>
-        <Documentation>
-          Compute Separatrices?
-        </Documentation>
-      </IntVectorProperty>
-
-      <IntVectorProperty name="Fast1Separatrices"
-        label="Fast 1-Separatrices"
-        command="SetFast1Separatrices"
+      <IntVectorProperty name="ComputeSaddles"
+        label="Compute Saddles"
+        command="SetComputeSaddles"
         number_of_elements="1"
         default_values="0"
         panel_visibility="default">
         <BooleanDomain name="bool"/>
         <Documentation>
-          Create 1-Separatrices as straight lines.
+          Compute Saddles?
         </Documentation>
       </IntVectorProperty>
 
-      <IntVectorProperty name="Fast2Separatrices"
-        label="Fast 2-Separatrices"
-        command="SetFast2Separatrices"
+      <IntVectorProperty
+        name="Separaticies1Mode"
+        label="1-Separaticies Mode"
+        command="SetSeparaticies1Mode"
         number_of_elements="1"
-        default_values="0"
-        panel_visibility="default">
-        <BooleanDomain name="bool"/>
+        default_values="1">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="None"/>
+          <Entry value="1" text="Detailed"/>
+          <Entry value="2" text="Simple"/>
+        </EnumerationDomain>
         <Documentation>
-          Output Separatrices as Tetrahedra with atleast 2 labels.
+          Select the compute mode for the 1-Separaticies.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty
+        name="Separaticies2Mode"
+        label="2-Separaticies Mode"
+        command="SetSeparaticies2Mode"
+        number_of_elements="1"
+        default_values="1">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="None"/>
+          <Entry value="1" text="Walls"/>
+          <Entry value="2" text="Separate Basins fine"/>
+          <Entry value="3" text="Separate Basins fast"/>
+        </EnumerationDomain>
+        <Documentation>
+          Select the compute mode for the 2-Separaticies.
         </Documentation>
       </IntVectorProperty>
 
@@ -139,9 +148,9 @@
         <Property name="ComputeAscendingSegmentation"/>
         <Property name="ComputeDescendingSegmentation"/>
         <Property name="ComputeFinalSegmentation"/>
-        <Property name="ComputeSeparatrices"/>
-        <Property name="Fast1Separatrices"/>
-        <Property name="Fast2Separatrices"/>
+        <Property name="ComputeSaddles"/>
+        <Property name="Separaticies1Mode"/>
+        <Property name="Separaticies2Mode"/>
       </PropertyGroup>
 
       <OutputPort name="Critical Points" index="0" id="port0"/>

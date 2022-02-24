@@ -127,7 +127,7 @@ const size_t tetraederNumTriangles[28] = {
   {12} // (4) 1,2,3 -27
 };
 
-const bool tetraederLookupFastSaddle[28] = {
+const bool tetraederLookupIsMultiLabel[28] = {
   false, // (1) 0,0,0 - 0
   false, // (-) 0,0,1 - 1
   false, // (-) 0,0,2 - 2 
@@ -157,6 +157,69 @@ const bool tetraederLookupFastSaddle[28] = {
   true,  // (3) 1,2,2 -26
   true   // (4) 1,2,3 -27
 };
+
+const bool tetraederLookupIs2Label[28] = {
+  false, // (1) 0,0,0 - 0
+  false, // (-) 0,0,1 - 1
+  false, // (-) 0,0,2 - 2 
+  true,  // (2) 0,0,3 - 3
+  false, // (-) 0,1,0 - 4
+  false, // (-) 0,1,1 - 5 
+  false, // (-) 0,1,2 - 6
+  false, // (-) 0,1,3 - 7
+  true,  // (2) 0,2,0 - 8
+  false, // (-) 0,2,1 - 9
+  true,  // (2) 0,2,2 -10
+  false, // (3) 0,2,3 -11
+  false, // (-) 0,3,0 -12
+  false, // (-) 0,3,1 -13
+  false, // (-) 0,3,2 -14
+  false, // (-) 0,3,3 -15
+  true,  // (2) 1,0,0 -16
+  true,  // (2) 1,0,1 -17
+  false, // (-) 1,0,2 -18
+  false, // (3) 1,0,3 -19
+  true,  // (2) 1,1,0 -20
+  true,  // (2) 1,1,1 -21
+  false, // (-) 1,1,2 -22
+  false, // (3) 1,1,3 -23
+  false, // (3) 1,2,0 -24
+  false, // (3) 1,2,1 -25
+  false, // (3) 1,2,2 -26
+  false  // (4) 1,2,3 -27
+};
+
+const bool tetraederLookupIs3Label[28] = {
+  false, // (1) 0,0,0 - 0
+  false, // (-) 0,0,1 - 1
+  false, // (-) 0,0,2 - 2 
+  false,  // (2) 0,0,3 - 3
+  false, // (-) 0,1,0 - 4
+  false, // (-) 0,1,1 - 5 
+  false, // (-) 0,1,2 - 6
+  false, // (-) 0,1,3 - 7
+  false, // (2) 0,2,0 - 8
+  false, // (-) 0,2,1 - 9
+  false, // (2) 0,2,2 -10
+  true,  // (3) 0,2,3 -11
+  false, // (-) 0,3,0 -12
+  false, // (-) 0,3,1 -13
+  false, // (-) 0,3,2 -14
+  false, // (-) 0,3,3 -15
+  false, // (2) 1,0,0 -16
+  false, // (2) 1,0,1 -17
+  false, // (-) 1,0,2 -18
+  true,  // (3) 1,0,3 -19
+  false, // (2) 1,1,0 -20
+  false, // (2) 1,1,1 -21
+  false, // (-) 1,1,2 -22
+  true,  // (3) 1,1,3 -23
+  true,  // (3) 1,2,0 -24
+  true,  // (3) 1,2,1 -25
+  true,  // (3) 1,2,2 -26
+  false  // (4) 1,2,3 -27
+};
+
 
 const int tetraederLookupFast[28] = {
   {-1}, // (1) 0,0,0 - 0
@@ -188,42 +251,72 @@ const int tetraederLookupFast[28] = {
   {-1}, // (3) 1,2,2 -26
   {-1}  // (4) 1,2,3 -27
 };
+
+const int tetraederLookupSplitBasisns2Label[22][8] = {
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (1) 0,0,0 - 0
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,1 - 1
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,2 - 2 
+  { 0,  3,  1,  3,  2,  3, -1, -1}, // (2) 0,0,3 - 3
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,0 - 4
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,1 - 5 
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,2 - 6
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,3 - 7
+  { 0,  2,  1,  2,  3,  2, -1, -1}, // (2) 0,2,0 - 8
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,2,1 - 9
+  { 0,  2,  1,  3,  0,  3,  1,  2}, // (2) 0,2,2 -10
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (3) 0,2,3 -11
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,0 -12
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,1 -13
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,2 -14
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,3 -15
+  { 0,  1,  2,  1,  3,  1, -1, -1}, // (2) 1,0,0 -16
+  { 0,  1,  2,  3,  0,  3,  2,  1}, // (2) 1,0,1 -17
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 1,0,2 -18
+  {-1, -1, -1, -1, -1, -1, -1, -1}, // (3) 1,0,3 -19
+  { 0,  1,  3,  2,  0,  2,  3,  1}, // (2) 1,1,0 -20
+  { 1,  0,  2,  0,  3,  0, -1, -1}, // (2) 1,1,1 -21
+};
+
+const int tetraederLookupSplitBasisns3Label[27][4] = {
+  {-1, -1, -1, -1}, // (1) 0,0,0 - 0
+  {-1, -1, -1, -1}, // (-) 0,0,1 - 1
+  {-1, -1, -1, -1}, // (-) 0,0,2 - 2 
+  {-1, -1, -1, -1}, // (2) 0,0,3 - 3
+  {-1, -1, -1, -1}, // (-) 0,1,0 - 4
+  {-1, -1, -1, -1}, // (-) 0,1,1 - 5 
+  {-1, -1, -1, -1}, // (-) 0,1,2 - 6
+  {-1, -1, -1, -1}, // (-) 0,1,3 - 7
+  {-1, -1, -1, -1}, // (2) 0,2,0 - 8
+  {-1, -1, -1, -1}, // (-) 0,2,1 - 9
+  {-1, -1, -1, -1}, // (2) 0,2,2 -10
+  { 0,  2,  1,  3}, // (3) 0,2,3 -11
+  {-1, -1, -1, -1}, // (-) 0,3,0 -12
+  {-1, -1, -1, -1}, // (-) 0,3,1 -13
+  {-1, -1, -1, -1}, // (-) 0,3,2 -14
+  {-1, -1, -1, -1}, // (-) 0,3,3 -15
+  {-1, -1, -1, -1}, // (2) 1,0,0 -16
+  {-1, -1, -1, -1}, // (2) 1,0,1 -17
+  {-1, -1, -1, -1}, // (-) 1,0,2 -18
+  { 0,  1,  2,  3}, // (3) 1,0,3 -19
+  {-1, -1, -1, -1}, // (2) 1,1,0 -20
+  {-1, -1, -1, -1}, // (2) 1,1,1 -21
+  {-1, -1, -1, -1}, // (-) 1,1,2 -22
+  { 1,  0,  2,  3}, // (3) 1,1,3 -23
+  { 0,  1,  3,  2}, // (3) 1,2,0 -24
+  { 1,  0,  3,  2}, // (3) 1,2,1 -25
+  { 2,  0,  3,  1}, // (3) 1,2,2 -26
+};
+
+const int lookupOtherLabels[4][3] = {
+  {1,2,3},
+  {0,2,3},
+  {0,1,3},
+  {0,1,2},
+};
+
 namespace ttk {
 
   namespace mscq {
-    /**
-     * Basic concept of critical point representing its id and index of 
-     * criticality and simplex dimension - default 0 = vertex
-     */
-    struct Simplex {
-      explicit Simplex() = default;
-
-      explicit Simplex(const SimplexId id, const int index)
-        : id_{id}, index_{index} {
-      }
-
-      bool operator==(const  Simplex &other) const {
-        return id_ == other.id_ && index_ == other.index_;
-      }
-
-      bool operator<(const Simplex &other) const {
-        return index_ < other.index_   ? true
-               : other.index_ < index_ ? false
-               : id_ < other.id_       ? true
-                                       : false;
-      }
-
-      bool operator>(const Simplex &other) const {
-        return index_ < other.index_   ? false
-               : other.index_ < index_ ? true
-               : id_ < other.id_       ? false
-                                       : true;
-      }
-
-      SimplexId id_{-1};
-      int index_{-1};
-    };
-
     struct Separatrix {
       // default :
       explicit Separatrix()
@@ -324,6 +417,19 @@ namespace ttk {
       ASCENDING = 1,
       DESCENDING = 2
     };
+    
+    enum class SEPARATRICES1_MODE {
+      NONE = 0,
+      DETAILED = 1,
+      SIMPLE = 2
+    };
+
+    enum class SEPARATRICES2_MODE {
+      NONE = 0,
+      WALLS = 1,
+      SEPARATEBASINSFINE = 2,
+      SEPARATEBASINSFAST = 3
+    };    
 
     int preconditionTriangulation(
       ttk::AbstractTriangulation *triangulation) const {
@@ -481,30 +587,35 @@ namespace ttk {
 
     template <typename triangulationType>
     int execute(
-      const triangulationType &triangulation, 
-      SEPARATRICES_MANIFOLD sepManifoldType,
-      const bool computeSeparatrices,
-      const bool fast1Separatrices,
-      const bool fast2Separatrices);
+      const SEPARATRICES_MANIFOLD sepManifoldType,
+      const SEPARATRICES1_MODE sep1Mode,
+      const SEPARATRICES2_MODE sep2Mode, 
+      const bool computeSaddles,
+      const triangulationType &triangulation);
 
     template <typename triangulationType>
     int computeManifold(
+      std::vector<std::pair<SimplexId, char>> *criticalPoints,
       SimplexId *const manifold,
       SimplexId *const neighbor,
-      std::vector<mscq::Simplex> &criticalPoints,
-      SimplexId &numberOfMaxima,
+      std::map<SimplexId, SimplexId> &critMap,
+      SimplexId &numberOfExtrema,
+      const SimplexId *const orderArr,
       const triangulationType &triangulation,
       const bool ascending) const;
 
     template <typename triangulationType>
     int computeManifolds(
-      const SimplexId *const offsets,
+      std::vector<std::pair<SimplexId, char>> *criticalPoints,
       SimplexId *const ascManifold,
       SimplexId *const dscManifold,
       SimplexId *const ascNeighbor,
       SimplexId *const dscNeighbor,
+      std::map<SimplexId, SimplexId> &ascCritMap,
+      std::map<SimplexId, SimplexId> &dscCritMap,
       int &numberOfMinima,
       int &numberOfMaxima,
+      const SimplexId *const orderArr,
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
@@ -553,6 +664,11 @@ namespace ttk {
       const std::vector<mscq::Separatrix> &separatrices,
       const triangulationType &triangulation) const;
 
+    int getSaddles(
+      const SimplexId * const offsets,
+      std::vector<std::pair<SimplexId, char>> &criticalPoints,
+      const AbstractTriangulation &triangulation) const;
+
     template <typename triangulationType>
     int computeSeparatrices2_3D(
       std::vector<std::array<float, 9>> &trianglePos,
@@ -562,16 +678,23 @@ namespace ttk {
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
-    int computeMSCLabelMap(
+    int computemsLabelMap(
       const std::vector<long long> &msLabels,
-      std::map<long long, SimplexId> &mscLabelMap) const;
+      std::map<long long, SimplexId> &msLabelMap) const;
 
     template <typename triangulationType>
-    int computeSeparatrices2_3D_fast(
+    int computeBasinSeparation_3D_fine(
       std::vector<std::array<float, 9>> &trianglePos,
       std::vector<SimplexId> &caseData,
       std::vector<long long> &msLabels,
-      std::unordered_set<SimplexId> *sep2VertSet,
+      const SimplexId *const morseSmaleManifold,
+      const triangulationType &triangulation) const;
+
+    template <typename triangulationType>
+    int computeBasinSeparation_3D_fast(
+      std::vector<std::array<float, 9>> &trianglePos,
+      std::vector<SimplexId> &caseData,
+      std::vector<long long> &msLabels,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
@@ -589,7 +712,8 @@ namespace ttk {
       const SimplexId *const descendingNeighbor,
       const SimplexId *const ascendingManifold,
       const SimplexId *const descendingManifold,
-      const std::vector<mscq::Simplex> &criticalPoints,
+      const SimplexId * const orderArr,
+      const std::vector<std::pair<SimplexId, char>> &criticalPoints,
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
@@ -597,8 +721,9 @@ namespace ttk {
       std::vector<mscq::Separatrix> &sadExtrConns,
       const SimplexId *const ascendingManifold,
       const SimplexId *const descendingManifold,
-      const SimplexId *const morseSmaleManifold,
-      const std::vector<mscq::Simplex> &criticalPoints,
+      const std::map<SimplexId, SimplexId> &ascCritMap,
+      const std::map<SimplexId, SimplexId> &dscCritMap,
+      const std::vector<std::pair<SimplexId, char>> &criticalPoints,
       const triangulationType &triangulation) const;
 
     template <typename scalarType, typename triangulationType>
@@ -607,7 +732,7 @@ namespace ttk {
       const SimplexId *const morseSmaleManifold,
       const SimplexId *const descManifold,
       const std::unordered_set<SimplexId> *sep2VertSet,
-      const std::vector<mscq::Simplex> &criticalPoints,
+      const std::vector<std::pair<SimplexId, char>> &criticalPoints,
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
@@ -618,16 +743,10 @@ namespace ttk {
       const std::vector<std::array<float, 9>> &trianglePos,
       const std::vector<SimplexId> &caseData,
       const std::vector<long long> &msLabels,
-      std::map<long long, SimplexId> &mscLabelMap) const;
+      std::map<long long, SimplexId> &msLabelMap) const;
 
     template <typename triangulationType>
-    int findSaddlesFromCadidates(
-      std::vector<mscq::Simplex> &criticalPoints,
-      const std::unordered_set<SimplexId> &sep2VertSet,
-      const triangulationType &triangulation) const;
-
-    template <typename triangulationType>
-    int setCriticalPoints(std::vector<mscq::Simplex> &criticalPoints,
+    int setCriticalPoints(std::vector<std::pair<SimplexId, char>> &criticalPoints,
                           const triangulationType &triangulation) const;
 
     template <typename triangulationType>
@@ -661,6 +780,16 @@ namespace ttk {
       incenter[0] = d[0] * pos0[0] + d[1] * pos1[0] + d[2] * pos2[0];
       incenter[1] = d[0] * pos0[1] + d[1] * pos1[1] + d[2] * pos2[1];
       incenter[2] = d[0] * pos0[2] + d[1] * pos1[2] + d[2] * pos2[2];
+
+      return 0;
+    }
+
+    inline int interpolatePoints(
+      float pos0[3], float pos1[3], float lambda, float result[3]) const {
+
+      result[0] = lambda * pos0[0] + (1-lambda) * pos1[0];
+      result[1] = lambda * pos0[1] + (1-lambda) * pos1[1];
+      result[2] = lambda * pos0[2] + (1-lambda) * pos1[2];
 
       return 0;
     }
@@ -714,11 +843,11 @@ namespace ttk {
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::execute(
-  const triangulationType &triangulation, 
-  SEPARATRICES_MANIFOLD sepManifoldType,
-  const bool computeSeparatrices,
-  const bool fast1Separatrices,
-  const bool fast2Separatrices)
+  const SEPARATRICES_MANIFOLD sepManifoldType,
+  const SEPARATRICES1_MODE sep1Mode,
+  const SEPARATRICES2_MODE sep2Mode,
+  const bool computeSaddles,
+  const triangulationType &triangulation)
 {
 #ifndef TTK_ENABLE_KAMIKAZE
   if(!inputOrderField_) {
@@ -742,6 +871,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
 
   const SimplexId *orderArr = static_cast<const SimplexId *>(inputOrderField_);
   const SimplexId nV = triangulation.getNumberOfVertices();
+  const int dim = triangulation.getDimensionality();
 
   SimplexId *ascendingManifold
     = static_cast<SimplexId *>(outputAscendingManifold_);
@@ -753,137 +883,156 @@ int ttk::MorseSmaleSegmentationPL::execute(
   SimplexId *ascendingNeighbor  = (SimplexId*) malloc(nV * sizeof(SimplexId));
   SimplexId *descendingNeighbor = (SimplexId*) malloc(nV * sizeof(SimplexId));
 
-  std::vector<mscq::Simplex> criticalPoints;
-  {
-    Timer tmp;
+  std::vector<std::pair<SimplexId, char>> criticalPoints;
+  std::vector<std::pair<SimplexId, char>>* critPointPtr;
 
-    const int dim = triangulation.getDimensionality();
+  std::map<SimplexId, SimplexId> ascCritMap, dscCritMap;
 
-    SimplexId numberOfMaxima{0};
-    SimplexId numberOfMinima{0};
-    SimplexId numberOfMSCRegions{0};
+  if(computeSaddles) {
+    critPointPtr = nullptr;
+    getSaddles(orderArr, criticalPoints, triangulation);
+  } else {
+    critPointPtr = &criticalPoints;
+  }
+
+  SimplexId numberOfMaxima{0};
+  SimplexId numberOfMinima{0};
+  SimplexId numberOfMSCRegions{0};
+  
+  SimplexId *sepManifold;
+  bool SepManifoldIsValid = false;
+
+  switch(sepManifoldType) {
+    case SEPARATRICES_MANIFOLD::MORSESMALE :
+      if(ascendingManifold && descendingManifold && morseSmaleManifold) {
+        computeManifolds(
+          critPointPtr, ascendingManifold, descendingManifold,
+          ascendingNeighbor, descendingNeighbor, ascCritMap, dscCritMap,
+          numberOfMinima, numberOfMaxima, orderArr, triangulation);
+
+        computeFinalSegmentation(numberOfMinima, ascendingManifold,
+          descendingManifold, numberOfMSCRegions, morseSmaleManifold,
+          triangulation);
+
+        sepManifold = static_cast<SimplexId *>(outputMorseSmaleManifold_);
+        SepManifoldIsValid = true;
+      }
+      break;
+    case SEPARATRICES_MANIFOLD::ASCENDING :
+      if(ascendingManifold) {
+        computeManifold<triangulationType>(
+          critPointPtr, ascendingManifold, ascendingNeighbor, ascCritMap,
+          numberOfMinima, orderArr, triangulation, true);
+        
+        sepManifold = static_cast<SimplexId *>(outputAscendingManifold_);
+        numberOfMSCRegions = numberOfMinima;
+        SepManifoldIsValid = true;
+      }
+      break;
+    case SEPARATRICES_MANIFOLD::DESCENDING :
+      if(descendingManifold) {
+        computeManifold<triangulationType>(
+          critPointPtr, descendingManifold, descendingNeighbor, dscCritMap,
+          numberOfMaxima, orderArr, triangulation, false);
+
+        sepManifold = static_cast<SimplexId *>(outputDescendingManifold_);
+        numberOfMSCRegions = numberOfMaxima;
+        SepManifoldIsValid = true;
+      }
+      break;
+    default:
+      break;
+  }
+
+  if(dim == 2) {
+    std::vector<mscq::Separatrix> separatrices1;
+    std::unordered_set<SimplexId> sep2VertSet;
+
+    // sparseId, vector of edgeID tuples
+    std::unordered_map<long long, std::vector<
+      std::tuple<SimplexId, SimplexId>>*> sepPieces;
+
+    // 3 label triangles
+    std::unordered_map<long long, std::vector<
+      std::tuple<SimplexId, SimplexId> >> triConnectors;
+    computeSeparatrices1Pieces_2D<triangulationType>(
+      sep2VertSet, sepPieces, triConnectors,
+      numberOfMSCRegions, sepManifold, triangulation);
+
+    computeSeparatrices1Inner_2D<triangulationType>(
+      sep2VertSet, separatrices1, sepPieces, triConnectors,
+      numberOfMSCRegions, sepManifold, triangulation);
+
+    /*computeSeparatrices1Border_2D<triangulationType>(
+      sep2VertSet, separatrices1, sepManifold, triangulation
+    );*/
+
+    /*findSaddlesFromCadidates<triangulationType>(
+      criticalPoints, sep2VertSet, triangulation
+    );*/
+
+    setCriticalPoints<triangulationType>(
+      criticalPoints, triangulation
+    );
+
+    setSeparatrices1Inner_2D<triangulationType>(
+      separatrices1, triangulation
+    );
+  } else if(dim == 3) {
+    std::vector<std::array<float, 9>> trianglePos;
+    std::vector<long long> msLabels;
+    std::map<long long, SimplexId> msLabelMap;
+    std::vector<SimplexId> caseData;
+    std::vector<mscq::Separatrix> sadExtrConns;
     
-    SimplexId *sepManifold;
-    bool SepManifoldIsValid = false;
+    if(SepManifoldIsValid) {
+      if(sep2Mode == SEPARATRICES2_MODE::WALLS) {
+        computeSeparatrices2_3D<triangulationType>(
+          trianglePos, caseData, msLabels, numberOfMSCRegions, sepManifold,
+          triangulation);
 
-    switch(sepManifoldType) {
-      case SEPARATRICES_MANIFOLD::MORSESMALE :
-        if(ascendingManifold && descendingManifold && morseSmaleManifold) {
-          computeManifolds(
-            orderArr, ascendingManifold, descendingManifold,
-            ascendingNeighbor, descendingNeighbor,
-            numberOfMinima, numberOfMaxima, triangulation);
+        computemsLabelMap(msLabels, msLabelMap);
 
-          sepManifold = static_cast<SimplexId *>(outputMorseSmaleManifold_);
-          SepManifoldIsValid = true;
-        }
-        break;
-      case SEPARATRICES_MANIFOLD::ASCENDING :
-        if(ascendingManifold) {
-          computeManifold<triangulationType>(
-            ascendingManifold, ascendingNeighbor, criticalPoints,
-            numberOfMinima, triangulation, true);
-          
-          sepManifold = static_cast<SimplexId *>(outputAscendingManifold_);
-          numberOfMSCRegions = numberOfMinima;
-          SepManifoldIsValid = true;
-        }
-        break;
-      case SEPARATRICES_MANIFOLD::DESCENDING :
-        if(descendingManifold) {
-          computeManifold<triangulationType>(
-                              descendingManifold, descendingNeighbor,
-                              criticalPoints, numberOfMaxima,
-                              triangulation, false);
+      } else if(sep2Mode == SEPARATRICES2_MODE::SEPARATEBASINSFINE) {
+        computeBasinSeparation_3D_fine<triangulationType>(
+                                  trianglePos, caseData, msLabels,
+                                  sepManifold, triangulation);
 
-          sepManifold = static_cast<SimplexId *>(outputDescendingManifold_);
-          numberOfMSCRegions = numberOfMaxima;
-          SepManifoldIsValid = true;
-        }
-        break;
-      default:
-        break;
-    }
-
-    if(computeSeparatrices && SepManifoldIsValid) {
-      std::vector<mscq::Separatrix> separatrices1;
-      std::unordered_set<SimplexId> sep2VertSet;
-
-      if(dim == 2) {
-        // sparseId, vector of edgeID tuples
-        std::unordered_map<long long, std::vector<
-          std::tuple<SimplexId, SimplexId>>*> sepPieces;
-
-        // 3 label triangles
-        std::unordered_map<long long, std::vector<
-          std::tuple<SimplexId, SimplexId> >> triConnectors;
-        computeSeparatrices1Pieces_2D<triangulationType>(
-          sep2VertSet, sepPieces, triConnectors,
-          numberOfMSCRegions, sepManifold, triangulation);
-
-        computeSeparatrices1Inner_2D<triangulationType>(
-          sep2VertSet, separatrices1, sepPieces, triConnectors,
-          numberOfMSCRegions, sepManifold, triangulation);
-
-        /*computeSeparatrices1Border_2D<triangulationType>(
-          sep2VertSet, separatrices1, sepManifold, triangulation
-        );*/
-
-        findSaddlesFromCadidates<triangulationType>(
-          criticalPoints, sep2VertSet, triangulation
-        );
-
-        setCriticalPoints<triangulationType>(
-          criticalPoints, triangulation
-        );
-
-        setSeparatrices1Inner_2D<triangulationType>(
-          separatrices1, triangulation
-        );
-      } else if(dim == 3) {
-        std::vector<std::array<float, 9>> trianglePos;
-        std::vector<long long> msLabels;
-        std::map<long long, SimplexId> mscLabelMap;
-        std::vector<SimplexId> caseData;
-        std::vector<mscq::Separatrix> sadExtrConns;
-    
-        if(fast2Separatrices) {
-          computeSeparatrices2_3D_fast<triangulationType>(
-                                    trianglePos, caseData, msLabels,
-                                    &sep2VertSet,
-                                    sepManifold, triangulation);
-   
-          for(int i = -1; i < numberOfMSCRegions; ++i) {
-            mscLabelMap.insert({i,i});
-          }
-        } else {
-          computeSeparatrices2_3D<triangulationType>(
-            trianglePos, caseData, msLabels, numberOfMSCRegions, sepManifold,
-            triangulation);
-
-          computeMSCLabelMap(msLabels, mscLabelMap);
+        for(int i = -1; i < numberOfMSCRegions; ++i) {
+          msLabelMap.insert({i,i});
         }
 
-        if(fast1Separatrices) {
-          computeSaddleExtremaConnectors_3D_fast<triangulationType>(
-          sadExtrConns, ascendingManifold, descendingManifold, sepManifold,
-          criticalPoints, triangulation);
-        } else {
-          computeSaddleExtremaConnectors_3D<triangulationType>(
-          sadExtrConns, ascendingNeighbor, descendingNeighbor,
-          ascendingManifold, descendingManifold,
-          criticalPoints, triangulation);
+      } else if(sep2Mode == SEPARATRICES2_MODE::SEPARATEBASINSFAST) {
+        computeBasinSeparation_3D_fast<triangulationType>(
+                                  trianglePos, caseData, msLabels,
+                                  sepManifold, triangulation);
+
+        for(int i = -1; i < numberOfMSCRegions; ++i) {
+          msLabelMap.insert({i,i});
         }
-
-        setCriticalPoints<triangulationType>(
-          criticalPoints, triangulation);
-
-        setSeparatrices1_3D<triangulationType>(sadExtrConns, triangulation);            
-
-        setSeparatrices2_3D(trianglePos, caseData, msLabels, mscLabelMap);
       }
     }
+
+    if(ascendingManifold && descendingManifold && computeSaddles) {
+      if(sep1Mode == SEPARATRICES1_MODE::SIMPLE) {
+        computeSaddleExtremaConnectors_3D_fast<triangulationType>(
+        sadExtrConns, ascendingManifold, descendingManifold,
+        dscCritMap, ascCritMap, criticalPoints, triangulation);
+
+      } else if(sep1Mode == SEPARATRICES1_MODE::DETAILED) {
+        computeSaddleExtremaConnectors_3D<triangulationType>(
+        sadExtrConns, ascendingNeighbor, descendingNeighbor,
+        ascendingManifold, descendingManifold,
+        orderArr, criticalPoints, triangulation);
+      }
+    }
+
+    setSeparatrices1_3D<triangulationType>(sadExtrConns, triangulation);            
+
+    setSeparatrices2_3D(trianglePos, caseData, msLabels, msLabelMap);
   }
+
+  setCriticalPoints<triangulationType>(criticalPoints, triangulation);
 
   free(ascendingNeighbor);
   free(descendingNeighbor);
@@ -900,19 +1049,19 @@ int ttk::MorseSmaleSegmentationPL::execute(
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeManifold(
+  std::vector<std::pair<SimplexId, char>> *criticalPoints,
   SimplexId *const manifold,
   SimplexId *const neighbor,
-  std::vector<mscq::Simplex> &criticalPoints,
-  SimplexId &numberOfMaxima,
+  std::map<SimplexId, SimplexId> &critMap,
+  SimplexId &numberOfExtrema,
+  const SimplexId * const orderArr,
   const triangulationType &triangulation,
   const bool ascending) const {
-
-  const SimplexId *orderArr = static_cast<const SimplexId *>(inputOrderField_);
 
   // start global timer
   ttk::Timer localTimer;
   int iterations = 1;
-  numberOfMaxima = 0;
+  numberOfExtrema = 0;
 
   const std::string manifoldStr = ascending ? "Ascending" : "Descending";
   const std::string minMaxStr = ascending ? "Minima" : "Maxima";
@@ -931,15 +1080,13 @@ int ttk::MorseSmaleSegmentationPL::computeManifold(
     /* compute the Descending Maifold iterating over each vertex, searching
      * the biggest neighbor and compressing its path to its maximum */
     const SimplexId nVertices = triangulation.getNumberOfVertices();
-    std::unordered_map<SimplexId, SimplexId> extremas;
+    std::map<SimplexId, SimplexId> extremas;
 
     // vertices that may still be compressed
-    std::vector<SimplexId>* activeVertices
-      = new std::vector<SimplexId>();
+    std::vector<SimplexId>* activeVertices = new std::vector<SimplexId>();
     SimplexId nActiveVertices;
 
-//#ifndef TTK_ENABLE_OPENMP
-if(!db_omp) {
+if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
     // find maxima and intialize vector of not fully compressed vertices
     for(SimplexId i = 0; i < nVertices; i++) {
       const SimplexId numNeighbors =
@@ -970,7 +1117,8 @@ if(!db_omp) {
         activeVertices->push_back(i);
       }
       else {
-        maxima.insert( {i, numberOfMaxima++} );
+        critMap.insert({numberOfExtrema, i});
+        extremas.insert({i, numberOfExtrema++});
       }
 
       neighbor[i] = dmi;
@@ -982,13 +1130,6 @@ if(!db_omp) {
     // compress paths until no changes occur
     while(nActiveVertices > 0) {
       newActiveVert = new std::vector<SimplexId>();
-
-      std::string msgit = "Iteration: " + std::to_string(iterations) +
-        "(" + std::to_string(nActiveVertices) + "/" +
-        std::to_string(nVertices) + ")";
-      this->printMsg(msgit, 1.0 - ((double)nActiveVertices / nVertices),
-        localTimer.getElapsedTime(), this->threadNumber_,
-        ttk::debug::LineMode::REPLACE);
         
       for(SimplexId i = 0; i < nActiveVertices; i++) {
         SimplexId v = activeVertices->at(i);
@@ -1011,17 +1152,13 @@ if(!db_omp) {
     }
 
     // make indices dense
-    /*for(SimplexId i = 0; i < nVertices; i++) {
-      manifold[i] = maxima[manifold[i]];
-    }*/
-}
-//#else // TTK_ENABLE_OPENMP
-else {
-    //const size_t numCacheLineEntries =
-    //  hardware_destructive_interference_size / sizeof(SimplexId);
+    for(SimplexId i = 0; i < nVertices; i++) {
+      manifold[i] = extremas[manifold[i]];
+    }
+} else { //#else // TTK_ENABLE_OPENMP
 
     #pragma omp parallel num_threads(this->threadNumber_) \
-            shared(iterations, maxima, numberOfMaxima, \
+            shared(iterations, extremas, numberOfExtrema, \
             activeVertices, nActiveVertices)
     {
       std::vector<SimplexId> lActiveVertices; //active verticies per thread
@@ -1058,10 +1195,11 @@ else {
         }
         else {
           #pragma omp critical
-          maxima.insert( {i, numberOfMaxima} );
-
-          #pragma omp atomic update
-          numberOfMaxima += 1;
+          {
+            critMap.insert({numberOfExtrema, i});
+            extremas.insert({i, numberOfExtrema});
+            numberOfExtrema += 1;
+          }
         }
       }
 
@@ -1137,35 +1275,28 @@ else {
       }
 
       // set critical point indices
-      /*#pragma omp for schedule(dynamic, numCacheLineEntries)
+      #pragma omp for schedule(static)
       for(SimplexId i = 0; i < nVertices; i++) {
-        manifold[i] = maxima.at(manifold[i]);
-      }*/
+        manifold[i] = extremas.at(manifold[i]);
+      }
     }
 } //#endif // TTK_ENABLE_OPENMP
 
     const int index =
       ascending ? 0 : triangulation.getDimensionality();
-    //const int dim = triangulation.getDimensionality();
 
-    for (auto& it: extremas) {
-      criticalPoints.push_back(mscq::Simplex(it.first, index));
+    if(criticalPoints) {
+      for (auto& it: extremas) {
+        criticalPoints->push_back(std::make_pair(it.first, index));
+      }
     }
-
+  
     delete activeVertices;
   }
 
   {
     this->printMsg("Computed " + manifoldStr + " Manifold",
                    1, localTimer.getElapsedTime(), this->threadNumber_);
-
-    this->printMsg("#" + minMaxStr +  ": " + std::to_string(numberOfMaxima),
-                   1, localTimer.getElapsedTime(), this->threadNumber_);
-
-    this->printMsg("#Iterations: " + std::to_string(iterations - 1),
-                   1, localTimer.getElapsedTime(), this->threadNumber_);
-
-    this->printMsg(ttk::debug::Separator::L1); // horizontal '=' separator
   }
 
   return 1; // return success
@@ -1173,18 +1304,23 @@ else {
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeManifolds(
-  const SimplexId *const orderArr,
+  std::vector<std::pair<SimplexId, char>> *criticalPoints,
   SimplexId *const ascManifold,
   SimplexId *const dscManifold,
   SimplexId *const ascNeighbor,
   SimplexId *const dscNeighbor,
+  std::map<SimplexId, SimplexId> &ascCritMap,
+  std::map<SimplexId, SimplexId> &dscCritMap,
   int &numberOfMinima,
   int &numberOfMaxima,
+  const SimplexId *const orderArr,
   const triangulationType &triangulation) const {
 
   ttk::Timer localTimer;
   numberOfMinima = 0;
   numberOfMaxima = 0;
+
+  const bool computeCriticalPoints = criticalPoints != nullptr;
   
   this->printMsg(ttk::debug::Separator::L1);
   // print the progress of the current subprocedure (currently 0%)
@@ -1237,15 +1373,23 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
     } 
 
     if(!hasBiggerNeighbor) {
-      //criticalPoints_->push_back(
-      //  std::make_pair(i, (char)(CriticalType::Local_maximum)));
+      if(computeCriticalPoints) {
+        criticalPoints->push_back(
+          std::make_pair(i, (char)(CriticalType::Local_maximum)));
+      }
+
+      dscCritMap.insert({numberOfMaxima, i});
       maxMap.insert({i, numberOfMaxima});
       numberOfMaxima++;
     }
 
     if(!hasSmallerNeighbor) {
-      //criticalPoints_->push_back(
-      //  std::make_pair(i, (char)(CriticalType::Local_minimum)));
+      if(computeCriticalPoints) {
+        criticalPoints->push_back(
+          std::make_pair(i, (char)(CriticalType::Local_minimum)));
+      }
+
+      ascCritMap.insert({numberOfMinima, i});
       minMap.insert({i, numberOfMinima});
       numberOfMinima++;
     }
@@ -1329,15 +1473,23 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
         #pragma omp critical
         {
           if(!hasBiggerNeighbor) {
-            //criticalPoints_->push_back(
-            //  std::make_pair(i, (char)(CriticalType::Local_maximum)));
+            if(computeCriticalPoints) {
+              criticalPoints->push_back(
+              std::make_pair(i, (char)(CriticalType::Local_maximum)));
+            }
+            
+            dscCritMap.insert({numberOfMaxima, i});
             maxMap.insert({i, numberOfMaxima});
             numberOfMaxima++;
           }
 
           if(!hasSmallerNeighbor) {
-            //criticalPoints_->push_back(
-            //  std::make_pair(i, (char)(CriticalType::Local_minimum)));
+            if(computeCriticalPoints) {
+              criticalPoints->push_back(
+                std::make_pair(i, (char)(CriticalType::Local_minimum)));
+            }
+
+            ascCritMap.insert({numberOfMinima, i});
             minMap.insert({i, numberOfMinima});
             numberOfMinima++;
           }
@@ -1907,6 +2059,31 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices1Inner_2D(
   return 0;
 }
 
+int ttk::MorseSmaleSegmentationPL::getSaddles(
+  const SimplexId * const orderArr,
+  std::vector<std::pair<SimplexId, char>> &criticalPoints,
+  const AbstractTriangulation &triangulation) const {
+
+  ttk::Timer localTimer;
+
+  this->printMsg("Computing Critical Points", 0, localTimer.getElapsedTime(),
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+  const int dim = triangulation.getDimensionality();
+
+  ScalarFieldCriticalPoints sfcp;
+  sfcp.setDomainDimension(dim);
+  sfcp.setOutput(&criticalPoints);
+  sfcp.setThreadNumber(this->threadNumber_);
+  sfcp.execute(orderArr, &triangulation);
+
+  this->printMsg("Computed Critical Points", 1, localTimer.getElapsedTime(),
+                 this->threadNumber_);
+
+  return 1;
+  
+}
+
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D(
   std::vector<std::array<float, 9>> &trianglePos,
@@ -1967,7 +2144,7 @@ if(!db_omp) {
     const int *tetEdgeIndices = tetraederLookup[lookupIndex];
     const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
-    if(tetraederLookupFastSaddle[lookupIndex]) {
+    if(tetraederLookupIsMultiLabel[lookupIndex]) {
       float edgeCenters[10][3];
       // the 6 edge centers
       getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
@@ -2142,7 +2319,7 @@ if(!db_omp) {
       const int *tetEdgeIndices = tetraederLookup[lookupIndex];
       const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
-      if(tetraederLookupFastSaddle[lookupIndex]) {
+      if(tetraederLookupIsMultiLabel[lookupIndex]) {
         float edgeCenters[10][3];
         // the 6 edge centers
         getEdgeIncenter(
@@ -2326,9 +2503,9 @@ if(!db_omp) {
   return 0;
 }
 
-int ttk::MorseSmaleSegmentationPL::computeMSCLabelMap(
+int ttk::MorseSmaleSegmentationPL::computemsLabelMap(
   const std::vector<long long> &msLabels,
-  std::map<long long, SimplexId> &mscLabelMap) const {
+  std::map<long long, SimplexId> &msLabelMap) const {
 
   std::vector<long long> mscLabelCopy(msLabels);
 
@@ -2338,18 +2515,17 @@ int ttk::MorseSmaleSegmentationPL::computeMSCLabelMap(
   mscLabelCopy.erase(last, mscLabelCopy.end());
 
   for(size_t i = 0; i < mscLabelCopy.size(); ++i) {
-    mscLabelMap.insert({mscLabelCopy[i], i});
+    msLabelMap.insert({mscLabelCopy[i], i});
   }
 
   return 0;
 }
 
 template <typename triangulationType>
-int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D_fast(
+int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fine(
   std::vector<std::array<float, 9>> &trianglePos,    
   std::vector<SimplexId> &caseData,
   std::vector<long long> &msLabels,
-  std::unordered_set<SimplexId> *sep2VertSet,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
   ttk::Timer localTimer;
@@ -2377,7 +2553,9 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D_fast(
   }
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
-  const bool findSaddles = sep2VertSet != nullptr;
+
+  const float d0 = 0.52;
+  const float d1 = 1 - d0;
 
 //#ifndef TTK_ENABLE_OPENMP
 if(!db_omp) {
@@ -2401,59 +2579,177 @@ if(!db_omp) {
 
     const unsigned char lookupIndex = index1 | index2 | index3;
 
-    if(tetraederLookupFastSaddle[lookupIndex]) {
-      if(findSaddles) {
-        sep2VertSet->insert(vertices[0]);
-        sep2VertSet->insert(vertices[1]);
-        sep2VertSet->insert(vertices[2]);
-        sep2VertSet->insert(vertices[3]);
-      }
-      if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 labels on tetraeder
-        float vertPos[4][3];
-        triangulation.getVertexPoint(
-          vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
-        triangulation.getVertexPoint(
-          vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
-        triangulation.getVertexPoint(
-          vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
-        triangulation.getVertexPoint(
-          vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+    if(tetraederLookupIsMultiLabel[lookupIndex]) {
+      float vPos[4][3];
+      triangulation.getVertexPoint(
+        vertices[0], vPos[0][0], vPos[0][1], vPos[0][2]);
+      triangulation.getVertexPoint(
+        vertices[1], vPos[1][0], vPos[1][1], vPos[1][2]);
+      triangulation.getVertexPoint(
+        vertices[2], vPos[2][0], vPos[2][1], vPos[2][2]);
+      triangulation.getVertexPoint(
+        vertices[3], vPos[3][0], vPos[3][1], vPos[3][2]);
 
-        switch(tetraederLookupFast[lookupIndex]) {
-          case 0:
-            trianglePos.push_back({
-              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-              vertPos[2][0], vertPos[2][1], vertPos[2][2]
-            });
-            msLabels.push_back(msm[0]);
-            break;
-          case 1:
-            trianglePos.push_back({
-              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-              vertPos[3][0], vertPos[3][1], vertPos[3][2]
-            });
-            msLabels.push_back(msm[0]);
-            break;
-          case 2:
-            trianglePos.push_back({
-              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-              vertPos[3][0], vertPos[3][1], vertPos[3][2]
-            });
-            msLabels.push_back(msm[0]);
-            break;
-          case 3:
-            trianglePos.push_back({
-              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-              vertPos[3][0], vertPos[3][1], vertPos[3][2]
-            });
-            msLabels.push_back(msm[1]);
-            break;
+      if(tetraederLookupIs2Label[lookupIndex]) { // 2 labels (eg. AAAB / AABB)
+        const int *vIds = tetraederLookupSplitBasisns2Label[lookupIndex];
+
+        float vert00[3], vert01[3], vert02[3],
+              vert10[3], vert11[3], vert12[3];
+
+        interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d0, vert00);
+        interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d0, vert01);
+        interpolatePoints(vPos[vIds[4]], vPos[vIds[5]], d0, vert02);
+        interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d1, vert10);
+        interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d1, vert11);
+        interpolatePoints(vPos[vIds[4]], vPos[vIds[5]], d1, vert12);
+
+        trianglePos.push_back({
+          vert00[0], vert00[1], vert00[2], 
+          vert01[0], vert01[1], vert01[2], 
+          vert02[0], vert02[1], vert02[2]
+        });
+        trianglePos.push_back({
+          vert10[0], vert10[1], vert10[2], 
+          vert11[0], vert11[1], vert11[2], 
+          vert12[0], vert12[1], vert12[2]
+        });
+
+        msLabels.push_back(msm[vIds[0]]);
+        msLabels.push_back(msm[vIds[1]]);
+
+        caseData.push_back(lookupIndex);
+        caseData.push_back(lookupIndex);
+
+        if(vIds[6] != -1) { // 2 vertices per label (e.g. AABB)
+          float vert03[3], vert13[3];
+
+          interpolatePoints(vPos[vIds[6]], vPos[vIds[7]], d0, vert03);
+          interpolatePoints(vPos[vIds[6]], vPos[vIds[7]], d1, vert13);
+
+          trianglePos.push_back({
+            vert00[0], vert00[1], vert00[2], 
+            vert01[0], vert01[1], vert01[2], 
+            vert03[0], vert03[1], vert03[2]
+          });
+          trianglePos.push_back({
+            vert10[0], vert10[1], vert10[2], 
+            vert11[0], vert11[1], vert11[2], 
+            vert13[0], vert13[1], vert13[2]
+          });
+
+          msLabels.push_back(msm[vIds[0]]);
+          msLabels.push_back(msm[vIds[1]]);
+
+          caseData.push_back(lookupIndex);
+          caseData.push_back(lookupIndex);
         }
+      } else if(tetraederLookupIs3Label[lookupIndex]) {
+        const int *vIds = tetraederLookupSplitBasisns3Label[lookupIndex];
 
+        float vert00[3], vert01[3], vert02[3], vert03[3],
+              vert10[3], vert11[3], vert12[3],
+              vert20[3], vert21[3], vert22[3];
+
+        interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d0, vert00);
+        interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d0, vert01);
+        interpolatePoints(vPos[vIds[0]], vPos[vIds[3]], d0, vert02);
+        interpolatePoints(vPos[vIds[2]], vPos[vIds[1]], d0, vert03);
+
+        interpolatePoints(
+          vPos[vIds[1]], vPos[lookupOtherLabels[vIds[1]][0]], d0, vert10);
+        interpolatePoints(
+          vPos[vIds[1]], vPos[lookupOtherLabels[vIds[1]][1]], d0, vert11);
+        interpolatePoints(
+          vPos[vIds[1]], vPos[lookupOtherLabels[vIds[1]][2]], d0, vert12);
+
+        interpolatePoints(
+          vPos[vIds[3]], vPos[lookupOtherLabels[vIds[3]][0]], d0, vert20);
+        interpolatePoints(
+          vPos[vIds[3]], vPos[lookupOtherLabels[vIds[3]][1]], d0, vert21);
+        interpolatePoints(
+          vPos[vIds[3]], vPos[lookupOtherLabels[vIds[3]][2]], d0, vert22);
+
+        trianglePos.push_back({
+          vert00[0], vert00[1], vert00[2], 
+          vert01[0], vert01[1], vert01[2], 
+          vert02[0], vert02[1], vert02[2]
+        });
+        trianglePos.push_back({
+          vert00[0], vert00[1], vert00[2], 
+          vert01[0], vert01[1], vert01[2], 
+          vert03[0], vert03[1], vert03[2]
+        });
+        trianglePos.push_back({
+          vert10[0], vert10[1], vert10[2], 
+          vert11[0], vert11[1], vert11[2], 
+          vert12[0], vert12[1], vert12[2]
+        });
+        trianglePos.push_back({
+          vert20[0], vert20[1], vert20[2], 
+          vert21[0], vert21[1], vert21[2], 
+          vert22[0], vert22[1], vert22[2]
+        });
+
+        msLabels.push_back(msm[vIds[0]]);
+        msLabels.push_back(msm[vIds[0]]);
+        msLabels.push_back(msm[vIds[1]]);
+        msLabels.push_back(msm[vIds[3]]);
+
+        caseData.push_back(lookupIndex);
+        caseData.push_back(lookupIndex);
+        caseData.push_back(lookupIndex);
+        caseData.push_back(lookupIndex);
+      } else { // 4 labels
+        float vert00[3], vert01[3], vert02[3],
+              vert10[3], vert11[3], vert12[3],
+              vert20[3], vert21[3], vert22[3],
+              vert30[3], vert31[3], vert32[3];
+
+        interpolatePoints(vPos[0], vPos[1], d0, vert00);
+        interpolatePoints(vPos[0], vPos[2], d0, vert01);
+        interpolatePoints(vPos[0], vPos[3], d0, vert02);
+
+        interpolatePoints(vPos[1], vPos[0], d0, vert10);
+        interpolatePoints(vPos[1], vPos[2], d0, vert11);
+        interpolatePoints(vPos[1], vPos[3], d0, vert12);
+
+        interpolatePoints(vPos[2], vPos[0], d0, vert20);
+        interpolatePoints(vPos[2], vPos[1], d0, vert21);
+        interpolatePoints(vPos[2], vPos[3], d0, vert22);
+
+        interpolatePoints(vPos[3], vPos[0], d0, vert30);
+        interpolatePoints(vPos[3], vPos[1], d0, vert31);
+        interpolatePoints(vPos[3], vPos[2], d0, vert32);
+
+        trianglePos.push_back({
+          vert00[0], vert00[1], vert00[2], 
+          vert01[0], vert01[1], vert01[2], 
+          vert02[0], vert02[1], vert02[2]
+        });
+        trianglePos.push_back({
+          vert10[0], vert10[1], vert10[2], 
+          vert11[0], vert11[1], vert11[2], 
+          vert12[0], vert12[1], vert12[2]
+        });
+        trianglePos.push_back({
+          vert20[0], vert20[1], vert20[2], 
+          vert21[0], vert21[1], vert21[2], 
+          vert22[0], vert22[1], vert22[2]
+        });
+        trianglePos.push_back({
+          vert30[0], vert30[1], vert30[2], 
+          vert31[0], vert31[1], vert31[2], 
+          vert32[0], vert32[1], vert32[2]
+        });
+
+        msLabels.push_back(msm[0]);
+        msLabels.push_back(msm[1]);
+        msLabels.push_back(msm[2]);
+        msLabels.push_back(msm[3]);
+
+        caseData.push_back(lookupIndex);
+        caseData.push_back(lookupIndex);
+        caseData.push_back(lookupIndex);
         caseData.push_back(lookupIndex);
       }
     }
@@ -2488,13 +2784,335 @@ if(!db_omp) {
 
       const unsigned char lookupIndex = index1 | index2 | index3;
 
-      if(tetraederLookupFastSaddle[lookupIndex]) {
-        if(findSaddles) {
-          sep2VertSetLocal.push_back(vertices[0]);
-          sep2VertSetLocal.push_back(vertices[1]);
-          sep2VertSetLocal.push_back(vertices[2]);
-          sep2VertSetLocal.push_back(vertices[3]);
+      if(tetraederLookupIsMultiLabel[lookupIndex]) {
+        float vPos[4][3];
+        triangulation.getVertexPoint(
+          vertices[0], vPos[0][0], vPos[0][1], vPos[0][2]);
+        triangulation.getVertexPoint(
+          vertices[1], vPos[1][0], vPos[1][1], vPos[1][2]);
+        triangulation.getVertexPoint(
+          vertices[2], vPos[2][0], vPos[2][1], vPos[2][2]);
+        triangulation.getVertexPoint(
+          vertices[3], vPos[3][0], vPos[3][1], vPos[3][2]);
+
+        if(tetraederLookupIs2Label[lookupIndex]) { // 2 labels (eg. AAAB / AABB)
+          const int *vIds = tetraederLookupSplitBasisns2Label[lookupIndex];
+
+          float vert00[3], vert01[3], vert02[3],
+                vert10[3], vert11[3], vert12[3];
+
+          interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d0, vert00);
+          interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d0, vert01);
+          interpolatePoints(vPos[vIds[4]], vPos[vIds[5]], d0, vert02);
+          interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d1, vert10);
+          interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d1, vert11);
+          interpolatePoints(vPos[vIds[4]], vPos[vIds[5]], d1, vert12);
+
+          trianglePosLocal.push_back({
+            vert00[0], vert00[1], vert00[2], 
+            vert01[0], vert01[1], vert01[2], 
+            vert02[0], vert02[1], vert02[2]
+          });
+          trianglePosLocal.push_back({
+            vert10[0], vert10[1], vert10[2], 
+            vert11[0], vert11[1], vert11[2], 
+            vert12[0], vert12[1], vert12[2]
+          });
+
+          msLabelsLocal.push_back(msm[vIds[0]]);
+          msLabelsLocal.push_back(msm[vIds[1]]);
+
+          caseDataLocal.push_back(lookupIndex);
+          caseDataLocal.push_back(lookupIndex);
+
+          if(vIds[6] != -1) { // 2 vertices per label (e.g. AABB)
+            float vert03[3], vert13[3];
+
+            interpolatePoints(vPos[vIds[6]], vPos[vIds[7]], d0, vert03);
+            interpolatePoints(vPos[vIds[6]], vPos[vIds[7]], d1, vert13);
+
+            trianglePosLocal.push_back({
+              vert00[0], vert00[1], vert00[2], 
+              vert01[0], vert01[1], vert01[2], 
+              vert03[0], vert03[1], vert03[2]
+            });
+            trianglePosLocal.push_back({
+              vert10[0], vert10[1], vert10[2], 
+              vert11[0], vert11[1], vert11[2], 
+              vert13[0], vert13[1], vert13[2]
+            });
+
+            msLabelsLocal.push_back(msm[vIds[0]]);
+            msLabelsLocal.push_back(msm[vIds[1]]);
+
+            caseDataLocal.push_back(lookupIndex);
+            caseDataLocal.push_back(lookupIndex);
+          }
+        } else if(tetraederLookupIs3Label[lookupIndex]) {
+          const int *vIds = tetraederLookupSplitBasisns3Label[lookupIndex];
+
+          float vert00[3], vert01[3], vert02[3], vert03[3],
+                vert10[3], vert11[3], vert12[3],
+                vert20[3], vert21[3], vert22[3];
+
+          interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d0, vert00);
+          interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d0, vert01);
+          interpolatePoints(vPos[vIds[0]], vPos[vIds[3]], d0, vert02);
+          interpolatePoints(vPos[vIds[2]], vPos[vIds[1]], d0, vert03);
+
+          interpolatePoints(
+            vPos[vIds[1]], vPos[lookupOtherLabels[vIds[1]][0]], d0, vert10);
+          interpolatePoints(
+            vPos[vIds[1]], vPos[lookupOtherLabels[vIds[1]][1]], d0, vert11);
+          interpolatePoints(
+            vPos[vIds[1]], vPos[lookupOtherLabels[vIds[1]][2]], d0, vert12);
+
+          interpolatePoints(
+            vPos[vIds[3]], vPos[lookupOtherLabels[vIds[3]][0]], d0, vert20);
+          interpolatePoints(
+            vPos[vIds[3]], vPos[lookupOtherLabels[vIds[3]][1]], d0, vert21);
+          interpolatePoints(
+            vPos[vIds[3]], vPos[lookupOtherLabels[vIds[3]][2]], d0, vert22);
+
+          trianglePosLocal.push_back({
+            vert00[0], vert00[1], vert00[2], 
+            vert01[0], vert01[1], vert01[2], 
+            vert02[0], vert02[1], vert02[2]
+          });
+          trianglePosLocal.push_back({
+            vert00[0], vert00[1], vert00[2], 
+            vert01[0], vert01[1], vert01[2], 
+            vert03[0], vert03[1], vert03[2]
+          });
+          trianglePosLocal.push_back({
+            vert10[0], vert10[1], vert10[2], 
+            vert11[0], vert11[1], vert11[2], 
+            vert12[0], vert12[1], vert12[2]
+          });
+          trianglePosLocal.push_back({
+            vert20[0], vert20[1], vert20[2], 
+            vert21[0], vert21[1], vert21[2], 
+            vert22[0], vert22[1], vert22[2]
+          });
+
+          msLabelsLocal.push_back(msm[vIds[0]]);
+          msLabelsLocal.push_back(msm[vIds[0]]);
+          msLabelsLocal.push_back(msm[vIds[1]]);
+          msLabelsLocal.push_back(msm[vIds[3]]);
+
+          caseDataLocal.push_back(lookupIndex);
+          caseDataLocal.push_back(lookupIndex);
+          caseDataLocal.push_back(lookupIndex);
+          caseDataLocal.push_back(lookupIndex);
+        } else { // 4 labels
+          float vert00[3], vert01[3], vert02[3],
+                vert10[3], vert11[3], vert12[3],
+                vert20[3], vert21[3], vert22[3],
+                vert30[3], vert31[3], vert32[3];
+
+          interpolatePoints(vPos[0], vPos[1], d0, vert00);
+          interpolatePoints(vPos[0], vPos[2], d0, vert01);
+          interpolatePoints(vPos[0], vPos[3], d0, vert02);
+
+          interpolatePoints(vPos[1], vPos[0], d0, vert10);
+          interpolatePoints(vPos[1], vPos[2], d0, vert11);
+          interpolatePoints(vPos[1], vPos[3], d0, vert12);
+
+          interpolatePoints(vPos[2], vPos[0], d0, vert20);
+          interpolatePoints(vPos[2], vPos[1], d0, vert21);
+          interpolatePoints(vPos[2], vPos[3], d0, vert22);
+
+          interpolatePoints(vPos[3], vPos[0], d0, vert30);
+          interpolatePoints(vPos[3], vPos[1], d0, vert31);
+          interpolatePoints(vPos[3], vPos[2], d0, vert32);
+
+          trianglePosLocal.push_back({
+            vert00[0], vert00[1], vert00[2], 
+            vert01[0], vert01[1], vert01[2], 
+            vert02[0], vert02[1], vert02[2]
+          });
+          trianglePosLocal.push_back({
+            vert10[0], vert10[1], vert10[2], 
+            vert11[0], vert11[1], vert11[2], 
+            vert12[0], vert12[1], vert12[2]
+          });
+          trianglePosLocal.push_back({
+            vert20[0], vert20[1], vert20[2], 
+            vert21[0], vert21[1], vert21[2], 
+            vert22[0], vert22[1], vert22[2]
+          });
+          trianglePosLocal.push_back({
+            vert30[0], vert30[1], vert30[2], 
+            vert31[0], vert31[1], vert31[2], 
+            vert32[0], vert32[1], vert32[2]
+          });
+
+          msLabelsLocal.push_back(msm[0]);
+          msLabelsLocal.push_back(msm[1]);
+          msLabelsLocal.push_back(msm[2]);
+          msLabelsLocal.push_back(msm[3]);
+
+          caseDataLocal.push_back(lookupIndex);
+          caseDataLocal.push_back(lookupIndex);
+          caseDataLocal.push_back(lookupIndex);
+          caseDataLocal.push_back(lookupIndex);
         }
+      }
+    }
+
+    #pragma omp critical
+    {
+      trianglePos.insert(trianglePos.end(),
+        trianglePosLocal.begin(), trianglePosLocal.end());
+      caseData.insert(caseData.end(),
+        caseDataLocal.begin(), caseDataLocal.end());
+      msLabels.insert(msLabels.end(),
+        msLabelsLocal.begin(), msLabelsLocal.end());
+    }
+  }
+} // TTK_ENABLE_OPENMP
+  this->printMsg("Computed 2-Separatrices 3D[F]",
+                 1, localTimer.getElapsedTime(), this->threadNumber_);
+
+  return 0;
+}
+
+template <typename triangulationType>
+int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fast(
+  std::vector<std::array<float, 9>> &trianglePos,    
+  std::vector<SimplexId> &caseData,
+  std::vector<long long> &mscLabels,
+  const SimplexId *const morseSmaleManifold,
+  const triangulationType &triangulation) const {
+  ttk::Timer localTimer;
+
+  this->printMsg("Computing 2-Separatrices 3D[F]",
+                 0, // progress form 0-1
+                 0, // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+  if(outputSeparatrices2_numberOfPoints_ == nullptr) {
+    this->printErr("2-separatrices pointer to numberOfPoints is null.");
+    return -1;
+  }
+  if(outputSeparatrices2_points_ == nullptr) {
+    this->printErr("2-separatrices pointer to points is null.");
+    return -1;
+  }
+  if(outputSeparatrices2_numberOfCells_ == nullptr) {
+    this->printErr("2-separatrices pointer to numberOfCells is null.");
+    return -1;
+  }
+  if(outputSeparatrices2_cells_connectivity_ == nullptr) {
+    this->printErr("2-separatrices pointer to cells is null.");
+    return -1;
+  }
+
+  const SimplexId numTetra = triangulation.getNumberOfCells();
+
+//#ifndef TTK_ENABLE_OPENMP
+if(!db_omp) {
+  for(SimplexId tet = 0; tet < numTetra; tet++) {
+    SimplexId vertices[4];
+    triangulation.getCellVertex(tet, 0, vertices[0]);
+    triangulation.getCellVertex(tet, 1, vertices[1]);
+    triangulation.getCellVertex(tet, 2, vertices[2]);
+    triangulation.getCellVertex(tet, 3, vertices[3]);
+
+    const SimplexId msm[4] = {
+        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+        morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
+
+    const unsigned char index1 = (msm[0] == msm[1]) ? 0x00 : 0x10; // 0 : 1
+    const unsigned char index2 = (msm[0] == msm[2]) ? 0x00 :       // 0
+                                 (msm[1] == msm[2]) ? 0x04 : 0x08; // 1 : 2
+    const unsigned char index3 = (msm[0] == msm[3]) ? 0x00 :       // 0
+                                 (msm[1] == msm[3]) ? 0x01 :       // 1
+                                 (msm[2] == msm[3]) ? 0x02 : 0x03; // 2 : 3
+
+    const unsigned char lookupIndex = index1 | index2 | index3;
+
+    if(tetraederLookupIsMultiLabel[lookupIndex]) {
+      if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 labels on tetraeder
+        float vertPos[4][3];
+        triangulation.getVertexPoint(
+          vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+        triangulation.getVertexPoint(
+          vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+        triangulation.getVertexPoint(
+          vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+        triangulation.getVertexPoint(
+          vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+
+        switch(tetraederLookupFast[lookupIndex]) {
+          case 0:
+            trianglePos.push_back({
+              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+              vertPos[2][0], vertPos[2][1], vertPos[2][2]
+            });
+            mscLabels.push_back(msm[0]);
+            break;
+          case 1:
+            trianglePos.push_back({
+              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+              vertPos[3][0], vertPos[3][1], vertPos[3][2]
+            });
+            mscLabels.push_back(msm[0]);
+            break;
+          case 2:
+            trianglePos.push_back({
+              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
+              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
+              vertPos[3][0], vertPos[3][1], vertPos[3][2]
+            });
+            mscLabels.push_back(msm[0]);
+            break;
+          case 3:
+            trianglePos.push_back({
+              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
+              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
+              vertPos[3][0], vertPos[3][1], vertPos[3][2]
+            });
+            mscLabels.push_back(msm[1]);
+            break;
+        }
+
+        caseData.push_back(lookupIndex);
+      }
+    }
+  }
+//#else // TTK_ENABLE_OPENMP
+} else {
+  #pragma omp parallel num_threads(this->threadNumber_)
+  {
+    std::vector<std::array<float, 9>> trianglePosLocal;
+    std::vector<SimplexId> caseDataLocal;
+    std::vector<long long> mscLabelsLocal;
+
+    #pragma omp for schedule(static) nowait
+    for(SimplexId tet = 0; tet < numTetra; tet++) {
+      SimplexId vertices[4];
+      triangulation.getCellVertex(tet, 0, vertices[0]);
+      triangulation.getCellVertex(tet, 1, vertices[1]);
+      triangulation.getCellVertex(tet, 2, vertices[2]);
+      triangulation.getCellVertex(tet, 3, vertices[3]);
+
+      const SimplexId msm[4] = {
+        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+        morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
+
+      const unsigned char index1 = (msm[0] == msm[1]) ? 0x00 : 0x10; // 0 : 1
+      const unsigned char index2 = (msm[0] == msm[2]) ? 0x00 :       // 0
+                                   (msm[1] == msm[2]) ? 0x04 : 0x08; // 1 : 2
+      const unsigned char index3 = (msm[0] == msm[3]) ? 0x00 :       // 0
+                                   (msm[1] == msm[3]) ? 0x01 :       // 1
+                                   (msm[2] == msm[3]) ? 0x02 : 0x03; // 2 : 3
+
+      const unsigned char lookupIndex = index1 | index2 | index3;
+
+      if(tetraederLookupIsMultiLabel[lookupIndex]) {
         if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 label on tetraeder
           float vertPos[4][3];
           triangulation.getVertexPoint(
@@ -2513,7 +3131,7 @@ if(!db_omp) {
                 vertPos[1][0], vertPos[1][1], vertPos[1][2], 
                 vertPos[2][0], vertPos[2][1], vertPos[2][2]
               });
-              msLabelsLocal.push_back(msm[0]);
+              mscLabelsLocal.push_back(msm[0]);
               break;
             case 1:
               trianglePosLocal.push_back({
@@ -2521,7 +3139,7 @@ if(!db_omp) {
                 vertPos[1][0], vertPos[1][1], vertPos[1][2], 
                 vertPos[3][0], vertPos[3][1], vertPos[3][2]
               });
-              msLabelsLocal.push_back(msm[0]);
+              mscLabelsLocal.push_back(msm[0]);
               break;
             case 2:
               trianglePosLocal.push_back({
@@ -2529,7 +3147,7 @@ if(!db_omp) {
                 vertPos[2][0], vertPos[2][1], vertPos[2][2], 
                 vertPos[3][0], vertPos[3][1], vertPos[3][2]
               });
-              msLabelsLocal.push_back(msm[0]);
+              mscLabelsLocal.push_back(msm[0]);
               break;
             case 3:
               trianglePosLocal.push_back({
@@ -2537,7 +3155,7 @@ if(!db_omp) {
                 vertPos[2][0], vertPos[2][1], vertPos[2][2], 
                 vertPos[3][0], vertPos[3][1], vertPos[3][2]
               });
-              msLabelsLocal.push_back(msm[1]);
+              mscLabelsLocal.push_back(msm[1]);
               break;
           }
 
@@ -2552,14 +3170,8 @@ if(!db_omp) {
         trianglePosLocal.begin(), trianglePosLocal.end());
       caseData.insert(caseData.end(),
         caseDataLocal.begin(), caseDataLocal.end());
-      msLabels.insert(msLabels.end(),
-        msLabelsLocal.begin(), msLabelsLocal.end());
-    }
-
-    #pragma omp critical
-    {
-      std::copy(sep2VertSetLocal.begin(), sep2VertSetLocal.end(),
-        std::inserter(*sep2VertSet, sep2VertSet->end()));
+      mscLabels.insert(mscLabels.end(),
+        mscLabelsLocal.begin(), mscLabelsLocal.end());
     }
   }
 } // TTK_ENABLE_OPENMP
@@ -2576,7 +3188,8 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
   const SimplexId *const descNeighbor,
   const SimplexId *const ascManifold,
   const SimplexId *const descManifold,
-  const std::vector<mscq::Simplex> &criticalPoints,
+  const SimplexId *const orderArr,
+  const std::vector<std::pair<SimplexId, char>> &criticalPoints,
   const triangulationType &triangulation) const {
     
   ttk::Timer localTimer;
@@ -2584,38 +3197,37 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
                  0, localTimer.getElapsedTime(), 
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
-  const SimplexId* orderArr = static_cast<const SimplexId *>(inputOrderField_);
   std::vector<std::pair<SimplexId, SimplexId>> reachableExtrema[2];
   std::queue<mscq::Separatrix> saddleSaddleQueue[2];
   std::unordered_map<SimplexId, int> critMap;
   std::set<SimplexId> saddle1Set, saddle2Set;
 
   for(size_t c = 0; c < criticalPoints.size(); ++c) {
-    const mscq::Simplex &crit = criticalPoints[c];
-    critMap.insert({crit.id_, c});
+    const std::pair<SimplexId, char> &crit = criticalPoints[c];
+    critMap.insert({crit.first, c});
     
-    const bool isSaddle1 = crit.index_ == 1;
-    const bool isSaddle2 = crit.index_ == 2;
+    const bool isSaddle1 = crit.second == (char)CriticalType::Saddle1;
+    const bool isSaddle2 = crit.second == (char)CriticalType::Saddle2;
     const int type = isSaddle1 ? 0 : 1;
 
     if(isSaddle1 || isSaddle2) {
       std::map<SimplexId, SimplexId> neigborSeeds;
 
       if(isSaddle1) {
-        saddle1Set.insert(crit.id_);
+        saddle1Set.insert(crit.first);
       } else {
-        saddle2Set.insert(crit.id_);
+        saddle2Set.insert(crit.first);
       }
 
       const SimplexId numNeighbors
-        = triangulation.getVertexNeighborNumber(crit.id_);
+        = triangulation.getVertexNeighborNumber(crit.first);
 
       for(SimplexId i = 0; i < numNeighbors; ++i) {
         SimplexId neighbor;
-        triangulation.getVertexNeighbor(crit.id_, i, neighbor);
+        triangulation.getVertexNeighbor(crit.first, i, neighbor);
 
         if(isSaddle1) {
-          if(orderArr[neighbor] < orderArr[crit.id_]) { // s1-min
+          if(orderArr[neighbor] < orderArr[crit.first]) { // s1-min
             const SimplexId& ascManNeigh = ascManifold[neighbor];
             if(neigborSeeds.find(ascManNeigh) == neigborSeeds.end()) {
               neigborSeeds.insert({ascManNeigh, neighbor});
@@ -2627,7 +3239,7 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
           }
 
         } else { // 2-saddle
-          if(orderArr[neighbor] > orderArr[crit.id_]) { // s2-max
+          if(orderArr[neighbor] > orderArr[crit.first]) { // s2-max
             const SimplexId& dscManNeigh = ascManifold[neighbor];
             if(neigborSeeds.find(dscManNeigh)  == neigborSeeds.end()) {
               neigborSeeds.insert({dscManNeigh, neighbor});
@@ -2641,7 +3253,7 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
       }
 
       for(const auto& s : neigborSeeds) {
-        reachableExtrema[type].push_back(std::make_pair(crit.id_, s.second));
+        reachableExtrema[type].push_back(std::make_pair(crit.first, s.second));
       }
     }
   }
@@ -2712,8 +3324,9 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D_fast(
   std::vector<mscq::Separatrix> &sadExtrConns,
   const SimplexId *const ascendingManifold,
   const SimplexId *const descendingManifold,
-  const SimplexId *const morseSmaleManifold,
-  const std::vector<mscq::Simplex> &criticalPoints,
+  const std::map<SimplexId, SimplexId> &ascCritMap,
+  const std::map<SimplexId, SimplexId> &dscCritMap,
+  const std::vector<std::pair<SimplexId, char>> &criticalPoints,
   const triangulationType &triangulation) const {
     
   ttk::Timer localTimer;
@@ -2724,46 +3337,27 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D_fast(
                  localTimer.getElapsedTime(), // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
-  std::vector<mscq::Simplex> saddle2;
-  std::map<SimplexId, std::vector<SimplexId>> mscIdTo1s;
-
   for(const auto& crit : criticalPoints) {
-    const bool isSaddle1 = crit.index_ == 1;
-    const bool isSaddle2 = crit.index_ == 2;
-
-    if(isSaddle2) {
-      saddle2.push_back(crit);
-    }
-    if(isSaddle1) {
-      SimplexId neighborId;
-      const SimplexId numNeighbors =
-        triangulation.getVertexNeighborNumber(crit.id_);
-
-      for(SimplexId n = 0; n < numNeighbors; n++) {
-        triangulation.getVertexNeighbor(crit.id_, n, neighborId);
-        if(mscIdTo1s.find(morseSmaleManifold[neighborId]) == mscIdTo1s.end()) {
-          mscIdTo1s.insert({morseSmaleManifold[neighborId], std::vector<SimplexId>()});
-        }
-        mscIdTo1s[morseSmaleManifold[neighborId]].push_back(crit.id_);
-      }
-    }
+    const bool isSaddle1 = crit.second == (char)CriticalType::Saddle1;
+    const bool isSaddle2 = crit.second == (char)CriticalType::Saddle2;
 
     if(isSaddle1 || isSaddle2) {
-      SimplexId numNeighbors = triangulation.getVertexNeighborNumber(crit.id_);
+      SimplexId numNeighbors
+        = triangulation.getVertexNeighborNumber(crit.first);
       std::set<SimplexId> neigborSet;
 
       for(SimplexId i = 0; i < numNeighbors; ++i) {
         SimplexId neighbor;
-        triangulation.getVertexNeighbor(crit.id_, i, neighbor);
+        triangulation.getVertexNeighbor(crit.first, i, neighbor);
 
         if(isSaddle1) {
-          neighbor = ascendingManifold[neighbor];
+          neighbor = ascCritMap.at(ascendingManifold[neighbor]);
         } else {
-          neighbor = descendingManifold[neighbor];
+          neighbor = dscCritMap.at(descendingManifold[neighbor]);
         }
 
         if(neigborSet.find(neighbor) == neigborSet.end()) {
-          mscq::Separatrix sadExtrConn(crit.id_);
+          mscq::Separatrix sadExtrConn(crit.first);
           if(isSaddle1) {
             sadExtrConn.type_ = 0;
           } else {
@@ -2788,70 +3382,8 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D_fast(
 }
 
 template <typename triangulationType>
-int ttk::MorseSmaleSegmentationPL::findSaddlesFromCadidates(
-  std::vector<mscq::Simplex> &criticalPoints, 
-  const std::unordered_set<SimplexId> &sep2VertSet,
-  const triangulationType &triangulation) const {
-
-  ttk::Timer localTimer;
-
-  const int dim = triangulation.getDimensionality();
-
-  const SimplexId * orderArr
-    = static_cast<const SimplexId *>(inputOrderField_);
-
-  //int numSaddles = 0;
-
-  this->printMsg("Computing for saddles",
-                 0, localTimer.getElapsedTime(), this->threadNumber_,
-                 ttk::debug::LineMode::REPLACE);
-
-  ScalarFieldCriticalPoints sfcp;
-  sfcp.setDomainDimension(dim);
-  
-if(!db_omp) {
-  for(SimplexId candidate: sep2VertSet) {
-    const CriticalType critC = (CriticalType)sfcp.getCriticalType(
-      candidate, orderArr, (AbstractTriangulation*)&triangulation);
-
-    if(critC == CriticalType::Saddle1) {
-      criticalPoints.push_back(mscq::Simplex(candidate, 1));
-    } else if(critC == CriticalType::Saddle2) {
-      criticalPoints.push_back(mscq::Simplex(candidate, 2));
-    }
-  }
-} else {
-  #pragma omp parallel
-  {
-    #pragma omp single
-    {
-      for(auto it = sep2VertSet.begin();
-        it != sep2VertSet.end(); it++) {
-        #pragma omp task
-        {
-          const CriticalType critC = (CriticalType)sfcp.getCriticalType(
-            *it, orderArr, (AbstractTriangulation*)&triangulation);
-          
-          if(critC == CriticalType::Saddle1) {
-            criticalPoints.push_back(mscq::Simplex(*it, 1));
-          } else if(critC == CriticalType::Saddle2) {
-            criticalPoints.push_back(mscq::Simplex(*it, 2));
-          }
-        }
-      }
-    }
-  }
-}
-
-  this->printMsg("Computed saddles" ,
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
-
-  return 1;
-}
-
-template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::setCriticalPoints(
-  std::vector<mscq::Simplex> &criticalPoints,
+  std::vector<std::pair<SimplexId, char>> &criticalPoints,
   const triangulationType &triangulation) const {
 
   ttk::Timer localTimer;
@@ -2863,10 +3395,10 @@ int ttk::MorseSmaleSegmentationPL::setCriticalPoints(
   float x, y, z;
 
   for(const auto crit : criticalPoints) {
-    triangulation.getVertexPoint(crit.id_, x, y, z);
+    triangulation.getVertexPoint(crit.first, x, y, z);
     outputCriticalPoints_points_->push_back({x, y, z});
-    outputCriticalPoints_points_cellDimensions_->push_back(crit.index_);
-    outputCriticalPoints_points_cellIds_->push_back(crit.id_);
+    outputCriticalPoints_points_cellDimensions_->push_back(crit.second);
+    outputCriticalPoints_points_cellIds_->push_back(crit.first);
   }
 
   this->printMsg("Wrote " + std::to_string(criticalPoints.size()) +
@@ -2982,7 +3514,7 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices2_3D(
   const std::vector<std::array<float, 9>> &trianglePos,
   const std::vector<SimplexId> &caseData,
   const std::vector<long long> &msLabels,
-  std::map<long long, SimplexId> &mscLabelMap) const {
+  std::map<long long, SimplexId> &msLabelMap) const {
 
   ttk::Timer localTimer;
 
@@ -3029,14 +3561,14 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices2_3D(
     cellsConn[3 * tri + 1] = 3 * tri + 1;
     cellsConn[3 * tri + 2] = 3 * tri + 2;
 
-    cellsMSCIds[tri] = mscLabelMap[msLabels[tri]];
+    cellsMSCIds[tri] = msLabelMap[msLabels[tri]];
   }
 
   // update pointers
   *outputSeparatrices2_numberOfPoints_ = npoints;
   *outputSeparatrices2_numberOfCells_ = numCells;
 
-  this->printMsg("Wrote " + std::to_string(numTriangles) + "2-separatrices",
+  this->printMsg("Wrote " + std::to_string(numTriangles) + " 2-separatrices",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 1;
