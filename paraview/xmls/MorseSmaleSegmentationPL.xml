@@ -116,12 +116,19 @@
         label="1-Separaticies Mode"
         command="SetSeparaticies1Mode"
         number_of_elements="1"
-        default_values="1">
+        default_values="1"
+        panel_visibility="advanced">
         <EnumerationDomain name="enum">
           <Entry value="0" text="None"/>
           <Entry value="1" text="Detailed"/>
           <Entry value="2" text="Simple"/>
         </EnumerationDomain>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+            mode="visibility"
+            property="ComputeSaddles"
+            value="1" />
+        </Hints>
         <Documentation>
           Select the compute mode for the 1-Separaticies.
         </Documentation>

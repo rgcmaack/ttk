@@ -944,41 +944,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
       break;
   }
 
-  if(dim == 2) {
-    std::vector<mscq::Separatrix> separatrices1;
-    std::unordered_set<SimplexId> sep2VertSet;
-
-    // sparseId, vector of edgeID tuples
-    std::unordered_map<long long, std::vector<
-      std::tuple<SimplexId, SimplexId>>*> sepPieces;
-
-    // 3 label triangles
-    std::unordered_map<long long, std::vector<
-      std::tuple<SimplexId, SimplexId> >> triConnectors;
-    computeSeparatrices1Pieces_2D<triangulationType>(
-      sep2VertSet, sepPieces, triConnectors,
-      numberOfMSCRegions, sepManifold, triangulation);
-
-    computeSeparatrices1Inner_2D<triangulationType>(
-      sep2VertSet, separatrices1, sepPieces, triConnectors,
-      numberOfMSCRegions, sepManifold, triangulation);
-
-    /*computeSeparatrices1Border_2D<triangulationType>(
-      sep2VertSet, separatrices1, sepManifold, triangulation
-    );*/
-
-    /*findSaddlesFromCadidates<triangulationType>(
-      criticalPoints, sep2VertSet, triangulation
-    );*/
-
-    setCriticalPoints<triangulationType>(
-      criticalPoints, triangulation
-    );
-
-    setSeparatrices1Inner_2D<triangulationType>(
-      separatrices1, triangulation
-    );
-  } else if(dim == 3) {
+  if(dim == 3) {
     std::vector<std::array<float, 9>> trianglePos;
     std::vector<long long> msLabels;
     std::map<long long, SimplexId> msLabelMap;
@@ -1017,7 +983,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
       if(sep1Mode == SEPARATRICES1_MODE::SIMPLE) {
         computeSaddleExtremaConnectors_3D_fast<triangulationType>(
         sadExtrConns, ascendingManifold, descendingManifold,
-        dscCritMap, ascCritMap, criticalPoints, triangulation);
+        ascCritMap, dscCritMap, criticalPoints, triangulation);
 
       } else if(sep1Mode == SEPARATRICES1_MODE::DETAILED) {
         computeSaddleExtremaConnectors_3D<triangulationType>(
@@ -1030,6 +996,40 @@ int ttk::MorseSmaleSegmentationPL::execute(
     setSeparatrices1_3D<triangulationType>(sadExtrConns, triangulation);            
 
     setSeparatrices2_3D(trianglePos, caseData, msLabels, msLabelMap);
+  } else if(dim == 2) {
+    std::vector<mscq::Separatrix> separatrices1;
+    std::unordered_set<SimplexId> sep2VertSet;
+
+    // sparseId, vector of edgeID tuples
+    std::unordered_map<long long, std::vector<
+      std::tuple<SimplexId, SimplexId>>*> sepPieces;
+
+    // 3 label triangles
+    std::unordered_map<long long, std::vector<
+      std::tuple<SimplexId, SimplexId> >> triConnectors;
+    computeSeparatrices1Pieces_2D<triangulationType>(
+      sep2VertSet, sepPieces, triConnectors,
+      numberOfMSCRegions, sepManifold, triangulation);
+
+    computeSeparatrices1Inner_2D<triangulationType>(
+      sep2VertSet, separatrices1, sepPieces, triConnectors,
+      numberOfMSCRegions, sepManifold, triangulation);
+
+    /*computeSeparatrices1Border_2D<triangulationType>(
+      sep2VertSet, separatrices1, sepManifold, triangulation
+    );*/
+
+    /*findSaddlesFromCadidates<triangulationType>(
+      criticalPoints, sep2VertSet, triangulation
+    );*/
+
+    setCriticalPoints<triangulationType>(
+      criticalPoints, triangulation
+    );
+
+    setSeparatrices1Inner_2D<triangulationType>(
+      separatrices1, triangulation
+    );
   }
 
   setCriticalPoints<triangulationType>(criticalPoints, triangulation);
@@ -3361,7 +3361,7 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D_fast(
           if(isSaddle1) {
             sadExtrConn.type_ = 0;
           } else {
-            sadExtrConn.type_ = 2;
+            sadExtrConn.type_ = 1;
           }
 
           sadExtrConn.geometry_.push_back(neighbor);
