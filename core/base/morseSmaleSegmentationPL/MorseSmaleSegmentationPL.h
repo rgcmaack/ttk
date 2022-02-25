@@ -428,7 +428,8 @@ namespace ttk {
       NONE = 0,
       WALLS = 1,
       SEPARATEBASINSFINE = 2,
-      SEPARATEBASINSFAST = 3
+      SEPARATEBASINSFAST = 3,
+      EXPERIMENT = 4,
     };    
 
     int preconditionTriangulation(
@@ -678,7 +679,18 @@ namespace ttk {
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
-    int computemsLabelMap(
+    template <typename triangulationType>
+    int computeSeparatrices2_3D_split(
+      std::vector<std::array<float, 9>> &trianglePos,
+      std::vector<SimplexId> &caseData,
+      std::vector<long long> &msLabels,
+      const SimplexId &numAscRegions,
+      const SimplexId &numDscRegions,
+      const SimplexId *const ascManifold,
+      const SimplexId *const dscManifold,
+      const triangulationType &triangulation) const;
+
+    int computeMSLabelMap(
       const std::vector<long long> &msLabels,
       std::map<long long, SimplexId> &msLabelMap) const;
 
@@ -723,15 +735,6 @@ namespace ttk {
       const SimplexId *const descendingManifold,
       const std::map<SimplexId, SimplexId> &ascCritMap,
       const std::map<SimplexId, SimplexId> &dscCritMap,
-      const std::vector<std::pair<SimplexId, char>> &criticalPoints,
-      const triangulationType &triangulation) const;
-
-    template <typename scalarType, typename triangulationType>
-    int computeSaddleSaddleConnectors_3D(
-      std::vector<mscq::Separatrix> &sadSadConns,
-      const SimplexId *const morseSmaleManifold,
-      const SimplexId *const descManifold,
-      const std::unordered_set<SimplexId> *sep2VertSet,
       const std::vector<std::pair<SimplexId, char>> &criticalPoints,
       const triangulationType &triangulation) const;
 
@@ -899,7 +902,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
   SimplexId numberOfMinima{0};
   SimplexId numberOfMSCRegions{0};
   
-  SimplexId *sepManifold;
+  SimplexId *sepManifold = nullptr;
   bool SepManifoldIsValid = false;
 
   switch(sepManifoldType) {
@@ -957,7 +960,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
           trianglePos, caseData, msLabels, numberOfMSCRegions, sepManifold,
           triangulation);
 
-        computemsLabelMap(msLabels, msLabelMap);
+        computeMSLabelMap(msLabels, msLabelMap);
 
       } else if(sep2Mode == SEPARATRICES2_MODE::SEPARATEBASINSFINE) {
         computeBasinSeparation_3D_fine<triangulationType>(
@@ -975,7 +978,14 @@ int ttk::MorseSmaleSegmentationPL::execute(
 
         for(int i = -1; i < numberOfMSCRegions; ++i) {
           msLabelMap.insert({i,i});
-        }
+        } 
+
+      } else if(sep2Mode == SEPARATRICES2_MODE::EXPERIMENT) {
+        computeSeparatrices2_3D_split<triangulationType>(
+          trianglePos, caseData, msLabels, numberOfMinima, numberOfMinima,
+          ascendingManifold,descendingManifold, triangulation);
+
+        computeMSLabelMap(msLabels, msLabelMap);
       }
     }
 
@@ -2292,9 +2302,6 @@ if(!db_omp) {
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
     std::vector<long long> msLabelsLocal;
-    std::vector<std::tuple<long long, SimplexId, SimplexId, bool>> sepPcsLocal;
-    std::vector<SimplexId> sep2VertSetLocal;
-    std::vector<SimplexId> sep2ForkSetLocal;
 
     #pragma omp for schedule(static) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
@@ -2440,24 +2447,6 @@ if(!db_omp) {
             lookupIndex, lookupIndex, lookupIndex,
             lookupIndex, lookupIndex, lookupIndex}
           );
-
-          for(int tri = 0; tri < 4; ++tri) {
-            SimplexId triID;
-            triangulation.getCellTriangle(tet, tri, triID);
-
-            SimplexId triVertIds[3];
-            triangulation.getTriangleVertex(triID, 0, triVertIds[0]);
-            triangulation.getTriangleVertex(triID, 1, triVertIds[1]);
-            triangulation.getTriangleVertex(triID, 2, triVertIds[2]);
-
-            const long long sparseID = getSparseId(
-              morseSmaleManifold[triVertIds[0]],
-              morseSmaleManifold[triVertIds[1]],
-              morseSmaleManifold[triVertIds[2]]
-            );
-
-            sepPcsLocal.push_back(std::make_tuple(sparseID, triID, tet, true));
-          }
         } else { // 2 or 3 labels on tetraeder
           const size_t numTris = tetraederNumTriangles[lookupIndex];
           long long sparseIds[numTris];
@@ -2503,7 +2492,669 @@ if(!db_omp) {
   return 0;
 }
 
-int ttk::MorseSmaleSegmentationPL::computemsLabelMap(
+template <typename triangulationType>
+int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D_split(
+  std::vector<std::array<float, 9>> &trianglePos,
+  std::vector<SimplexId> &caseData,
+  std::vector<long long> &msLabels,
+  const SimplexId &numAscRegions,
+  const SimplexId &numDscRegions,
+  const SimplexId *const ascManifold,
+  const SimplexId *const dscManifold,
+  const triangulationType &triangulation) const {
+
+  ttk::Timer localTimer;
+
+  // print the progress of the current subprocedure (currently 0%)
+  this->printMsg("Computing 2-Separatrices 3D[S]",
+                 0, // progress form 0-1
+                 0, // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+  if(outputSeparatrices2_numberOfPoints_ == nullptr) {
+    this->printErr("2-separatrices pointer to numberOfPoints is null.");
+    return -1;
+  }
+  if(outputSeparatrices2_points_ == nullptr) {
+    this->printErr("2-separatrices pointer to points is null.");
+    return -1;
+  }
+  if(outputSeparatrices2_numberOfCells_ == nullptr) {
+    this->printErr("2-separatrices pointer to numberOfCells is null.");
+    return -1;
+  }
+  if(outputSeparatrices2_cells_connectivity_ == nullptr) {
+    this->printErr("2-separatrices pointer to cells is null.");
+    return -1;
+  }
+
+  const SimplexId numTetra = triangulation.getNumberOfCells();
+  const long long ascSparseIDOffset = (numAscRegions * numAscRegions);
+
+//#ifndef TTK_ENABLE_OPENMP
+if(!db_omp) {
+  for(SimplexId tet = 0; tet < numTetra; tet++) {
+    SimplexId vertices[4];
+    triangulation.getCellVertex(tet, 0, vertices[0]);
+    triangulation.getCellVertex(tet, 1, vertices[1]);
+    triangulation.getCellVertex(tet, 2, vertices[2]);
+    triangulation.getCellVertex(tet, 3, vertices[3]);
+
+    const SimplexId asc[4] = {
+      ascManifold[vertices[0]], ascManifold[vertices[1]],
+      ascManifold[vertices[2]], ascManifold[vertices[3]]};
+    
+    const SimplexId dsc[4] = {
+      dscManifold[vertices[0]], dscManifold[vertices[1]],
+      dscManifold[vertices[2]], dscManifold[vertices[3]]};
+
+    const unsigned char index1A = (asc[0] == asc[1]) ? 0x00 : 0x10; // 0 : 1
+    const unsigned char index2A = (asc[0] == asc[2]) ? 0x00 :       // 0
+                                  (asc[1] == asc[2]) ? 0x04 : 0x08; // 1 : 2
+    const unsigned char index3A = (asc[0] == asc[3]) ? 0x00 :       // 0
+                                  (asc[1] == asc[3]) ? 0x01 :       // 1
+                                  (asc[2] == asc[3]) ? 0x02 : 0x03; // 2 : 3
+
+    const unsigned char index1D = (dsc[0] == dsc[1]) ? 0x00 : 0x10; // 0 : 1
+    const unsigned char index2D = (dsc[0] == dsc[2]) ? 0x00 :       // 0
+                                  (dsc[1] == dsc[2]) ? 0x04 : 0x08; // 1 : 2
+    const unsigned char index3D = (dsc[0] == dsc[3]) ? 0x00 :       // 0
+                                  (dsc[1] == dsc[3]) ? 0x01 :       // 1
+                                  (dsc[2] == dsc[3]) ? 0x02 : 0x03; // 2 : 3
+
+    const unsigned char lookupIndexA = index1A | index2A | index3A;
+    const int *tetEdgeIndicesA = tetraederLookup[lookupIndexA];
+    const int *tetVertLabelA = tetraederLabelLookup[lookupIndexA];
+
+    const unsigned char lookupIndexD = index1D | index2D | index3D;
+    const int *tetEdgeIndicesD = tetraederLookup[lookupIndexD];
+    const int *tetVertLabelD = tetraederLabelLookup[lookupIndexD];
+
+    if(tetraederLookupIsMultiLabel[lookupIndexA] 
+    || tetraederLookupIsMultiLabel[lookupIndexD]) {
+      float edgeCenters[10][3];
+      // the 6 edge centers
+      getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
+      getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
+      getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
+      getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
+      getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
+      getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
+
+      float vertPos[4][3];
+      triangulation.getVertexPoint(
+        vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+      triangulation.getVertexPoint(
+        vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+      triangulation.getVertexPoint(
+        vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+      triangulation.getVertexPoint(
+        vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+
+      // the 4 triangle centers
+      getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
+      getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
+      getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
+      getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
+
+      if(tetEdgeIndicesA[0] != -1) {
+        if(tetEdgeIndicesA[0] == 10) { // 4 labels on tetraeder
+          float tetCenter[3];
+          triangulation.getCellIncenter(tet, 3, tetCenter);
+
+          // vertex 0
+          trianglePos.push_back({
+            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+            edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
+            edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
+            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
+            edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
+            edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
+            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
+            edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
+            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
+            edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
+            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+
+          long long sparseAscIds[] = {
+            getSparseId(asc[0], asc[1], numAscRegions),
+            getSparseId(asc[0], asc[2], numAscRegions),
+            getSparseId(asc[0], asc[3], numAscRegions),
+            getSparseId(asc[1], asc[2], numAscRegions),
+            getSparseId(asc[1], asc[3], numAscRegions),
+            getSparseId(asc[2], asc[3], numAscRegions)
+          };
+          msLabels.insert(msLabels.end(), {
+            sparseAscIds[0], sparseAscIds[0],
+            sparseAscIds[1], sparseAscIds[1],
+            sparseAscIds[2], sparseAscIds[2],
+            sparseAscIds[3], sparseAscIds[3],
+            sparseAscIds[4], sparseAscIds[4],
+            sparseAscIds[5], sparseAscIds[5]
+          });
+
+          caseData.insert(caseData.end(), {
+            lookupIndexA, lookupIndexA, lookupIndexA,
+            lookupIndexA, lookupIndexA, lookupIndexA,
+            lookupIndexA, lookupIndexA, lookupIndexA,
+            lookupIndexA, lookupIndexA, lookupIndexA}
+          );
+        } else { // 2 or 3 labels on tetraeder
+          const size_t numTris = tetraederNumTriangles[lookupIndexA];
+          long long sparseIds[numTris];
+          for(size_t t = 0; t < numTris; ++t) {
+            trianglePos.push_back({
+              edgeCenters[tetEdgeIndicesA[(t * 3)    ]][0],
+              edgeCenters[tetEdgeIndicesA[(t * 3)    ]][1],
+              edgeCenters[tetEdgeIndicesA[(t * 3)    ]][2],
+              edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][0],
+              edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][1],
+              edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][2],
+              edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][0],
+              edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][1],
+              edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][2]
+            });
+
+            sparseIds[t] = getSparseId(asc[tetVertLabelA[t * 2]],
+                                       asc[tetVertLabelA[(t * 2) + 1]],
+                                       numAscRegions);
+            msLabels.push_back(sparseIds[t]);
+
+            caseData.push_back(lookupIndexA);
+          }
+        }
+      }
+      if(tetEdgeIndicesD[0] != -1) {
+        if(tetEdgeIndicesD[0] == 10) { // 4 labels on tetraeder
+          float tetCenter[3];
+          triangulation.getCellIncenter(tet, 3, tetCenter);
+
+          // vertex 0
+          trianglePos.push_back({
+            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+            edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
+            edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
+            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
+            edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
+            edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
+            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
+            edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
+            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
+            edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+          trianglePos.push_back({
+            edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
+            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
+            tetCenter[0], tetCenter[1], tetCenter[2]
+          });
+
+          long long sparseDscIds[] = {
+            getSparseId(asc[0], asc[1], numDscRegions),
+            getSparseId(asc[0], asc[2], numDscRegions),
+            getSparseId(asc[0], asc[3], numDscRegions),
+            getSparseId(asc[1], asc[2], numDscRegions),
+            getSparseId(asc[1], asc[3], numDscRegions),
+            getSparseId(asc[2], asc[3], numDscRegions)
+          };
+          msLabels.insert(msLabels.end(), {
+            sparseDscIds[0], sparseDscIds[0],
+            sparseDscIds[1], sparseDscIds[1],
+            sparseDscIds[2], sparseDscIds[2],
+            sparseDscIds[3], sparseDscIds[3],
+            sparseDscIds[4], sparseDscIds[4],
+            sparseDscIds[5], sparseDscIds[5]
+          });
+
+          caseData.insert(caseData.end(), {
+            lookupIndexD, lookupIndexD, lookupIndexD,
+            lookupIndexD, lookupIndexD, lookupIndexD,
+            lookupIndexD, lookupIndexD, lookupIndexD,
+            lookupIndexD, lookupIndexD, lookupIndexD}
+          );
+        } else { // 2 or 3 labels on tetraeder
+          const size_t numTris = tetraederNumTriangles[lookupIndexD];
+          long long sparseIds[numTris];
+          for(size_t t = 0; t < numTris; ++t) {
+            trianglePos.push_back({
+              edgeCenters[tetEdgeIndicesD[(t * 3)    ]][0],
+              edgeCenters[tetEdgeIndicesD[(t * 3)    ]][1],
+              edgeCenters[tetEdgeIndicesD[(t * 3)    ]][2],
+              edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][0],
+              edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][1],
+              edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][2],
+              edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][0],
+              edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][1],
+              edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][2]
+            });
+
+            sparseIds[t] = getSparseId(dsc[tetVertLabelD[t * 2]],
+                                       dsc[tetVertLabelD[(t * 2) + 1]],
+                                       numDscRegions);
+            msLabels.push_back(sparseIds[t] + ascSparseIDOffset);
+
+            caseData.push_back(lookupIndexD);
+          }
+        }
+      }
+    }
+  }
+//#else // TTK_ENABLE_OPENMP
+} else {
+  #pragma omp parallel num_threads(this->threadNumber_)
+  {
+    std::vector<std::array<float, 9>> trianglePosLocal;
+    std::vector<SimplexId> caseDataLocal;
+    std::vector<long long> msLabelsLocal;
+
+    #pragma omp for schedule(static) nowait
+    for(SimplexId tet = 0; tet < numTetra; tet++) {
+      SimplexId vertices[4];
+      triangulation.getCellVertex(tet, 0, vertices[0]);
+      triangulation.getCellVertex(tet, 1, vertices[1]);
+      triangulation.getCellVertex(tet, 2, vertices[2]);
+      triangulation.getCellVertex(tet, 3, vertices[3]);
+
+      const SimplexId asc[4] = {
+        ascManifold[vertices[0]], ascManifold[vertices[1]],
+        ascManifold[vertices[2]], ascManifold[vertices[3]]};
+      
+      const SimplexId dsc[4] = {
+        dscManifold[vertices[0]], dscManifold[vertices[1]],
+        dscManifold[vertices[2]], dscManifold[vertices[3]]};
+
+      const unsigned char index1A = (asc[0] == asc[1]) ? 0x00 : 0x10; // 0 : 1
+      const unsigned char index2A = (asc[0] == asc[2]) ? 0x00 :       // 0
+                                    (asc[1] == asc[2]) ? 0x04 : 0x08; // 1 : 2
+      const unsigned char index3A = (asc[0] == asc[3]) ? 0x00 :       // 0
+                                    (asc[1] == asc[3]) ? 0x01 :       // 1
+                                    (asc[2] == asc[3]) ? 0x02 : 0x03; // 2 : 3
+
+      const unsigned char index1D = (dsc[0] == dsc[1]) ? 0x00 : 0x10; // 0 : 1
+      const unsigned char index2D = (dsc[0] == dsc[2]) ? 0x00 :       // 0
+                                    (dsc[1] == dsc[2]) ? 0x04 : 0x08; // 1 : 2
+      const unsigned char index3D = (dsc[0] == dsc[3]) ? 0x00 :       // 0
+                                    (dsc[1] == dsc[3]) ? 0x01 :       // 1
+                                    (dsc[2] == dsc[3]) ? 0x02 : 0x03; // 2 : 3
+
+      const unsigned char lookupIndexA = index1A | index2A | index3A;
+      const int *tetEdgeIndicesA = tetraederLookup[lookupIndexA];
+      const int *tetVertLabelA = tetraederLabelLookup[lookupIndexA];
+
+      const unsigned char lookupIndexD = index1D | index2D | index3D;
+      const int *tetEdgeIndicesD = tetraederLookup[lookupIndexD];
+      const int *tetVertLabelD = tetraederLabelLookup[lookupIndexD];
+
+      if(tetraederLookupIsMultiLabel[lookupIndexA] 
+      || tetraederLookupIsMultiLabel[lookupIndexD]) {
+        float edgeCenters[10][3];
+        // the 6 edge centers
+        getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
+        getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
+        getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
+        getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
+        getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
+        getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
+
+        float vertPos[4][3];
+        triangulation.getVertexPoint(
+          vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+        triangulation.getVertexPoint(
+          vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+        triangulation.getVertexPoint(
+          vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+        triangulation.getVertexPoint(
+          vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+
+        // the 4 triangle centers
+        getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
+        getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
+        getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
+        getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
+
+        if(tetEdgeIndicesA[0] != -1) {
+          if(tetEdgeIndicesA[0] == 10) { // 4 labels on tetraeder
+            float tetCenter[3];
+            triangulation.getCellIncenter(tet, 3, tetCenter);
+
+            // vertex 0
+            trianglePosLocal.push_back({
+              edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+              edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+              edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
+              edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
+              edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
+              edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+              edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
+              edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
+              edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
+              edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
+              edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
+              edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
+              edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+
+            long long sparseAscIds[] = {
+              getSparseId(asc[0], asc[1], numAscRegions),
+              getSparseId(asc[0], asc[2], numAscRegions),
+              getSparseId(asc[0], asc[3], numAscRegions),
+              getSparseId(asc[1], asc[2], numAscRegions),
+              getSparseId(asc[1], asc[3], numAscRegions),
+              getSparseId(asc[2], asc[3], numAscRegions)
+            };
+            msLabelsLocal.insert(msLabelsLocal.end(), {
+              sparseAscIds[0], sparseAscIds[0],
+              sparseAscIds[1], sparseAscIds[1],
+              sparseAscIds[2], sparseAscIds[2],
+              sparseAscIds[3], sparseAscIds[3],
+              sparseAscIds[4], sparseAscIds[4],
+              sparseAscIds[5], sparseAscIds[5]
+            });
+
+            caseDataLocal.insert(caseDataLocal.end(), {
+              lookupIndexA, lookupIndexA, lookupIndexA,
+              lookupIndexA, lookupIndexA, lookupIndexA,
+              lookupIndexA, lookupIndexA, lookupIndexA,
+              lookupIndexA, lookupIndexA, lookupIndexA}
+            );
+          } else { // 2 or 3 labels on tetraeder
+            const size_t numTris = tetraederNumTriangles[lookupIndexA];
+            long long sparseIds[numTris];
+            for(size_t t = 0; t < numTris; ++t) {
+              trianglePosLocal.push_back({
+                edgeCenters[tetEdgeIndicesA[(t * 3)    ]][0],
+                edgeCenters[tetEdgeIndicesA[(t * 3)    ]][1],
+                edgeCenters[tetEdgeIndicesA[(t * 3)    ]][2],
+                edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][0],
+                edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][1],
+                edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][2],
+                edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][0],
+                edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][1],
+                edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][2]
+              });
+
+              sparseIds[t] = getSparseId(asc[tetVertLabelA[t * 2]],
+                                         asc[tetVertLabelA[(t * 2) + 1]],
+                                         numAscRegions);
+              msLabelsLocal.push_back(sparseIds[t]);
+
+              //caseDataLocal.push_back(lookupIndexA);
+              caseDataLocal.push_back(0);
+            }
+          }
+        }
+        if(tetEdgeIndicesD[0] != -1) {
+          if(tetEdgeIndicesD[0] == 10) { // 4 labels on tetraeder
+            float tetCenter[3];
+            triangulation.getCellIncenter(tet, 3, tetCenter);
+
+            // vertex 0
+            trianglePosLocal.push_back({
+              edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+              edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
+              edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
+              edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
+              edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
+              edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
+              edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
+              edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
+              edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
+              edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
+              edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
+              edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+            trianglePosLocal.push_back({
+              edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
+              edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
+              tetCenter[0], tetCenter[1], tetCenter[2]
+            });
+
+            long long sparseDscIds[] = {
+              getSparseId(asc[0], asc[1], numDscRegions),
+              getSparseId(asc[0], asc[2], numDscRegions),
+              getSparseId(asc[0], asc[3], numDscRegions),
+              getSparseId(asc[1], asc[2], numDscRegions),
+              getSparseId(asc[1], asc[3], numDscRegions),
+              getSparseId(asc[2], asc[3], numDscRegions)
+            };
+            msLabelsLocal.insert(msLabelsLocal.end(), {
+              sparseDscIds[0], sparseDscIds[0],
+              sparseDscIds[1], sparseDscIds[1],
+              sparseDscIds[2], sparseDscIds[2],
+              sparseDscIds[3], sparseDscIds[3],
+              sparseDscIds[4], sparseDscIds[4],
+              sparseDscIds[5], sparseDscIds[5]
+            });
+
+            caseDataLocal.insert(caseDataLocal.end(), {
+              lookupIndexD, lookupIndexD, lookupIndexD,
+              lookupIndexD, lookupIndexD, lookupIndexD,
+              lookupIndexD, lookupIndexD, lookupIndexD,
+              lookupIndexD, lookupIndexD, lookupIndexD}
+            );
+          } else { // 2 or 3 labels on tetraeder
+            const size_t numTris = tetraederNumTriangles[lookupIndexD];
+            long long sparseIds[numTris];
+            for(size_t t = 0; t < numTris; ++t) {
+              trianglePosLocal.push_back({
+                edgeCenters[tetEdgeIndicesD[(t * 3)    ]][0],
+                edgeCenters[tetEdgeIndicesD[(t * 3)    ]][1],
+                edgeCenters[tetEdgeIndicesD[(t * 3)    ]][2],
+                edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][0],
+                edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][1],
+                edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][2],
+                edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][0],
+                edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][1],
+                edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][2]
+              });
+
+              sparseIds[t] = getSparseId(dsc[tetVertLabelD[t * 2]],
+                                         dsc[tetVertLabelD[(t * 2) + 1]],
+                                         numDscRegions);
+              msLabelsLocal.push_back(sparseIds[t] + ascSparseIDOffset);
+
+              //caseDataLocal.push_back(lookupIndexD);
+              caseDataLocal.push_back(1);
+            }
+          }
+        }
+      }
+    }
+
+    #pragma omp critical
+    {
+      trianglePos.insert(trianglePos.end(),
+        trianglePosLocal.begin(), trianglePosLocal.end());
+      caseData.insert(caseData.end(),
+        caseDataLocal.begin(), caseDataLocal.end());
+      msLabels.insert(msLabels.end(),
+        msLabelsLocal.begin(), msLabelsLocal.end());
+    }
+  }
+} // #if TTK_OMPENMP
+  this->printMsg("Computed 2-Separatrices 3D[S]", 1,
+    localTimer.getElapsedTime(), this->threadNumber_);
+
+  return 0;
+}
+
+int ttk::MorseSmaleSegmentationPL::computeMSLabelMap(
   const std::vector<long long> &msLabels,
   std::map<long long, SimplexId> &msLabelMap) const {
 

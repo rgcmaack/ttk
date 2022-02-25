@@ -145,6 +145,7 @@
           <Entry value="1" text="Walls"/>
           <Entry value="2" text="Separate Basins fine"/>
           <Entry value="3" text="Separate Basins fast"/>
+          <Entry value="4" text="Experiment"/>
         </EnumerationDomain>
         <Documentation>
           Select the compute mode for the 2-Separaticies.
