@@ -125,6 +125,7 @@ private:
   std::vector<ttk::SimplexId> separatrices1_cells_separatrixIds{};
   std::vector<char> separatrices1_cells_separatrixTypes{};
   std::vector<char> separatrices1_cells_isOnBoundary{};
+  std::vector<float> separatrices1_cells_extremaDistance{};
 
   // 2-separatrices data
   std::vector<float> separatrices2_points{};

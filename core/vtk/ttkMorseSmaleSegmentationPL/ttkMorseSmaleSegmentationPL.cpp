@@ -239,7 +239,8 @@ int ttkMorseSmaleSegmentationPL::dispatch(
     &separatrices1_cells_connectivity, &separatrices1_cells_sourceIds,
     &separatrices1_cells_destinationIds, &separatrices1_cells_separatrixIds,
     &separatrices1_cells_separatrixTypes, &s1_separatrixFunctionMaxima,
-    &s1_separatrixFunctionMinima, &separatrices1_cells_isOnBoundary);
+    &s1_separatrixFunctionMinima, &separatrices1_cells_isOnBoundary,
+    &separatrices1_cells_extremaDistance);
 
   // 2-separatrices
   SimplexId s2_numberOfPoints{};
@@ -247,11 +248,12 @@ int ttkMorseSmaleSegmentationPL::dispatch(
   separatrices2_points.clear();
   separatrices2_cells_mscIds.clear();
   separatrices2_cells_caseTypes.clear();
+  separatrices1_cells_extremaDistance.clear();
 
   this->setOutputSeparatrices2(
     &s2_numberOfPoints, &separatrices2_points,
     &s2_numberOfCells, &separatrices2_cells_connectivity,
-    &separatrices2_cells_mscIds,&separatrices2_cells_caseTypes);
+    &separatrices2_cells_mscIds, &separatrices2_cells_caseTypes);
 
   const int ret = this->execute<triangulationType>(
     SeparatricesManifold, Separaticies1Mode, Separaticies2Mode, ComputeSaddles,
@@ -393,6 +395,11 @@ int ttkMorseSmaleSegmentationPL::dispatch(
     isOnBoundary->SetName("NumberOfCriticalPointsOnBoundary");
     setArray(isOnBoundary, separatrices1_cells_isOnBoundary);
 
+    vtkNew<vtkFloatArray> extremaDistance{};
+    extremaDistance->SetNumberOfComponents(1);
+    extremaDistance->SetName("ExtremaDistance");
+    setArray(extremaDistance, separatrices1_cells_extremaDistance);
+
     vtkNew<ttkSimplexIdTypeArray> offsets{}, connectivity{};
     offsets->SetNumberOfComponents(1);
     offsets->SetNumberOfTuples(s1_numberOfCells + 1);
@@ -427,6 +434,7 @@ int ttkMorseSmaleSegmentationPL::dispatch(
 #endif
 
     cellData->AddArray(separatrixTypes);
+    cellData->AddArray(extremaDistance);
   }
 
   // 2-separatrices
@@ -451,13 +459,22 @@ int ttkMorseSmaleSegmentationPL::dispatch(
     caseTypes->SetName("CaseType");
     setArray(caseTypes, separatrices2_cells_caseTypes);
 
+    if(triangulation.getDimensionality() == 3) {
 #ifdef TTK_ENABLE_OPENMP
 #pragma omp parallel for num_threads(this->threadNumber_)
 #endif // TTK_ENABLE_OPENMP
-    for(SimplexId i = 0; i < s2_numberOfCells + 1; ++i) {
-      offsets->SetTuple1(i, 3 * i);
+      for(SimplexId i = 0; i < s2_numberOfCells + 1; ++i) {
+        offsets->SetTuple1(i, 3 * i);
+      }
+    } else {
+#ifdef TTK_ENABLE_OPENMP
+#pragma omp parallel for num_threads(this->threadNumber_)
+#endif // TTK_ENABLE_OPENMP
+      for(SimplexId i = 0; i < s2_numberOfCells + 1; ++i) {
+        offsets->SetTuple1(i, 2 * i);
+      }
     }
-
+    
     vtkNew<vtkPoints> points{};
     points->SetData(pointsCoords);
     outputSeparatrices2->SetPoints(points);
@@ -467,7 +484,11 @@ int ttkMorseSmaleSegmentationPL::dispatch(
     cells->Use32BitStorage();
 #endif // TTK_ENABLE_64BIT_IDS
     cells->SetData(offsets, connectivity);
-    outputSeparatrices2->SetPolys(cells);
+    if(triangulation.getDimensionality() == 3) {
+      outputSeparatrices2->SetPolys(cells);
+    } else {
+      outputSeparatrices2->SetLines(cells);
+    }
 
     auto cellData = outputSeparatrices2->GetCellData();
     cellData->AddArray(mscIds);
