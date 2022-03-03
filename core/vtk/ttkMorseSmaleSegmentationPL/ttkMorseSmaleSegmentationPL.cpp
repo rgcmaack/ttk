@@ -220,27 +220,14 @@ int ttkMorseSmaleSegmentationPL::dispatch(
   SimplexId s1_numberOfPoints{};
   SimplexId s1_numberOfCells{};
   separatrices1_points.clear();
-  separatrices1_points_smoothingMask.clear();
-  separatrices1_points_cellDimensions.clear();
-  separatrices1_points_cellIds.clear();
   separatrices1_cells_connectivity.clear();
-  separatrices1_cells_sourceIds.clear();
-  separatrices1_cells_destinationIds.clear();
-  separatrices1_cells_separatrixIds.clear();
   separatrices1_cells_separatrixTypes.clear();
-  separatrices1_cells_isOnBoundary.clear();
-  std::vector<ttk::SimplexId> s1_separatrixFunctionMaxima{};
-  std::vector<ttk::SimplexId> s1_separatrixFunctionMinima{};
 
   this->setOutputSeparatrices1(
-    &s1_numberOfPoints, &separatrices1_points,
-    &separatrices1_points_smoothingMask, &separatrices1_points_cellDimensions,
-    &separatrices1_points_cellIds, &s1_numberOfCells,
-    &separatrices1_cells_connectivity, &separatrices1_cells_sourceIds,
-    &separatrices1_cells_destinationIds, &separatrices1_cells_separatrixIds,
-    &separatrices1_cells_separatrixTypes, &s1_separatrixFunctionMaxima,
-    &s1_separatrixFunctionMinima, &separatrices1_cells_isOnBoundary,
-    &separatrices1_cells_extremaDistance);
+    &s1_numberOfPoints, &separatrices1_points, &s1_numberOfCells,
+    &separatrices1_cells_connectivity, &separatrices1_cells_separatrixTypes,
+    &separatrices1_cells_extremaDistance,
+    &separatrices1_cells_extremaDistanceAbs);
 
   // 2-separatrices
   SimplexId s2_numberOfPoints{};
@@ -338,23 +325,15 @@ int ttkMorseSmaleSegmentationPL::dispatch(
   // 1-separatrices
   {
     vtkNew<vtkFloatArray> pointsCoords{};
-    vtkNew<vtkSignedCharArray> smoothingMask{};
-    vtkNew<vtkSignedCharArray> cellDimensions{};
-    vtkNew<ttkSimplexIdTypeArray> cellIds{};
-    vtkNew<ttkSimplexIdTypeArray> sourceIds{};
-    vtkNew<ttkSimplexIdTypeArray> destinationIds{};
-    vtkNew<ttkSimplexIdTypeArray> separatrixIds{};
     vtkNew<vtkSignedCharArray> separatrixTypes{};
-    vtkNew<vtkDoubleArray> separatrixFunctionMaxima{};
-    vtkNew<vtkDoubleArray> separatrixFunctionMinima{};
-    vtkNew<vtkDoubleArray> separatrixFunctionDiffs{};
     vtkNew<vtkSignedCharArray> isOnBoundary{};
+    vtkNew<vtkFloatArray> extremaDistance{};
+    vtkNew<ttkSimplexIdTypeArray> extremaDistanceAbs{};
+    vtkNew<ttkSimplexIdTypeArray> offsets{}, connectivity{};
 
 #ifndef TTK_ENABLE_KAMIKAZE
-    if(!pointsCoords || !smoothingMask || !cellDimensions || !cellIds
-       || !sourceIds || !destinationIds || !separatrixIds || !separatrixTypes
-       || !separatrixFunctionMaxima || !separatrixFunctionMinima
-       || !separatrixFunctionDiffs || !isOnBoundary) {
+    if(!pointsCoords || !separatrixTypes || !isOnBoundary || !extremaDistance
+      || !offsets || !connectivity) {
       this->printErr("1-separatrices vtkDataArray allocation problem.");
       return -1;
     }
@@ -363,44 +342,18 @@ int ttkMorseSmaleSegmentationPL::dispatch(
     pointsCoords->SetNumberOfComponents(3);
     setArray(pointsCoords, separatrices1_points);
 
-    smoothingMask->SetNumberOfComponents(1);
-    smoothingMask->SetName(ttk::MaskScalarFieldName);
-    setArray(smoothingMask, separatrices1_points_smoothingMask);
-
-    cellDimensions->SetNumberOfComponents(1);
-    cellDimensions->SetName("CellDimension");
-    setArray(cellDimensions, separatrices1_points_cellDimensions);
-
-    cellIds->SetNumberOfComponents(1);
-    cellIds->SetName("CellId");
-    setArray(cellIds, separatrices1_points_cellIds);
-
-    sourceIds->SetNumberOfComponents(1);
-    sourceIds->SetName("SourceId");
-    setArray(sourceIds, separatrices1_cells_sourceIds);
-
-    destinationIds->SetNumberOfComponents(1);
-    destinationIds->SetName("DestinationId");
-    setArray(destinationIds, separatrices1_cells_destinationIds);
-
-    separatrixIds->SetNumberOfComponents(1);
-    separatrixIds->SetName("SeparatrixId");
-    setArray(separatrixIds, separatrices1_cells_separatrixIds);
-
     separatrixTypes->SetNumberOfComponents(1);
     separatrixTypes->SetName("SeparatrixType");
     setArray(separatrixTypes, separatrices1_cells_separatrixTypes);
-
-    isOnBoundary->SetNumberOfComponents(1);
-    isOnBoundary->SetName("NumberOfCriticalPointsOnBoundary");
-    setArray(isOnBoundary, separatrices1_cells_isOnBoundary);
-
-    vtkNew<vtkFloatArray> extremaDistance{};
+ 
     extremaDistance->SetNumberOfComponents(1);
     extremaDistance->SetName("ExtremaDistance");
     setArray(extremaDistance, separatrices1_cells_extremaDistance);
 
-    vtkNew<ttkSimplexIdTypeArray> offsets{}, connectivity{};
+    extremaDistanceAbs->SetNumberOfComponents(1);
+    extremaDistanceAbs->SetName("ExtremaDistanceAbsolut");
+    setArray(extremaDistanceAbs, separatrices1_cells_extremaDistanceAbs);
+   
     offsets->SetNumberOfComponents(1);
     offsets->SetNumberOfTuples(s1_numberOfCells + 1);
     connectivity->SetNumberOfComponents(1);
@@ -435,6 +388,7 @@ int ttkMorseSmaleSegmentationPL::dispatch(
 
     cellData->AddArray(separatrixTypes);
     cellData->AddArray(extremaDistance);
+    cellData->AddArray(extremaDistanceAbs);
   }
 
   // 2-separatrices

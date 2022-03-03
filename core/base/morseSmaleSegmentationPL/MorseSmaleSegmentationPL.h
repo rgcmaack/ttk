@@ -529,44 +529,22 @@ namespace ttk {
     inline int setOutputSeparatrices1(
       SimplexId *const separatrices1_numberOfPoints,
       std::vector<float> *const separatrices1_points,
-      std::vector<char> *const separatrices1_points_smoothingMask,
-      std::vector<char> *const separatrices1_points_cellDimensions,
-      std::vector<SimplexId> *const separatrices1_points_cellIds,
       SimplexId *const separatrices1_numberOfCells,
       std::vector<SimplexId> *const separatrices1_cells_connectivity,
-      std::vector<SimplexId> *const separatrices1_cells_sourceIds,
-      std::vector<SimplexId> *const separatrices1_cells_destinationIds,
-      std::vector<SimplexId> *const separatrices1_cells_separatrixIds,
       std::vector<char> *const separatrices1_cells_separatrixTypes,
-      std::vector<SimplexId> *const s1_cells_separatrixFunctionMaximaId,
-      std::vector<SimplexId> *const s1_cells_separatrixFunctionMinimaId,
-      std::vector<char> *const separatrices1_cells_isOnBoundary,
-      std::vector<float> *const separatrices1_cells_extremaDistance) {
+      std::vector<float> *const separatrices1_cells_extremaDistance,
+      std::vector<SimplexId> *const separatrices1_cells_extremaDistanceAbs) {
       outputSeparatrices1_numberOfPoints_ = separatrices1_numberOfPoints;
       outputSeparatrices1_points_ = separatrices1_points;
-      outputSeparatrices1_points_smoothingMask_
-        = separatrices1_points_smoothingMask;
-      outputSeparatrices1_points_cellDimensions_
-        = separatrices1_points_cellDimensions;
-      outputSeparatrices1_points_cellIds_ = separatrices1_points_cellIds;
       outputSeparatrices1_numberOfCells_ = separatrices1_numberOfCells;
       outputSeparatrices1_cells_connectivity_
         = separatrices1_cells_connectivity;
-      outputSeparatrices1_cells_sourceIds_ = separatrices1_cells_sourceIds;
-      outputSeparatrices1_cells_destinationIds_
-        = separatrices1_cells_destinationIds;
-      outputSeparatrices1_cells_separatrixIds_
-        = separatrices1_cells_separatrixIds;
       outputSeparatrices1_cells_separatrixTypes_
         = separatrices1_cells_separatrixTypes;
-      outputS1_cells_separatrixFunctionMaximaId_
-        = s1_cells_separatrixFunctionMaximaId;
-      outputS1_cells_separatrixFunctionMinimaId_
-        = s1_cells_separatrixFunctionMinimaId;
-      outputSeparatrices1_cells_isOnBoundary_
-        = separatrices1_cells_isOnBoundary;
       outputseparatrices1_cells_extremaDistance_ =
         separatrices1_cells_extremaDistance;
+      outputseparatrices1_cells_extremaDistanceAbs_ =
+        separatrices1_cells_extremaDistanceAbs;
       return 0;
     }
 
@@ -716,10 +694,6 @@ namespace ttk {
       const SimplexId *const dscManifold,
       const triangulationType &triangulation) const;
 
-    int computeMSLabelMap(
-      const std::vector<long long> &msLabels,
-      std::map<long long, SimplexId> &msLabelMap) const;
-
     template <typename triangulationType>
     int computeBasinSeparation_3D_fine(
       std::vector<std::array<float, 9>> &trianglePos,
@@ -736,12 +710,9 @@ namespace ttk {
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
-    template <typename triangulationType>
-    int createBorderPath_3D(mscq::Separatrix &separatrix,
-                            SimplexId startTriangle,
-                            SimplexId startEdge,
-                            const SimplexId *const morseSmaleManifold,
-                            const triangulationType &triangulation) const;
+    int computeMSLabelMap(
+      const std::vector<long long> &msLabels,
+      std::map<long long, SimplexId> &msLabelMap) const;
 
     template <typename triangulationType>
     int computeSaddleExtremaConnectors_3D(
@@ -842,18 +813,9 @@ namespace ttk {
       SimplexId *outputSeparatrices1_numberOfCells_{};
       std::vector<float> *outputSeparatrices1_points_{};
       std::vector<char> *outputSeparatrices1_cells_separatrixTypes_{};
-
-
-      std::vector<char> *outputSeparatrices1_points_smoothingMask_{};
-      std::vector<char> *outputSeparatrices1_points_cellDimensions_{};
-      std::vector<SimplexId> *outputSeparatrices1_points_cellIds_{};
       std::vector<SimplexId> *outputSeparatrices1_cells_connectivity_{};
-      std::vector<SimplexId> *outputSeparatrices1_cells_sourceIds_{};
-      std::vector<SimplexId> *outputSeparatrices1_cells_destinationIds_{};
-      std::vector<SimplexId> *outputSeparatrices1_cells_separatrixIds_{};
-      std::vector<SimplexId> *outputS1_cells_separatrixFunctionMaximaId_{};
-      std::vector<SimplexId> *outputS1_cells_separatrixFunctionMinimaId_{};
-      std::vector<char> *outputSeparatrices1_cells_isOnBoundary_{};
+      std::vector<float> *outputseparatrices1_cells_extremaDistance_{};
+      std::vector<SimplexId> *outputseparatrices1_cells_extremaDistanceAbs_{};
 
       // 2-separatrices
       SimplexId *outputSeparatrices2_numberOfPoints_{};
@@ -862,7 +824,6 @@ namespace ttk {
       std::vector<SimplexId> *outputSeparatrices2_cells_cases_{};
       std::vector<SimplexId> *outputSeparatrices2_cells_mscIds_{};
       std::vector<SimplexId> *outputSeparatrices2_cells_connectivity_{};
-      std::vector<float> *outputseparatrices1_cells_extremaDistance_{};
 
       // Debug
       bool db_omp = true;
@@ -3649,9 +3610,9 @@ template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
   std::vector<mscq::Separatrix> &sadExtrConns,
   const SimplexId *const ascNeighbor,
-  const SimplexId *const descNeighbor,
+  const SimplexId *const dscNeighbor,
   const SimplexId *const ascManifold,
-  const SimplexId *const descManifold,
+  const SimplexId *const dscManifold,
   const SimplexId *const orderArr,
   const std::vector<std::pair<SimplexId, char>> &criticalPoints,
   const triangulationType &triangulation) const {
@@ -3672,10 +3633,10 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
     
     const bool isSaddle1 = crit.second == (char)CriticalType::Saddle1;
     const bool isSaddle2 = crit.second == (char)CriticalType::Saddle2;
-    const int type = isSaddle1 ? 0 : 1;
 
     if(isSaddle1 || isSaddle2) {
-      std::map<SimplexId, SimplexId> neigborSeeds;
+      std::map<SimplexId, SimplexId> neigborSeedsAsc;
+      std::map<SimplexId, SimplexId> neigborSeedsDsc;
 
       if(isSaddle1) {
         saddle1Set.insert(crit.first);
@@ -3691,33 +3652,31 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
         triangulation.getVertexNeighbor(crit.first, i, neighbor);
 
         if(isSaddle1) {
-          if(orderArr[neighbor] < orderArr[crit.first]) { // s1-min
-            const SimplexId& ascManNeigh = ascManifold[neighbor];
-            if(neigborSeeds.find(ascManNeigh) == neigborSeeds.end()) {
-              neigborSeeds.insert({ascManNeigh, neighbor});
-            } else if(
-                orderArr[neigborSeeds[ascManNeigh]] > orderArr[neighbor]) {
-              neigborSeeds[ascManNeigh] = neighbor;
-            }
+          const SimplexId& ascManNeigh = ascManifold[neighbor];
 
+          if(neigborSeedsAsc.find(ascManNeigh) == neigborSeedsAsc.end()) {
+            neigborSeedsAsc.insert({ascManNeigh, neighbor});
+          } else if(
+            orderArr[neigborSeedsAsc[ascManNeigh]] > orderArr[neighbor]) {
+            neigborSeedsAsc[ascManNeigh] = neighbor;
           }
-
         } else { // 2-saddle
-          if(orderArr[neighbor] > orderArr[crit.first]) { // s2-max
-            const SimplexId& dscManNeigh = ascManifold[neighbor];
-            if(neigborSeeds.find(dscManNeigh)  == neigborSeeds.end()) {
-              neigborSeeds.insert({dscManNeigh, neighbor});
-            } else {
-              if(orderArr[neigborSeeds[dscManNeigh]] < orderArr[neighbor]) {
-                neigborSeeds[descManifold[neighbor]] = neighbor;
-              }
-            }
+          const SimplexId& dscManNeigh = dscManifold[neighbor];
+
+          if(neigborSeedsDsc.find(dscManNeigh)  == neigborSeedsDsc.end()) {
+            neigborSeedsDsc.insert({dscManNeigh, neighbor});
+          } else
+            if(orderArr[neigborSeedsDsc[dscManNeigh]] < orderArr[neighbor]) {
+            neigborSeedsDsc[dscManNeigh] = neighbor;
           }
         }
       }
 
-      for(const auto& s : neigborSeeds) {
-        reachableExtrema[type].push_back(std::make_pair(crit.first, s.second));
+      for(const auto& s : neigborSeedsAsc) {
+        reachableExtrema[0].push_back(std::make_pair(crit.first, s.second));
+      }
+      for(const auto& s : neigborSeedsDsc) {
+        reachableExtrema[1].push_back(std::make_pair(crit.first, s.second));
       }
     }
   }
@@ -3739,17 +3698,8 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
     }
 
     sadExtrConn.geometry_.push_back(currentVert);
-    
 
-    long long uniqueId = getSparseId(
-      critMap[c.first], critMap[currentVert], criticalPoints.size());
-
-    if(s1ToMin.find(uniqueId) == s1ToMin.end()) {
-      s1ToMin.insert({uniqueId, sadExtrConns.size()});
-      sadExtrConns.push_back(sadExtrConn);
-    } else if(sadExtrConns[s1ToMin[uniqueId]].length() > sadExtrConn.length()) {
-      sadExtrConns[s1ToMin[uniqueId]] = sadExtrConn;
-    }
+    sadExtrConns.push_back(sadExtrConn);
   }
 
   std::map<long long, size_t> s2ToMax;
@@ -3759,22 +3709,14 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
 
     SimplexId currentVert = c.second;
 
-    while(descNeighbor[currentVert] != currentVert) {
+    while(dscNeighbor[currentVert] != currentVert) {
       sadExtrConn.geometry_.push_back(currentVert);
-      currentVert = descNeighbor[currentVert];
+      currentVert = dscNeighbor[currentVert];
     }
 
     sadExtrConn.geometry_.push_back(currentVert);
 
-    long long uniqueId = getSparseId(
-      critMap[c.first], critMap[currentVert], criticalPoints.size());
-
-    if(s2ToMax.find(uniqueId) == s2ToMax.end()) {
-      s2ToMax.insert({uniqueId, sadExtrConns.size()});
-      sadExtrConns.push_back(sadExtrConn);
-    } else if(sadExtrConns[s2ToMax[uniqueId]].length() > sadExtrConn.length()) {
-      sadExtrConns[s2ToMax[uniqueId]] = sadExtrConn;
-    }
+    sadExtrConns.push_back(sadExtrConn);
   }
 
   this->printMsg("Computed crit point connectors",
@@ -3934,12 +3876,15 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices1_3D(
     outputSeparatrices1_cells_separatrixTypes_->resize((prevNcells + numCells));
   auto &extremaDistance = *outputseparatrices1_cells_extremaDistance_;
   outputseparatrices1_cells_extremaDistance_->resize(prevNcells + numCells);
+  auto &extremaDistanceAbs = *outputseparatrices1_cells_extremaDistanceAbs_;
+  outputseparatrices1_cells_extremaDistanceAbs_->resize(prevNcells + numCells);
 
   SimplexId currPId = prevNpoints, currCId = prevNcells;
   for(size_t i = 0; i < numSep; ++i) {
     const auto &sep = separatrices[i];
 
-    const size_t geoSize = sep.geometry_.size() - 2;
+    const size_t geoSize = sep.geometry_.size() - 2 > 0 ? 
+      sep.geometry_.size() - 2 : 1;
 
     std::array<float, 3> pt{};
     triangulation.getVertexPoint(sep.geometry_[0], pt[0], pt[1], pt[2]);
@@ -3963,10 +3908,12 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices1_3D(
       if(outputSeparatrices1_cells_separatrixTypes_ != nullptr)
         (*outputSeparatrices1_cells_separatrixTypes_)[currCId] = sep.type_;
 
+      const int jInv = geoSize - (j - 1);
+      extremaDistance[currCId] = (float)(jInv) / (float)geoSize;
+      extremaDistanceAbs[currCId] = jInv;
+
       currPId += 1;
       currCId += 1;
-
-      extremaDistance[currCId] = ((float)(j-1) / (float)geoSize);
     }
   }
 
