@@ -1255,6 +1255,14 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
           ttk::debug::LineMode::REPLACE);
       }
 
+      #pragma omp single
+      {
+        int index = 0;
+        for (auto & e: extremas) {
+          e.second = index++;
+        }
+      }
+
       // set critical point indices
       #pragma omp for schedule(static)
       for(SimplexId i = 0; i < nVertices; i++) {
@@ -1533,7 +1541,21 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
       }
     }
 
-    #pragma omp barrier
+    #pragma omp single nowait
+    {
+      int index = 0;
+      for (auto & e: maxMap) {
+        e.second = index++;
+      }
+    }
+
+    #pragma omp single
+    {
+      int index = 0;
+      for (auto & e: minMap) {
+        e.second = index++;
+      }
+    }
 
     #pragma omp for schedule(static)
     for(SimplexId i = 0; i < nVertices; i++) {
