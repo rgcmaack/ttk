@@ -231,6 +231,37 @@ const bool tetraederLookupIs3Label[28] = {
   false  // (4) 1,2,3 -27
 };
 
+const bool tetraederLookupIs4Label[28] = {
+  false, // (1) 0,0,0 - 0
+  false, // (-) 0,0,1 - 1
+  false, // (-) 0,0,2 - 2 
+  false, // (2) 0,0,3 - 3
+  false, // (-) 0,1,0 - 4
+  false, // (-) 0,1,1 - 5 
+  false, // (-) 0,1,2 - 6
+  false, // (-) 0,1,3 - 7
+  false, // (2) 0,2,0 - 8
+  false, // (-) 0,2,1 - 9
+  false, // (2) 0,2,2 -10
+  false, // (3) 0,2,3 -11
+  false, // (-) 0,3,0 -12
+  false, // (-) 0,3,1 -13
+  false, // (-) 0,3,2 -14
+  false, // (-) 0,3,3 -15
+  false, // (2) 1,0,0 -16
+  false, // (2) 1,0,1 -17
+  false, // (-) 1,0,2 -18
+  false, // (3) 1,0,3 -19
+  false, // (2) 1,1,0 -20
+  false, // (2) 1,1,1 -21
+  false, // (-) 1,1,2 -22
+  false, // (3) 1,1,3 -23
+  false, // (3) 1,2,0 -24
+  false, // (3) 1,2,1 -25
+  false, // (3) 1,2,2 -26
+  true   // (4) 1,2,3 -27
+};
+
 
 const int tetraederLookupFast[28] = {
   {-1}, // (1) 0,0,0 - 0
@@ -288,7 +319,37 @@ const int tetraederLookupSplitBasisns2Label[22][8] = {
   { 1,  0,  2,  0,  3,  0, -1, -1}, // (2) 1,1,1 -21
 };
 
-const int tetraederLookupSplitBasisns3Label[27][4] = {
+const int tetraederLookupSplitBasisns3Label[27][11] = {
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (1) 0,0,0 - 0
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,1 - 1
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,2 - 2 
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 0,0,3 - 3
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,0 - 4
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,1 - 5 
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,2 - 6
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,1,3 - 7
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 0,2,0 - 8
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,2,1 - 9
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 0,2,2 -10
+  { 0,  1,  2,  2,  1,  3,  4,  3,  2,  3,  5}, // (3) 0,2,3 -11
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,0 -12
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,1 -13
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,2 -14
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,3,3 -15
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 1,0,0 -16
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 1,0,1 -17
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 1,0,2 -18
+  { 0,  2,  0,  1,  2,  5,  3,  3,  3,  1,  4}, // (3) 1,0,3 -19
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 1,1,0 -20
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (2) 1,1,1 -21
+  {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 1,1,2 -22
+  { 1,  0,  4,  1,  2,  1,  5,  2,  0,  3,  2}, // (3) 1,1,3 -23
+  { 0,  0,  1,  0,  3,  4,  5,  3,  1,  2,  3}, // (3) 1,2,0 -24
+  { 1,  0,  3,  0,  3,  2,  5,  2,  0,  2,  1}, // (3) 1,2,1 -25
+  { 2,  1,  3,  0,  3,  2,  4,  1,  0,  1,  0}, // (3) 1,2,2 -26
+};
+
+/*const int tetraederLookupSplitBasisns3Label[27][4] = {
   {-1, -1, -1, -1}, // (1) 0,0,0 - 0
   {-1, -1, -1, -1}, // (-) 0,0,1 - 1
   {-1, -1, -1, -1}, // (-) 0,0,2 - 2 
@@ -316,7 +377,7 @@ const int tetraederLookupSplitBasisns3Label[27][4] = {
   { 0,  1,  3,  2}, // (3) 1,2,0 -24
   { 1,  0,  3,  2}, // (3) 1,2,1 -25
   { 2,  0,  3,  1}, // (3) 1,2,2 -26
-};
+};*/
 
 const int lookupOtherLabels[4][3] = {
   {1,2,3},
@@ -3001,8 +3062,10 @@ int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fine(
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
 
-  const float d0 = 0.52;
-  const float d1 = 1 - d0;
+  const float diff = 0.02;
+  const float d0 = 0.5 + diff;
+  const float d1 = 0.5 - diff;
+  const float dc = diff * 2 ;
 
 //#ifndef TTK_ENABLE_OPENMP
 if(!db_omp) {
@@ -3076,13 +3139,11 @@ if(!db_omp) {
           trianglePos.push_back({
             vert00[0], vert00[1], vert00[2], 
             vert01[0], vert01[1], vert01[2], 
-            vert03[0], vert03[1], vert03[2]
-          });
+            vert03[0], vert03[1], vert03[2]});
           trianglePos.push_back({
             vert10[0], vert10[1], vert10[2], 
             vert11[0], vert11[1], vert11[2], 
-            vert13[0], vert13[1], vert13[2]
-          });
+            vert13[0], vert13[1], vert13[2]});
 
           msLabels.push_back(msm[vIds[0]]);
           msLabels.push_back(msm[vIds[1]]);
@@ -3119,23 +3180,19 @@ if(!db_omp) {
         trianglePos.push_back({
           vert00[0], vert00[1], vert00[2], 
           vert01[0], vert01[1], vert01[2], 
-          vert02[0], vert02[1], vert02[2]
-        });
+          vert02[0], vert02[1], vert02[2]});
         trianglePos.push_back({
           vert00[0], vert00[1], vert00[2], 
           vert01[0], vert01[1], vert01[2], 
-          vert03[0], vert03[1], vert03[2]
-        });
+          vert03[0], vert03[1], vert03[2]});
         trianglePos.push_back({
           vert10[0], vert10[1], vert10[2], 
           vert11[0], vert11[1], vert11[2], 
-          vert12[0], vert12[1], vert12[2]
-        });
+          vert12[0], vert12[1], vert12[2]});
         trianglePos.push_back({
           vert20[0], vert20[1], vert20[2], 
           vert21[0], vert21[1], vert21[2], 
-          vert22[0], vert22[1], vert22[2]
-        });
+          vert22[0], vert22[1], vert22[2]});
 
         msLabels.push_back(msm[vIds[0]]);
         msLabels.push_back(msm[vIds[0]]);
@@ -3147,57 +3204,179 @@ if(!db_omp) {
         caseData.push_back(lookupIndex);
         caseData.push_back(lookupIndex);
       } else { // 4 labels
-        float vert00[3], vert01[3], vert02[3],
-              vert10[3], vert11[3], vert12[3],
-              vert20[3], vert21[3], vert22[3],
-              vert30[3], vert31[3], vert32[3];
+        float tetCenter[3];
+        triangulation.getCellIncenter(tet, 3, tetCenter);
 
-        interpolatePoints(vPos[0], vPos[1], d0, vert00);
-        interpolatePoints(vPos[0], vPos[2], d0, vert01);
-        interpolatePoints(vPos[0], vPos[3], d0, vert02);
+        // the 4 triangle centers
+        float triCenter[4][3];
+        getCenter(vPos[0], vPos[1], vPos[2], triCenter[0]);
+        getCenter(vPos[0], vPos[1], vPos[3], triCenter[1]);
+        getCenter(vPos[0], vPos[2], vPos[3], triCenter[2]);
+        getCenter(vPos[1], vPos[2], vPos[3], triCenter[3]);
 
-        interpolatePoints(vPos[1], vPos[0], d0, vert10);
-        interpolatePoints(vPos[1], vPos[2], d0, vert11);
-        interpolatePoints(vPos[1], vPos[3], d0, vert12);
+        float vert00[3], vert01[3], vert02[3], vert0tet[3],
+              vert0t0[3], vert0t1[3], vert0t2[3], 
+              vert10[3], vert11[3], vert12[3], vert1tet[3],
+              vert1t0[3], vert1t1[3], vert1t2[3], 
+              vert20[3], vert21[3], vert22[3], vert2tet[3],
+              vert2t0[3], vert2t1[3], vert2t2[3], 
+              vert30[3], vert31[3], vert32[3], vert3tet[3],
+              vert3t0[3], vert3t1[3], vert3t2[3]; 
 
-        interpolatePoints(vPos[2], vPos[0], d0, vert20);
-        interpolatePoints(vPos[2], vPos[1], d0, vert21);
-        interpolatePoints(vPos[2], vPos[3], d0, vert22);
+        interpolatePoints(vPos[0], vPos[1], dc, vert00);
+        interpolatePoints(vPos[0], vPos[2], dc, vert01);
+        interpolatePoints(vPos[0], vPos[3], dc, vert02);
+        interpolatePoints(vPos[0], tetCenter, dc, vert0tet);
+        interpolatePoints(vPos[0], triCenter[0], dc, vert0t0);
+        interpolatePoints(vPos[0], triCenter[1], dc, vert0t1);
+        interpolatePoints(vPos[0], triCenter[2], dc, vert0t2);
 
-        interpolatePoints(vPos[3], vPos[0], d0, vert30);
-        interpolatePoints(vPos[3], vPos[1], d0, vert31);
-        interpolatePoints(vPos[3], vPos[2], d0, vert32);
+        interpolatePoints(vPos[1], vPos[0], dc, vert10);
+        interpolatePoints(vPos[1], vPos[2], dc, vert11);
+        interpolatePoints(vPos[1], vPos[3], dc, vert12);
+        interpolatePoints(vPos[1], tetCenter, dc, vert1tet);
+        interpolatePoints(vPos[1], triCenter[0], dc, vert1t0);
+        interpolatePoints(vPos[1], triCenter[1], dc, vert1t1);
+        interpolatePoints(vPos[1], triCenter[2], dc, vert1t2);
 
+        interpolatePoints(vPos[2], vPos[0], dc, vert20);
+        interpolatePoints(vPos[2], vPos[1], dc, vert21);
+        interpolatePoints(vPos[2], vPos[3], dc, vert22);
+        interpolatePoints(vPos[2], tetCenter, dc, vert2tet);
+        interpolatePoints(vPos[2], triCenter[0], dc, vert2t0);
+        interpolatePoints(vPos[2], triCenter[1], dc, vert2t1);
+        interpolatePoints(vPos[2], triCenter[2], dc, vert2t2);
+
+        interpolatePoints(vPos[3], vPos[0], dc, vert30);
+        interpolatePoints(vPos[3], vPos[1], dc, vert31);
+        interpolatePoints(vPos[3], vPos[2], dc, vert32);
+        interpolatePoints(vPos[3], tetCenter, dc, vert3tet);
+        interpolatePoints(vPos[3], triCenter[0], dc, vert3t0);
+        interpolatePoints(vPos[3], triCenter[1], dc, vert3t1);
+        interpolatePoints(vPos[3], triCenter[2], dc, vert3t2);
+
+        // Label Vert 0
         trianglePos.push_back({
-          vert00[0], vert00[1], vert00[2], 
-          vert01[0], vert01[1], vert01[2], 
-          vert02[0], vert02[1], vert02[2]
-        });
+          vert00[0],   vert00[1],   vert00[2], 
+          vert0t0[0],  vert0t0[1],  vert0t0[2], 
+          vert0tet[0], vert0tet[1], vert0tet[2]});
         trianglePos.push_back({
-          vert10[0], vert10[1], vert10[2], 
-          vert11[0], vert11[1], vert11[2], 
-          vert12[0], vert12[1], vert12[2]
-        });
+          vert00[0],   vert00[1],   vert00[2], 
+          vert0t1[0],  vert0t1[1],  vert0t1[2], 
+          vert0tet[0], vert0tet[1], vert0tet[2]});
         trianglePos.push_back({
-          vert20[0], vert20[1], vert20[2], 
-          vert21[0], vert21[1], vert21[2], 
-          vert22[0], vert22[1], vert22[2]
-        });
+          vert01[0],   vert01[1],   vert01[2], 
+          vert0t1[0],  vert0t1[1],  vert0t1[2], 
+          vert0tet[0], vert0tet[1], vert0tet[2]});
         trianglePos.push_back({
-          vert30[0], vert30[1], vert30[2], 
-          vert31[0], vert31[1], vert31[2], 
-          vert32[0], vert32[1], vert32[2]
-        });
+          vert01[0],   vert01[1],   vert01[2], 
+          vert0t2[0],  vert0t2[1],  vert0t2[2], 
+          vert0tet[0], vert0tet[1], vert0tet[2]});
+        trianglePos.push_back({
+          vert02[0],   vert02[1],   vert02[2], 
+          vert0t2[0],  vert0t2[1],  vert0t2[2], 
+          vert0tet[0], vert0tet[1], vert0tet[2]});
+        trianglePos.push_back({
+          vert02[0],   vert02[1],   vert02[2], 
+          vert0t0[0],  vert0t0[1],  vert0t0[2], 
+          vert0tet[0], vert0tet[1], vert0tet[2]});
 
-        msLabels.push_back(msm[0]);
-        msLabels.push_back(msm[1]);
-        msLabels.push_back(msm[2]);
-        msLabels.push_back(msm[3]);
+        
+        // Label Vert 0
+        trianglePos.push_back({
+          vert10[0],   vert10[1],   vert10[2], 
+          vert1t0[0],  vert1t0[1],  vert1t0[2], 
+          vert1tet[0], vert1tet[1], vert1tet[2]});
+        trianglePos.push_back({
+          vert10[0],   vert10[1],   vert10[2], 
+          vert1t1[0],  vert1t1[1],  vert1t1[2], 
+          vert1tet[0], vert1tet[1], vert1tet[2]});
+        trianglePos.push_back({
+          vert11[0],   vert11[1],   vert11[2], 
+          vert1t1[0],  vert1t1[1],  vert1t1[2], 
+          vert1tet[0], vert1tet[1], vert1tet[2]});
+        trianglePos.push_back({
+          vert11[0],   vert11[1],   vert11[2], 
+          vert1t2[0],  vert1t2[1],  vert1t2[2], 
+          vert1tet[0], vert1tet[1], vert1tet[2]});
+        trianglePos.push_back({
+          vert12[0],   vert12[1],   vert12[2], 
+          vert1t2[0],  vert1t2[1],  vert1t2[2], 
+          vert1tet[0], vert1tet[1], vert1tet[2]});
+        trianglePos.push_back({
+          vert12[0],   vert12[1],   vert12[2], 
+          vert1t0[0],  vert1t0[1],  vert1t0[2], 
+          vert1tet[0], vert1tet[1], vert1tet[2]});
 
-        caseData.push_back(lookupIndex);
-        caseData.push_back(lookupIndex);
-        caseData.push_back(lookupIndex);
-        caseData.push_back(lookupIndex);
+
+        // Label Vert 0
+        trianglePos.push_back({
+          vert20[0],   vert20[1],   vert20[2], 
+          vert2t0[0],  vert2t0[1],  vert2t0[2], 
+          vert2tet[0], vert2tet[1], vert2tet[2]});
+        trianglePos.push_back({
+          vert20[0],   vert20[1],   vert20[2], 
+          vert2t1[0],  vert2t1[1],  vert2t1[2], 
+          vert2tet[0], vert2tet[1], vert2tet[2]});
+        trianglePos.push_back({
+          vert21[0],   vert21[1],   vert21[2], 
+          vert2t1[0],  vert2t1[1],  vert2t1[2], 
+          vert2tet[0], vert2tet[1], vert2tet[2]});
+        trianglePos.push_back({
+          vert21[0],   vert21[1],   vert21[2], 
+          vert2t2[0],  vert2t2[1],  vert2t2[2], 
+          vert2tet[0], vert2tet[1], vert2tet[2]});
+        trianglePos.push_back({
+          vert22[0],   vert22[1],   vert22[2], 
+          vert2t2[0],  vert2t2[1],  vert2t2[2], 
+          vert2tet[0], vert2tet[1], vert2tet[2]});
+        trianglePos.push_back({
+          vert22[0],   vert22[1],   vert22[2], 
+          vert2t0[0],  vert2t0[1],  vert2t0[2], 
+          vert2tet[0], vert2tet[1], vert2tet[2]});
+
+
+        // Label Vert 0
+        trianglePos.push_back({
+          vert30[0],   vert30[1],   vert30[2], 
+          vert3t0[0],  vert3t0[1],  vert3t0[2], 
+          vert3tet[0], vert3tet[1], vert3tet[2]});
+        trianglePos.push_back({
+          vert30[0],   vert30[1],   vert30[2], 
+          vert3t1[0],  vert3t1[1],  vert3t1[2], 
+          vert3tet[0], vert3tet[1], vert3tet[2]});
+        trianglePos.push_back({
+          vert31[0],   vert31[1],   vert31[2], 
+          vert3t1[0],  vert3t1[1],  vert3t1[2], 
+          vert3tet[0], vert3tet[1], vert3tet[2]});
+        trianglePos.push_back({
+          vert31[0],   vert31[1],   vert31[2], 
+          vert3t2[0],  vert3t2[1],  vert3t2[2], 
+          vert3tet[0], vert3tet[1], vert3tet[2]});
+        trianglePos.push_back({
+          vert32[0],   vert32[1],   vert32[2], 
+          vert3t2[0],  vert3t2[1],  vert3t2[2], 
+          vert3tet[0], vert3tet[1], vert3tet[2]});
+        trianglePos.push_back({
+          vert32[0],   vert32[1],   vert32[2], 
+          vert3t0[0],  vert3t0[1],  vert3t0[2], 
+          vert3tet[0], vert3tet[1], vert3tet[2]});
+
+        msLabels.insert(msLabels.end(), {
+          msm[0], msm[0], msm[0], msm[0], msm[0], msm[0],
+          msm[1], msm[1], msm[1], msm[1], msm[1], msm[1],
+          msm[2], msm[2], msm[2], msm[2], msm[2], msm[2],
+          msm[3], msm[3], msm[3], msm[3], msm[3], msm[3]});
+
+        caseData.insert(caseData.end(), {
+          lookupIndex, lookupIndex, lookupIndex,
+          lookupIndex, lookupIndex, lookupIndex,
+          lookupIndex, lookupIndex, lookupIndex,
+          lookupIndex, lookupIndex, lookupIndex,
+          lookupIndex, lookupIndex, lookupIndex,
+          lookupIndex, lookupIndex, lookupIndex,
+          lookupIndex, lookupIndex, lookupIndex,
+          lookupIndex, lookupIndex, lookupIndex});
       }
     }
   }
@@ -3298,111 +3477,278 @@ if(!db_omp) {
         } else if(tetraederLookupIs3Label[lookupIndex]) {
           const int *vIds = tetraederLookupSplitBasisns3Label[lookupIndex];
 
-          float vert00[3], vert01[3], vert02[3], vert03[3],
-                vert10[3], vert11[3], vert12[3],
-                vert20[3], vert21[3], vert22[3];
+          float triCenter[4][3];
+          getCenter(vPos[0], vPos[1], vPos[2], triCenter[0]);
+          getCenter(vPos[0], vPos[1], vPos[3], triCenter[1]);
+          getCenter(vPos[0], vPos[2], vPos[3], triCenter[2]);
+          getCenter(vPos[1], vPos[2], vPos[3], triCenter[3]);
 
-          interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d0, vert00);
-          interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d0, vert01);
-          interpolatePoints(vPos[vIds[0]], vPos[vIds[3]], d0, vert02);
-          interpolatePoints(vPos[vIds[2]], vPos[vIds[1]], d0, vert03);
+          float edgeCenters[6][3];
+          getEdgeIncenter(
+            vertices[0], vertices[1], edgeCenters[0], triangulation);
+          getEdgeIncenter(
+            vertices[0], vertices[2], edgeCenters[1], triangulation);
+          getEdgeIncenter(
+            vertices[0], vertices[3], edgeCenters[2], triangulation);
+          getEdgeIncenter(
+            vertices[1], vertices[2], edgeCenters[3], triangulation);
+          getEdgeIncenter(
+            vertices[1], vertices[3], edgeCenters[4], triangulation);
+          getEdgeIncenter(
+            vertices[2], vertices[3], edgeCenters[5], triangulation);
 
-          interpolatePoints(
-            vPos[vIds[1]], vPos[lookupOtherLabels[vIds[1]][0]], d0, vert10);
-          interpolatePoints(
-            vPos[vIds[1]], vPos[lookupOtherLabels[vIds[1]][1]], d0, vert11);
-          interpolatePoints(
-            vPos[vIds[1]], vPos[lookupOtherLabels[vIds[1]][2]], d0, vert12);
 
-          interpolatePoints(
-            vPos[vIds[3]], vPos[lookupOtherLabels[vIds[3]][0]], d0, vert20);
-          interpolatePoints(
-            vPos[vIds[3]], vPos[lookupOtherLabels[vIds[3]][1]], d0, vert21);
-          interpolatePoints(
-            vPos[vIds[3]], vPos[lookupOtherLabels[vIds[3]][2]], d0, vert22);
+          float edge00[3], edge01[3], edge02[3], edge03[3], tri00[3], tri01[3],
+                edge10[3], edge11[3], edge12[3], tri10[3], tri11[3],
+                edge20[3], edge21[3], edge22[3], tri20[3], tri21[3];
+
+          interpolatePoints(vPos[vIds[0]], edgeCenters[vIds[1]],  dc, edge00);
+          interpolatePoints(vPos[vIds[0]], edgeCenters[vIds[2]],  dc, edge01);
+          interpolatePoints(vPos[vIds[0]], triCenter[vIds[3]],    dc, tri00);
+          interpolatePoints(vPos[vIds[4]], edgeCenters[vIds[5]],  dc, edge02);
+          interpolatePoints(vPos[vIds[4]], edgeCenters[vIds[6]],  dc, edge03);
+          interpolatePoints(vPos[vIds[4]], triCenter[vIds[7]],    dc, tri01);
+ 
+          interpolatePoints(vPos[vIds[8]], edgeCenters[vIds[1]],  dc, edge10);
+          interpolatePoints(vPos[vIds[8]], edgeCenters[vIds[5]],  dc, edge11);
+          interpolatePoints(vPos[vIds[8]], edgeCenters[vIds[10]], dc, edge12);
+          interpolatePoints(vPos[vIds[8]], triCenter[vIds[3]],    dc, tri10);
+          interpolatePoints(vPos[vIds[8]], triCenter[vIds[7]],    dc, tri11);
+ 
+          interpolatePoints(vPos[vIds[9]], edgeCenters[vIds[2]],  dc, edge20);
+          interpolatePoints(vPos[vIds[9]], edgeCenters[vIds[6]],  dc, edge21);
+          interpolatePoints(vPos[vIds[9]], edgeCenters[vIds[10]], dc, edge22);
+          interpolatePoints(vPos[vIds[9]], triCenter[vIds[3]],    dc, tri20);
+          interpolatePoints(vPos[vIds[9]], triCenter[vIds[7]],    dc, tri21);
 
           trianglePosLocal.push_back({
-            vert00[0], vert00[1], vert00[2], 
-            vert01[0], vert01[1], vert01[2], 
-            vert02[0], vert02[1], vert02[2]
-          });
+            edge00[0], edge00[1], edge00[2], 
+            edge02[0], edge02[1], edge02[2], 
+            tri00[0], tri00[1], tri00[2]});
           trianglePosLocal.push_back({
-            vert00[0], vert00[1], vert00[2], 
-            vert01[0], vert01[1], vert01[2], 
-            vert03[0], vert03[1], vert03[2]
-          });
+            edge02[0], edge02[1], edge02[2], 
+            tri00[0], tri00[1], tri00[2], 
+            tri01[0], tri01[1], tri01[2]});
           trianglePosLocal.push_back({
-            vert10[0], vert10[1], vert10[2], 
-            vert11[0], vert11[1], vert11[2], 
-            vert12[0], vert12[1], vert12[2]
-          });
+            edge01[0], edge01[1], edge01[2], 
+            edge03[0], edge03[1], edge03[2], 
+            tri00[0], tri00[1], tri00[2]});
           trianglePosLocal.push_back({
-            vert20[0], vert20[1], vert20[2], 
-            vert21[0], vert21[1], vert21[2], 
-            vert22[0], vert22[1], vert22[2]
-          });
+            edge03[0], edge03[1], edge03[2], 
+            tri00[0], tri00[1], tri00[2], 
+            tri01[0], tri01[1], tri01[2]});
 
-          msLabelsLocal.push_back(msm[vIds[0]]);
-          msLabelsLocal.push_back(msm[vIds[0]]);
-          msLabelsLocal.push_back(msm[vIds[1]]);
-          msLabelsLocal.push_back(msm[vIds[3]]);
+          trianglePosLocal.push_back({
+            edge10[0], edge10[1], edge10[2], 
+            edge11[0], edge11[1], edge11[2], 
+            tri10[0], tri10[1], tri10[2]});
+          trianglePosLocal.push_back({
+            edge11[0], edge11[1], edge11[2], 
+            tri10[0], tri10[1], tri10[2], 
+            tri11[0], tri11[1], tri11[2]});
+          trianglePosLocal.push_back({
+            edge12[0], edge12[1], edge12[2], 
+            tri10[0], tri10[1], tri10[2], 
+            tri11[0], tri11[1], tri11[2]});
 
-          caseDataLocal.push_back(lookupIndex);
-          caseDataLocal.push_back(lookupIndex);
-          caseDataLocal.push_back(lookupIndex);
-          caseDataLocal.push_back(lookupIndex);
+          trianglePosLocal.push_back({
+            edge20[0], edge20[1], edge20[2], 
+            edge21[0], edge21[1], edge21[2], 
+            tri20[0], tri20[1], tri20[2]});
+          trianglePosLocal.push_back({
+            edge21[0], edge21[1], edge21[2], 
+            tri20[0], tri20[1], tri20[2], 
+            tri21[0], tri21[1], tri21[2]});
+          trianglePosLocal.push_back({
+            edge22[0], edge22[1], edge22[2], 
+            tri20[0], tri20[1], tri20[2], 
+            tri21[0], tri21[1], tri21[2]});
+
+
+          msLabelsLocal.insert(msLabelsLocal.end(), {
+            msm[vIds[0]], msm[vIds[0]], msm[vIds[0]], msm[vIds[0]],
+            msm[vIds[8]], msm[vIds[8]], msm[vIds[8]],
+            msm[vIds[9]], msm[vIds[9]], msm[vIds[9]]});
+
+          caseDataLocal.insert(caseDataLocal.end(), {
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex, lookupIndex});
+
         } else { // 4 labels
-          float vert00[3], vert01[3], vert02[3],
-                vert10[3], vert11[3], vert12[3],
-                vert20[3], vert21[3], vert22[3],
-                vert30[3], vert31[3], vert32[3];
+          float tetCenter[3];
+          triangulation.getCellIncenter(tet, 3, tetCenter);
+
+          // the 4 triangle centers
+          float triCenter[4][3];
+          getCenter(vPos[0], vPos[1], vPos[2], triCenter[0]);
+          getCenter(vPos[0], vPos[1], vPos[3], triCenter[1]);
+          getCenter(vPos[0], vPos[2], vPos[3], triCenter[2]);
+          getCenter(vPos[1], vPos[2], vPos[3], triCenter[3]);
+
+          float vert00[3], vert01[3], vert02[3], vert0tet[3],
+                vert0t0[3], vert0t1[3], vert0t2[3], 
+                vert10[3], vert11[3], vert12[3], vert1tet[3],
+                vert1t0[3], vert1t1[3], vert1t2[3], 
+                vert20[3], vert21[3], vert22[3], vert2tet[3],
+                vert2t0[3], vert2t1[3], vert2t2[3], 
+                vert30[3], vert31[3], vert32[3], vert3tet[3],
+                vert3t0[3], vert3t1[3], vert3t2[3]; 
 
           interpolatePoints(vPos[0], vPos[1], d0, vert00);
           interpolatePoints(vPos[0], vPos[2], d0, vert01);
           interpolatePoints(vPos[0], vPos[3], d0, vert02);
+          interpolatePoints(vPos[0], tetCenter, dc, vert0tet);
+          interpolatePoints(vPos[0], triCenter[0], dc, vert0t0);
+          interpolatePoints(vPos[0], triCenter[1], dc, vert0t1);
+          interpolatePoints(vPos[0], triCenter[2], dc, vert0t2);
 
           interpolatePoints(vPos[1], vPos[0], d0, vert10);
           interpolatePoints(vPos[1], vPos[2], d0, vert11);
           interpolatePoints(vPos[1], vPos[3], d0, vert12);
+          interpolatePoints(vPos[1], tetCenter, dc, vert1tet);
+          interpolatePoints(vPos[1], triCenter[0], dc, vert1t0);
+          interpolatePoints(vPos[1], triCenter[1], dc, vert1t1);
+          interpolatePoints(vPos[1], triCenter[3], dc, vert1t2);
 
           interpolatePoints(vPos[2], vPos[0], d0, vert20);
           interpolatePoints(vPos[2], vPos[1], d0, vert21);
           interpolatePoints(vPos[2], vPos[3], d0, vert22);
+          interpolatePoints(vPos[2], tetCenter, dc, vert2tet);
+          interpolatePoints(vPos[2], triCenter[0], dc, vert2t0);
+          interpolatePoints(vPos[2], triCenter[2], dc, vert2t1);
+          interpolatePoints(vPos[2], triCenter[3], dc, vert2t2);
 
           interpolatePoints(vPos[3], vPos[0], d0, vert30);
           interpolatePoints(vPos[3], vPos[1], d0, vert31);
           interpolatePoints(vPos[3], vPos[2], d0, vert32);
+          interpolatePoints(vPos[3], tetCenter, dc, vert3tet);
+          interpolatePoints(vPos[3], triCenter[1], dc, vert3t0);
+          interpolatePoints(vPos[3], triCenter[2], dc, vert3t1);
+          interpolatePoints(vPos[3], triCenter[3], dc, vert3t2);
 
+          // Label Vert 0
           trianglePosLocal.push_back({
-            vert00[0], vert00[1], vert00[2], 
-            vert01[0], vert01[1], vert01[2], 
-            vert02[0], vert02[1], vert02[2]
-          });
+            vert00[0],   vert00[1],   vert00[2], 
+            vert0t0[0],  vert0t0[1],  vert0t0[2], 
+            vert0tet[0], vert0tet[1], vert0tet[2]});
           trianglePosLocal.push_back({
-            vert10[0], vert10[1], vert10[2], 
-            vert11[0], vert11[1], vert11[2], 
-            vert12[0], vert12[1], vert12[2]
-          });
+            vert00[0],   vert00[1],   vert00[2], 
+            vert0t1[0],  vert0t1[1],  vert0t1[2], 
+            vert0tet[0], vert0tet[1], vert0tet[2]});
           trianglePosLocal.push_back({
-            vert20[0], vert20[1], vert20[2], 
-            vert21[0], vert21[1], vert21[2], 
-            vert22[0], vert22[1], vert22[2]
-          });
+            vert01[0],   vert01[1],   vert01[2], 
+            vert0t0[0],  vert0t0[1],  vert0t0[2], 
+            vert0tet[0], vert0tet[1], vert0tet[2]});
           trianglePosLocal.push_back({
-            vert30[0], vert30[1], vert30[2], 
-            vert31[0], vert31[1], vert31[2], 
-            vert32[0], vert32[1], vert32[2]
-          });
+            vert01[0],   vert01[1],   vert01[2], 
+            vert0t2[0],  vert0t2[1],  vert0t2[2], 
+            vert0tet[0], vert0tet[1], vert0tet[2]});
+          trianglePosLocal.push_back({
+            vert02[0],   vert02[1],   vert02[2], 
+            vert0t2[0],  vert0t2[1],  vert0t2[2], 
+            vert0tet[0], vert0tet[1], vert0tet[2]});
+          trianglePosLocal.push_back({
+            vert02[0],   vert02[1],   vert02[2], 
+            vert0t1[0],  vert0t1[1],  vert0t1[2], 
+            vert0tet[0], vert0tet[1], vert0tet[2]});
 
-          msLabelsLocal.push_back(msm[0]);
-          msLabelsLocal.push_back(msm[1]);
-          msLabelsLocal.push_back(msm[2]);
-          msLabelsLocal.push_back(msm[3]);
 
-          caseDataLocal.push_back(lookupIndex);
-          caseDataLocal.push_back(lookupIndex);
-          caseDataLocal.push_back(lookupIndex);
-          caseDataLocal.push_back(lookupIndex);
+          // Label Vert 1
+          trianglePosLocal.push_back({
+            vert10[0],   vert10[1],   vert10[2], 
+            vert1t0[0],  vert1t0[1],  vert1t0[2], 
+            vert1tet[0], vert1tet[1], vert1tet[2]});
+          trianglePosLocal.push_back({
+            vert10[0],   vert10[1],   vert10[2], 
+            vert1t1[0],  vert1t1[1],  vert1t1[2], 
+            vert1tet[0], vert1tet[1], vert1tet[2]});
+          trianglePosLocal.push_back({
+            vert11[0],   vert11[1],   vert11[2], 
+            vert1t0[0],  vert1t0[1],  vert1t0[2], 
+            vert1tet[0], vert1tet[1], vert1tet[2]});
+          trianglePosLocal.push_back({
+            vert11[0],   vert11[1],   vert11[2], 
+            vert1t2[0],  vert1t2[1],  vert1t2[2], 
+            vert1tet[0], vert1tet[1], vert1tet[2]});
+          trianglePosLocal.push_back({
+            vert12[0],   vert12[1],   vert12[2], 
+            vert1t2[0],  vert1t2[1],  vert1t2[2], 
+            vert1tet[0], vert1tet[1], vert1tet[2]});
+          trianglePosLocal.push_back({
+            vert12[0],   vert12[1],   vert12[2], 
+            vert1t1[0],  vert1t1[1],  vert1t1[2], 
+            vert1tet[0], vert1tet[1], vert1tet[2]});
+
+
+          // Label Vert 2
+          trianglePosLocal.push_back({
+            vert20[0],   vert20[1],   vert20[2], 
+            vert2t0[0],  vert2t0[1],  vert2t0[2], 
+            vert2tet[0], vert2tet[1], vert2tet[2]});
+          trianglePosLocal.push_back({
+            vert20[0],   vert20[1],   vert20[2], 
+            vert2t1[0],  vert2t1[1],  vert2t1[2], 
+            vert2tet[0], vert2tet[1], vert2tet[2]});
+          trianglePosLocal.push_back({
+            vert21[0],   vert21[1],   vert21[2], 
+            vert2t0[0],  vert2t0[1],  vert2t0[2], 
+            vert2tet[0], vert2tet[1], vert2tet[2]});
+          trianglePosLocal.push_back({
+            vert21[0],   vert21[1],   vert21[2], 
+            vert2t2[0],  vert2t2[1],  vert2t2[2], 
+            vert2tet[0], vert2tet[1], vert2tet[2]});
+          trianglePosLocal.push_back({
+            vert22[0],   vert22[1],   vert22[2], 
+            vert2t2[0],  vert2t2[1],  vert2t2[2], 
+            vert2tet[0], vert2tet[1], vert2tet[2]});
+          trianglePosLocal.push_back({
+            vert22[0],   vert22[1],   vert22[2], 
+            vert2t1[0],  vert2t1[1],  vert2t1[2], 
+            vert2tet[0], vert2tet[1], vert2tet[2]});
+
+
+          // Label Vert 3
+          trianglePosLocal.push_back({
+            vert30[0],   vert30[1],   vert30[2], 
+            vert3t0[0],  vert3t0[1],  vert3t0[2], 
+            vert3tet[0], vert3tet[1], vert3tet[2]});
+          trianglePosLocal.push_back({
+            vert30[0],   vert30[1],   vert30[2], 
+            vert3t1[0],  vert3t1[1],  vert3t1[2], 
+            vert3tet[0], vert3tet[1], vert3tet[2]});
+          trianglePosLocal.push_back({
+            vert31[0],   vert31[1],   vert31[2], 
+            vert3t0[0],  vert3t0[1],  vert3t0[2], 
+            vert3tet[0], vert3tet[1], vert3tet[2]});
+          trianglePosLocal.push_back({
+            vert31[0],   vert31[1],   vert31[2], 
+            vert3t2[0],  vert3t2[1],  vert3t2[2], 
+            vert3tet[0], vert3tet[1], vert3tet[2]});
+          trianglePosLocal.push_back({
+            vert32[0],   vert32[1],   vert32[2], 
+            vert3t2[0],  vert3t2[1],  vert3t2[2], 
+            vert3tet[0], vert3tet[1], vert3tet[2]});
+          trianglePosLocal.push_back({
+            vert32[0],   vert32[1],   vert32[2], 
+            vert3t1[0],  vert3t1[1],  vert3t1[2], 
+            vert3tet[0], vert3tet[1], vert3tet[2]});
+
+          msLabelsLocal.insert(msLabelsLocal.end(), {
+            msm[0], msm[0], msm[0], msm[0], msm[0], msm[0],
+            msm[1], msm[1], msm[1], msm[1], msm[1], msm[1],
+            msm[2], msm[2], msm[2], msm[2], msm[2], msm[2],
+            msm[3], msm[3], msm[3], msm[3], msm[3], msm[3]});
+
+          caseDataLocal.insert(caseDataLocal.end(), {
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex,
+            lookupIndex, lookupIndex, lookupIndex});
         }
       }
     }
