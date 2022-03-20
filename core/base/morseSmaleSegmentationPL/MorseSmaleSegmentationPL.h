@@ -726,8 +726,8 @@ namespace ttk {
       SimplexId *const dscNeighbor,
       std::map<SimplexId, SimplexId> &ascCritMap,
       std::map<SimplexId, SimplexId> &dscCritMap,
-      int &numberOfMinima,
-      int &numberOfMaxima,
+      SimplexId &numberOfMinima,
+      SimplexId &numberOfMaxima,
       const SimplexId *const orderArr,
       const triangulationType &triangulation) const;
 
@@ -1358,8 +1358,8 @@ int ttk::MorseSmaleSegmentationPL::computeManifolds(
   SimplexId *const dscNeighbor,
   std::map<SimplexId, SimplexId> &ascCritMap,
   std::map<SimplexId, SimplexId> &dscCritMap,
-  int &numberOfMinima,
-  int &numberOfMaxima,
+  SimplexId &numberOfMinima,
+  SimplexId &numberOfMaxima,
   const SimplexId *const orderArr,
   const triangulationType &triangulation) const {
 
