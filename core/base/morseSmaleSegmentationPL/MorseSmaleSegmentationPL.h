@@ -932,8 +932,13 @@ int ttk::MorseSmaleSegmentationPL::execute(
   SimplexId *morseSmaleManifold
     = static_cast<SimplexId *>(outputMorseSmaleManifold_);
 
-  SimplexId *ascendingNeighbor  = (SimplexId*) malloc(nV * sizeof(SimplexId));
-  SimplexId *descendingNeighbor = (SimplexId*) malloc(nV * sizeof(SimplexId));
+  SimplexId *ascendingNeighbor = nullptr;
+  SimplexId *descendingNeighbor = nullptr;
+
+  if(computeSaddles && sep1Mode == SEPARATRICES1_MODE::DETAILED && dim == 3) {
+    ascendingNeighbor = (SimplexId*) malloc(nV * sizeof(SimplexId));
+    descendingNeighbor = (SimplexId*) malloc(nV * sizeof(SimplexId));
+  }
 
   std::vector<std::pair<SimplexId, char>> criticalPoints;
   std::vector<std::pair<SimplexId, char>>* critPointPtr;
@@ -1032,7 +1037,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
       } else if(sep2Mode == SEPARATRICES2_MODE::EXPERIMENT) {
         computeSeparatrices2_3D_split<triangulationType>(
           trianglePos, caseData, msLabels, numberOfMinima, numberOfMinima,
-          ascendingManifold,descendingManifold, triangulation);
+          ascendingManifold, descendingManifold, triangulation);
 
         computeMSLabelMap(msLabels, msLabelMap);
       }
@@ -1049,6 +1054,11 @@ int ttk::MorseSmaleSegmentationPL::execute(
         sadExtrConns, ascendingNeighbor, descendingNeighbor,
         ascendingManifold, descendingManifold,
         orderArr, criticalPoints, triangulation);
+      }
+
+      if(computeSaddles && sep1Mode == SEPARATRICES1_MODE::DETAILED) {
+        free(ascendingNeighbor);
+        free(descendingNeighbor);
       }
     }
 
@@ -1075,9 +1085,6 @@ int ttk::MorseSmaleSegmentationPL::execute(
   }
 
   setCriticalPoints<triangulationType>(criticalPoints, triangulation);
-
-  free(ascendingNeighbor);
-  free(descendingNeighbor);
 
   this->printMsg(ttk::debug::Separator::L1);
   this->printMsg( std::to_string(triangulation.getNumberOfVertices())
@@ -1294,8 +1301,12 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
         }
 
         #pragma omp critical
-        activeVertices->insert(activeVertices->end(),
-          lActiveVertices.begin(), lActiveVertices.end());
+        {
+          activeVertices->reserve(
+            activeVertices->size() + lActiveVertices.size());
+          activeVertices->insert(activeVertices->end(),
+            lActiveVertices.begin(), lActiveVertices.end());
+        }
 
         lActiveVertices.clear();
 
@@ -1551,8 +1562,12 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
     }
 
     #pragma omp critical
-    activeVertices->insert(activeVertices->end(),
-      lActiveVertices.begin(), lActiveVertices.end());
+    {
+      activeVertices->reserve(
+        activeVertices->size() + lActiveVertices.size());
+      activeVertices->insert(activeVertices->end(),
+        lActiveVertices.begin(), lActiveVertices.end());
+    }
 
     lActiveVertices.clear();
 
@@ -1589,8 +1604,13 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
       }
 
       #pragma omp critical
-      activeVertices->insert(activeVertices->end(),
-        lActiveVertices.begin(), lActiveVertices.end());
+      {
+        activeVertices->reserve(
+          activeVertices->size() + lActiveVertices.size());
+        activeVertices->insert(activeVertices->end(),
+          lActiveVertices.begin(), lActiveVertices.end());
+      }
+      
 
       lActiveVertices.clear();
 
@@ -2334,10 +2354,15 @@ if(!db_omp) {
 
     #pragma omp critical
     {
+      trianglePos.reserve(trianglePos.size() + trianglePosLocal.size());
       trianglePos.insert(trianglePos.end(),
         trianglePosLocal.begin(), trianglePosLocal.end());
+
+      caseData.reserve(caseData.size() + caseDataLocal.size());
       caseData.insert(caseData.end(),
         caseDataLocal.begin(), caseDataLocal.end());
+
+      msLabels.reserve(msLabels.size() + msLabelsLocal.size());
       msLabels.insert(msLabels.end(),
         msLabelsLocal.begin(), msLabelsLocal.end());
     }
@@ -2996,10 +3021,15 @@ if(!db_omp) {
 
     #pragma omp critical
     {
+      trianglePos.reserve(trianglePos.size() + trianglePosLocal.size());
       trianglePos.insert(trianglePos.end(),
         trianglePosLocal.begin(), trianglePosLocal.end());
+
+      caseData.reserve(caseData.size() + caseDataLocal.size());
       caseData.insert(caseData.end(),
         caseDataLocal.begin(), caseDataLocal.end());
+
+      msLabels.reserve(msLabels.size() + msLabelsLocal.size());
       msLabels.insert(msLabels.end(),
         msLabelsLocal.begin(), msLabelsLocal.end());
     }
@@ -3015,15 +3045,15 @@ int ttk::MorseSmaleSegmentationPL::computeMSLabelMap(
   const std::vector<long long> &msLabels,
   std::map<long long, SimplexId> &msLabelMap) const {
 
-  std::vector<long long> mscLabelCopy(msLabels);
+  std::vector<long long> msLabelCopy(msLabels);
 
   // get unique "sparse region ids"
-  TTK_PSORT(this->threadNumber_, mscLabelCopy.begin(), mscLabelCopy.end());
-  const auto last = std::unique(mscLabelCopy.begin(), mscLabelCopy.end());
-  mscLabelCopy.erase(last, mscLabelCopy.end());
+  TTK_PSORT(this->threadNumber_, msLabelCopy.begin(), msLabelCopy.end());
+  const auto last = std::unique(msLabelCopy.begin(), msLabelCopy.end());
+  msLabelCopy.erase(last, msLabelCopy.end());
 
-  for(size_t i = 0; i < mscLabelCopy.size(); ++i) {
-    msLabelMap.insert({mscLabelCopy[i], i});
+  for(size_t i = 0; i < msLabelCopy.size(); ++i) {
+    msLabelMap.insert({msLabelCopy[i], i});
   }
 
   return 0;
@@ -3755,10 +3785,15 @@ if(!db_omp) {
 
     #pragma omp critical
     {
+      trianglePos.reserve(trianglePos.size() + trianglePosLocal.size());
       trianglePos.insert(trianglePos.end(),
         trianglePosLocal.begin(), trianglePosLocal.end());
+
+      caseData.reserve(caseData.size() + caseDataLocal.size());
       caseData.insert(caseData.end(),
         caseDataLocal.begin(), caseDataLocal.end());
+
+      msLabels.reserve(msLabels.size() + msLabelsLocal.size());
       msLabels.insert(msLabels.end(),
         msLabelsLocal.begin(), msLabelsLocal.end());
     }
@@ -3774,7 +3809,7 @@ template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fast(
   std::vector<std::array<float, 9>> &trianglePos,    
   std::vector<SimplexId> &caseData,
-  std::vector<long long> &mscLabels,
+  std::vector<long long> &msLabels,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
   ttk::Timer localTimer;
@@ -3844,7 +3879,7 @@ if(!db_omp) {
               vertPos[1][0], vertPos[1][1], vertPos[1][2], 
               vertPos[2][0], vertPos[2][1], vertPos[2][2]
             });
-            mscLabels.push_back(msm[0]);
+            msLabels.push_back(msm[0]);
             break;
           case 1:
             trianglePos.push_back({
@@ -3852,7 +3887,7 @@ if(!db_omp) {
               vertPos[1][0], vertPos[1][1], vertPos[1][2], 
               vertPos[3][0], vertPos[3][1], vertPos[3][2]
             });
-            mscLabels.push_back(msm[0]);
+            msLabels.push_back(msm[0]);
             break;
           case 2:
             trianglePos.push_back({
@@ -3860,7 +3895,7 @@ if(!db_omp) {
               vertPos[2][0], vertPos[2][1], vertPos[2][2], 
               vertPos[3][0], vertPos[3][1], vertPos[3][2]
             });
-            mscLabels.push_back(msm[0]);
+            msLabels.push_back(msm[0]);
             break;
           case 3:
             trianglePos.push_back({
@@ -3868,7 +3903,7 @@ if(!db_omp) {
               vertPos[2][0], vertPos[2][1], vertPos[2][2], 
               vertPos[3][0], vertPos[3][1], vertPos[3][2]
             });
-            mscLabels.push_back(msm[1]);
+            msLabels.push_back(msm[1]);
             break;
         }
 
@@ -3882,7 +3917,7 @@ if(!db_omp) {
   {
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
-    std::vector<long long> mscLabelsLocal;
+    std::vector<long long> msLabelsLocal;
 
     #pragma omp for schedule(static) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
@@ -3924,7 +3959,7 @@ if(!db_omp) {
                 vertPos[1][0], vertPos[1][1], vertPos[1][2], 
                 vertPos[2][0], vertPos[2][1], vertPos[2][2]
               });
-              mscLabelsLocal.push_back(msm[0]);
+              msLabelsLocal.push_back(msm[0]);
               break;
             case 1:
               trianglePosLocal.push_back({
@@ -3932,7 +3967,7 @@ if(!db_omp) {
                 vertPos[1][0], vertPos[1][1], vertPos[1][2], 
                 vertPos[3][0], vertPos[3][1], vertPos[3][2]
               });
-              mscLabelsLocal.push_back(msm[0]);
+              msLabelsLocal.push_back(msm[0]);
               break;
             case 2:
               trianglePosLocal.push_back({
@@ -3940,7 +3975,7 @@ if(!db_omp) {
                 vertPos[2][0], vertPos[2][1], vertPos[2][2], 
                 vertPos[3][0], vertPos[3][1], vertPos[3][2]
               });
-              mscLabelsLocal.push_back(msm[0]);
+              msLabelsLocal.push_back(msm[0]);
               break;
             case 3:
               trianglePosLocal.push_back({
@@ -3948,7 +3983,7 @@ if(!db_omp) {
                 vertPos[2][0], vertPos[2][1], vertPos[2][2], 
                 vertPos[3][0], vertPos[3][1], vertPos[3][2]
               });
-              mscLabelsLocal.push_back(msm[1]);
+              msLabelsLocal.push_back(msm[1]);
               break;
           }
 
@@ -3959,12 +3994,17 @@ if(!db_omp) {
 
     #pragma omp critical
     {
+      trianglePos.reserve(trianglePos.size() + trianglePosLocal.size());
       trianglePos.insert(trianglePos.end(),
         trianglePosLocal.begin(), trianglePosLocal.end());
+
+      caseData.reserve(caseData.size() + caseDataLocal.size());
       caseData.insert(caseData.end(),
         caseDataLocal.begin(), caseDataLocal.end());
-      mscLabels.insert(mscLabels.end(),
-        mscLabelsLocal.begin(), mscLabelsLocal.end());
+
+      msLabels.reserve(msLabels.size() + msLabelsLocal.size());
+      msLabels.insert(msLabels.end(),
+        msLabelsLocal.begin(), msLabelsLocal.end());
     }
   }
 } // TTK_ENABLE_OPENMP
