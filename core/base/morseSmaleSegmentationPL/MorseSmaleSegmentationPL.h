@@ -263,7 +263,7 @@ const bool tetraederLookupIs4Label[28] = {
 };
 
 
-const int tetraederLookupFast[28] = {
+const int tetraederLookupFastCase[28] = {
   {-1}, // (1) 0,0,0 - 0
   {-1}, // (-) 0,0,1 - 1
   {-1}, // (-) 0,0,2 - 2 
@@ -292,6 +292,44 @@ const int tetraederLookupFast[28] = {
   {-1}, // (3) 1,2,1 -25
   {-1}, // (3) 1,2,2 -26
   {-1}  // (4) 1,2,3 -27
+};
+
+const bool tetraederLookupFast[28] = {
+  {false}, // (1) 0,0,0 - 0
+  {false}, // (-) 0,0,1 - 1
+  {false}, // (-) 0,0,2 - 2 
+  {true}, // (2) 0,0,3 - 3
+  {false}, // (-) 0,1,0 - 4
+  {false}, // (-) 0,1,1 - 5 
+  {false}, // (-) 0,1,2 - 6
+  {false}, // (-) 0,1,3 - 7
+  {true}, // (2) 0,2,0 - 8
+  {false}, // (-) 0,2,1 - 9
+  {false}, // (2) 0,2,2 -10
+  {false}, // (3) 0,2,3 -11
+  {false}, // (-) 0,3,0 -12
+  {false}, // (-) 0,3,1 -13
+  {false}, // (-) 0,3,2 -14
+  {false}, // (-) 0,3,3 -15
+  {true}, // (2) 1,0,0 -16
+  {false}, // (2) 1,0,1 -17
+  {false}, // (-) 1,0,2 -18
+  {false}, // (3) 1,0,3 -19
+  {false}, // (2) 1,1,0 -20
+  {true}, // (2) 1,1,1 -21
+  {false}, // (-) 1,1,2 -22
+  {false}, // (3) 1,1,3 -23
+  {false}, // (3) 1,2,0 -24
+  {false}, // (3) 1,2,1 -25
+  {false}, // (3) 1,2,2 -26
+  {false}  // (4) 1,2,3 -27
+};
+
+const int tetraederLookupFastTri[4][3] = {
+  {0, 1, 2},
+  {0, 1, 3},
+  {0, 2, 3},
+  {1, 2, 3}
 };
 
 const int tetraederLookupSplitBasisns2Label[22][8] = {
@@ -537,19 +575,11 @@ namespace ttk {
       ttk::AbstractTriangulation *triangulation) const {
       int success = 0;
       success += triangulation->preconditionVertexNeighbors();
-      success += triangulation->preconditionVertexEdges();
-      success += triangulation->preconditionVertexTriangles();
-      success += triangulation->preconditionVertexStars();
-
-      success += triangulation->preconditionEdgeTriangles();
-
-      success += triangulation->preconditionTriangleEdges();
-      success += triangulation->preconditionTriangleStars();
-
       success += triangulation->preconditionCellTriangles();
 
-      success += triangulation->preconditionBoundaryVertices();
-      success += triangulation->preconditionBoundaryTriangles();
+      if(triangulation->getDimensionality() ==  2)
+        success += triangulation->preconditionBoundaryVertices();
+
       return success;
     };
 
@@ -1109,33 +1139,36 @@ int ttk::MorseSmaleSegmentationPL::computeManifold(
 
   // start global timer
   ttk::Timer localTimer;
-  int iterations = 1;
-  numberOfExtrema = 0;
+  this->printMsg(ttk::debug::Separator::L1);
 
   const std::string manifoldStr = ascending ? "Ascending" : "Descending";
   const std::string minMaxStr = ascending ? "Minima" : "Maxima";
+  // print the progress of the current subprocedure (currently 0%)
+  this->printMsg("Computing " + manifoldStr + " Manifold",
+                  0, // progress form 0-1
+                  0, // elapsed time so far
+                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+  int iterations = 1;
+  numberOfExtrema = 0;
+
+  
+  const bool computeNeighbor = (neighbor != nullptr);
 
   // -----------------------------------------------------------------------
   // Compute MSC variant
   // -----------------------------------------------------------------------
   {
-    this->printMsg(ttk::debug::Separator::L1);
-    // print the progress of the current subprocedure (currently 0%)
-    this->printMsg("Computing " + manifoldStr + " Manifold",
-                   0, // progress form 0-1
-                   0, // elapsed time so far
-                   this->threadNumber_, ttk::debug::LineMode::REPLACE);
-
     /* compute the Descending Maifold iterating over each vertex, searching
      * the biggest neighbor and compressing its path to its maximum */
     const SimplexId nVertices = triangulation.getNumberOfVertices();
     std::map<SimplexId, SimplexId> extremas;
 
+if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
     // vertices that may still be compressed
     std::vector<SimplexId>* activeVertices = new std::vector<SimplexId>();
     SimplexId nActiveVertices;
 
-if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
     // find maxima and intialize vector of not fully compressed vertices
     for(SimplexId i = 0; i < nVertices; i++) {
       const SimplexId numNeighbors =
@@ -1204,13 +1237,13 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
     for(SimplexId i = 0; i < nVertices; i++) {
       manifold[i] = extremas[manifold[i]];
     }
+
+    delete activeVertices;
 } else { //#else // TTK_ENABLE_OPENMP
 
-    #pragma omp parallel num_threads(this->threadNumber_) \
-            shared(iterations, extremas, numberOfExtrema, \
-            activeVertices, nActiveVertices)
+    #pragma omp parallel num_threads(this->threadNumber_)
     {
-      std::vector<SimplexId> lActiveVertices; //active verticies per thread
+      std::vector<SimplexId>* lActiveVertices = new std::vector<SimplexId>();
 
       // find the biggest neighbor for each vertex
       #pragma omp for schedule(static)
@@ -1240,9 +1273,8 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
         }
 
         if(hasBiggerNeighbor) {
-            lActiveVertices.push_back(i);
-        }
-        else {
+            lActiveVertices->push_back(i);
+        } else {
           #pragma omp critical
           {
             critMap.insert({numberOfExtrema, i});
@@ -1250,82 +1282,38 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
             numberOfExtrema += 1;
           }
         }
+
+        if(computeNeighbor) {
+          neighbor[i] = mi;
+        }
       }
 
-      #pragma omp critical
-      activeVertices->insert(activeVertices->end(),
-        lActiveVertices.begin(), lActiveVertices.end());
-
-      lActiveVertices.clear();
-
-      #pragma omp barrier
-
-      #pragma omp single
-      {
-        memcpy(neighbor, manifold, nVertices * sizeof(SimplexId));
-        nActiveVertices = activeVertices->size();
-      }
+      size_t lnActiveVertices = lActiveVertices->size();
+      std::vector<SimplexId>* newActiveVert = new std::vector<SimplexId>(); 
 
       // compress paths until no changes occur
-      while(nActiveVertices > 0) {
-        #pragma omp barrier
+      while(lnActiveVertices > 0) {
 
-        #pragma omp single nowait
-        {
-          std::string msgit = "Iteration: " + std::to_string(iterations) +
-            "(" + std::to_string(nActiveVertices) + "/" +
-            std::to_string(nVertices) + ")";
-          double prog = 0.9 - ((double)nActiveVertices / nVertices) * 0.8;
-          this->printMsg(msgit, prog,
-            localTimer.getElapsedTime(), this->threadNumber_,
-            ttk::debug::LineMode::REPLACE);
-        }
-
-        #pragma omp for schedule(guided)
-        for(SimplexId i = 0; i < nActiveVertices; i++) {
-          SimplexId v = activeVertices->at(i);
+        for(size_t i = 0; i < lnActiveVertices; i++) {
+          SimplexId &v = (*lActiveVertices)[i];
           SimplexId &vo = manifold[v];
 
           vo = manifold[vo];
 
           // check if fully compressed
           if(vo != manifold[vo]) {
-            lActiveVertices.push_back(v);
+            lActiveVertices->push_back(v);
           }
         }
-        #pragma omp barrier
 
-        #pragma omp single
-        {
-          activeVertices->clear();
-        }
+        delete lActiveVertices;
+        lActiveVertices = newActiveVert;
+        lnActiveVertices = lActiveVertices->size();
 
-        #pragma omp critical
-        {
-          activeVertices->reserve(
-            activeVertices->size() + lActiveVertices.size());
-          activeVertices->insert(activeVertices->end(),
-            lActiveVertices.begin(), lActiveVertices.end());
-        }
-
-        lActiveVertices.clear();
-
-        #pragma omp barrier
-
-        #pragma omp single
-        {
-          nActiveVertices = activeVertices->size();
-          iterations += 1;
-        }
+        newActiveVert = new std::vector<SimplexId>();
       }
 
-      #pragma omp single nowait
-      {
-        this->printMsg("Compressed Paths",
-          0.95, // progress
-          localTimer.getElapsedTime(), this->threadNumber_,
-          ttk::debug::LineMode::REPLACE);
-      }
+      delete newActiveVert;
 
       #pragma omp single
       {
@@ -1351,8 +1339,6 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
         criticalPoints->push_back(std::make_pair(it.first, index));
       }
     }
-  
-    delete activeVertices;
   }
 
   {
@@ -1378,11 +1364,7 @@ int ttk::MorseSmaleSegmentationPL::computeManifolds(
   const triangulationType &triangulation) const {
 
   ttk::Timer localTimer;
-  numberOfMinima = 0;
-  numberOfMaxima = 0;
 
-  const bool computeCriticalPoints = criticalPoints != nullptr;
-  
   this->printMsg(ttk::debug::Separator::L1);
   // print the progress of the current subprocedure (currently 0%)
   this->printMsg("Computing Manifolds",
@@ -1390,18 +1372,25 @@ int ttk::MorseSmaleSegmentationPL::computeManifolds(
                  0, // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
+  numberOfMinima = 0;
+  numberOfMaxima = 0;
+
+  const bool computeCriticalPoints = criticalPoints != nullptr;
+  const bool computeNeighbor =
+    (ascNeighbor != nullptr || dscNeighbor != nullptr);
+
   /* compute the Descending Maifold iterating over each vertex, searching
    * the biggest neighbor and compressing its path to its maximum */
   const SimplexId nVertices = triangulation.getNumberOfVertices();
 
   // vertices that may still be compressed
-  std::vector<SimplexId>* activeVertices
-    = new std::vector<SimplexId>();
-  SimplexId nActiveVertices;
+  
+  
   std::map<SimplexId, int> minMap, maxMap;
 
-
 if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
+  SimplexId nActiveVertices;
+  std::vector<SimplexId>* activeVertices = new std::vector<SimplexId>();
   // find maxima and intialize vector of not fully compressed vertices
   for(SimplexId i = 0; i < nVertices; i++) {
     SimplexId neighborId;
@@ -1455,8 +1444,10 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
       numberOfMinima++;
     }
 
-    ascNeighbor[i] = ami;
-    dscNeighbor[i] = dmi;
+    if(computeNeighbor) {
+      ascNeighbor[i] = ami;
+      dscNeighbor[i] = dmi;
+    }
   }
 
   nActiveVertices = activeVertices->size();
@@ -1492,11 +1483,13 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
     ascManifold[i] = minMap[ascManifold[i]];
   }
 
+  delete activeVertices;
+
 } else { //#else // TTK_ENABLE_OPENMP
 
   #pragma omp parallel num_threads(this->threadNumber_)
   {
-    std::vector<SimplexId> lActiveVertices; //active verticies per thread
+    std::vector<SimplexId>* lActiveVertices = new std::vector<SimplexId>();
 
     // find the biggest neighbor for each vertex
     #pragma omp for schedule(static)
@@ -1527,7 +1520,7 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
       }
 
       if(hasBiggerNeighbor || hasSmallerNeighbor) {
-        lActiveVertices.push_back(i);
+        lActiveVertices->push_back(i);
       } 
 
       if(!hasBiggerNeighbor || !hasSmallerNeighbor) {
@@ -1557,34 +1550,19 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
         }
       }
 
-      ascNeighbor[i] = ami;
-      dscNeighbor[i] = dmi;
+      if(computeNeighbor) {
+        ascNeighbor[i] = ami;
+        dscNeighbor[i] = dmi;
+      }
     }
 
-    #pragma omp critical
-    {
-      activeVertices->reserve(
-        activeVertices->size() + lActiveVertices.size());
-      activeVertices->insert(activeVertices->end(),
-        lActiveVertices.begin(), lActiveVertices.end());
-    }
-
-    lActiveVertices.clear();
-
-    #pragma omp barrier
-
-    #pragma omp single
-    {
-      nActiveVertices = activeVertices->size();
-    }
+    size_t lnActiveVertices = lActiveVertices->size();
+    std::vector<SimplexId>* newActiveVert = new std::vector<SimplexId>();
 
     // compress paths until no changes occur
-    while(nActiveVertices > 0) {
-      #pragma omp barrier
-
-      #pragma omp for schedule(static)
-      for(SimplexId i = 0; i < nActiveVertices; i++) {
-        SimplexId &v = (*activeVertices)[i];
+    while(lnActiveVertices > 0) {
+      for(size_t i = 0; i < lnActiveVertices; i++) {
+        SimplexId &v = (*lActiveVertices)[i];
         SimplexId &vDsc = dscManifold[v];
         SimplexId &vAsc = ascManifold[v];
 
@@ -1594,33 +1572,18 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
 
         // check if fully compressed
         if(vDsc != dscManifold[vDsc] || vAsc != ascManifold[vAsc]) {
-          lActiveVertices.push_back(v);
+          newActiveVert->push_back(v);
         }
       }
 
-      #pragma omp single
-      {
-        activeVertices->clear();
-      }
+      delete lActiveVertices;
+      lActiveVertices = newActiveVert;
+      lnActiveVertices = lActiveVertices->size();
 
-      #pragma omp critical
-      {
-        activeVertices->reserve(
-          activeVertices->size() + lActiveVertices.size());
-        activeVertices->insert(activeVertices->end(),
-          lActiveVertices.begin(), lActiveVertices.end());
-      }
-      
-
-      lActiveVertices.clear();
-
-      #pragma omp barrier
-
-      #pragma omp single
-      {
-        nActiveVertices = activeVertices->size();
-      }
+      newActiveVert = new std::vector<SimplexId>();
     }
+
+    delete newActiveVert;
 
     #pragma omp single nowait
     {
@@ -1647,7 +1610,6 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
 
 } //#endif // TTK_ENABLE_OPENMP
 
-  delete activeVertices;
   this->printMsg("Computed Manifolds", 1.0,
                  localTimer.getElapsedTime(), this->threadNumber_);
 
@@ -1983,7 +1945,7 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D(
   ttk::Timer localTimer;
 
   // print the progress of the current subprocedure (currently 0%)
-  this->printMsg("Computing 2-Separatrices 3D",
+  this->printMsg("Computing 2-Separatrices 3D[Walls]",
                  0, // progress form 0-1
                  0, // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
@@ -2200,10 +2162,11 @@ if(!db_omp) {
                                    (msm[2] == msm[3]) ? 0x02 : 0x03; // 2 : 3
 
       const unsigned char lookupIndex = index1 | index2 | index3;
-      const int *tetEdgeIndices = tetraederLookup[lookupIndex];
-      const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
       if(tetraederLookupIsMultiLabel[lookupIndex]) {
+        const int *tetEdgeIndices = tetraederLookup[lookupIndex];
+        const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
+
         float edgeCenters[10][3];
         // the 6 edge centers
         getEdgeIncenter(
@@ -2257,66 +2220,55 @@ if(!db_omp) {
             sparseMSIds[5], sparseMSIds[5]
           });
 
-          trianglePosLocal.push_back({
+          trianglePosLocal.insert(trianglePosLocal.end(), {{
             edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
             edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
             edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
             edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
             edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
             edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
             edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
             edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
             edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
             edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
             edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
             edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePosLocal.push_back({
+          },{
             edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
             edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
             tetCenter[0], tetCenter[1], tetCenter[2]
-          });        
+          }});        
 
           caseDataLocal.insert(caseDataLocal.end(), {
             lookupIndex, lookupIndex, lookupIndex,
@@ -2368,7 +2320,7 @@ if(!db_omp) {
     }
   }
 } // #if TTK_OMPENMP
-  this->printMsg("Computed 2-Separatrices 3D",
+  this->printMsg("Computed 2-Separatrices 3D[Walls]",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
@@ -3861,7 +3813,7 @@ if(!db_omp) {
     const unsigned char lookupIndex = index1 | index2 | index3;
 
     if(tetraederLookupIsMultiLabel[lookupIndex]) {
-      if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 labels on tetraeder
+      if(tetraederLookupFast[lookupIndex]) { // <= 2 labels on tetraeder
         float vertPos[4][3];
         triangulation.getVertexPoint(
           vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
@@ -3872,7 +3824,7 @@ if(!db_omp) {
         triangulation.getVertexPoint(
           vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-        switch(tetraederLookupFast[lookupIndex]) {
+        switch(tetraederLookupFastCase[lookupIndex]) {
           case 0:
             trianglePos.push_back({
               vertPos[0][0], vertPos[0][1], vertPos[0][2], 
@@ -3940,55 +3892,32 @@ if(!db_omp) {
 
       const unsigned char lookupIndex = index1 | index2 | index3;
 
-      if(tetraederLookupIsMultiLabel[lookupIndex]) {
-        if(tetraederLookupFast[lookupIndex] != -1) { // <= 2 label on tetraeder
-          float vertPos[4][3];
-          triangulation.getVertexPoint(
-            vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
-          triangulation.getVertexPoint(
-            vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
-          triangulation.getVertexPoint(
-            vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
-          triangulation.getVertexPoint(
-            vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+      if(tetraederLookupFast[lookupIndex]) {
+        const int id0 =
+          tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][0];
+        const int id1 =
+          tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][1];
+        const int id2 =
+          tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][2];
+        
+        float vertPos[4][3];
+        triangulation.getVertexPoint(
+          vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+        triangulation.getVertexPoint(
+          vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+        triangulation.getVertexPoint(
+          vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+        triangulation.getVertexPoint(
+          vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-          switch(tetraederLookupFast[lookupIndex]) {
-            case 0:
-              trianglePosLocal.push_back({
-                vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-                vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-                vertPos[2][0], vertPos[2][1], vertPos[2][2]
-              });
-              msLabelsLocal.push_back(msm[0]);
-              break;
-            case 1:
-              trianglePosLocal.push_back({
-                vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-                vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-                vertPos[3][0], vertPos[3][1], vertPos[3][2]
-              });
-              msLabelsLocal.push_back(msm[0]);
-              break;
-            case 2:
-              trianglePosLocal.push_back({
-                vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-                vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-                vertPos[3][0], vertPos[3][1], vertPos[3][2]
-              });
-              msLabelsLocal.push_back(msm[0]);
-              break;
-            case 3:
-              trianglePosLocal.push_back({
-                vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-                vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-                vertPos[3][0], vertPos[3][1], vertPos[3][2]
-              });
-              msLabelsLocal.push_back(msm[1]);
-              break;
-          }
+        trianglePosLocal.push_back({
+          vertPos[id0][0], vertPos[id0][1], vertPos[id0][2], 
+          vertPos[id1][0], vertPos[id1][1], vertPos[id1][2], 
+          vertPos[id2][0], vertPos[id2][1], vertPos[id2][2]
+        });
+        msLabelsLocal.push_back(msm[id0]);
 
-          caseDataLocal.push_back(lookupIndex);
-        }
+        caseDataLocal.push_back(lookupIndex);
       }
     }
 
@@ -4349,7 +4278,7 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices2_3D(
                   this->threadNumber_,
                   ttk::debug::LineMode::REPLACE);
 
-  const int numTriangles = trianglePos.size();
+  const size_t numTriangles = trianglePos.size();
 
   size_t npoints = numTriangles * 3;
   size_t numCells = numTriangles;
@@ -4368,23 +4297,25 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices2_3D(
 #ifdef TTK_ENABLE_OPENMP
 #pragma omp parallel for schedule(static) if(numTriangles > 100000)
 #endif
-  for(int tri = 0; tri < numTriangles; ++tri) {
+  for(size_t tri = 0; tri < numTriangles; ++tri) {
+    const size_t ninetri = 9 * tri;
+    const size_t threetri = 3 * tri;
     auto &triPos = trianglePos[tri];
-    points[9 * tri    ] = triPos[0];
-    points[9 * tri + 1] = triPos[1];
-    points[9 * tri + 2] = triPos[2];
+    points[ninetri    ] = triPos[0];
+    points[ninetri + 1] = triPos[1];
+    points[ninetri + 2] = triPos[2];
 
-    points[9 * tri + 3] = triPos[3];
-    points[9 * tri + 4] = triPos[4];
-    points[9 * tri + 5] = triPos[5];
+    points[ninetri + 3] = triPos[3];
+    points[ninetri + 4] = triPos[4];
+    points[ninetri + 5] = triPos[5];
 
-    points[9 * tri + 6] = triPos[6];
-    points[9 * tri + 7] = triPos[7];
-    points[9 * tri + 8] = triPos[8];
+    points[ninetri + 6] = triPos[6];
+    points[ninetri + 7] = triPos[7];
+    points[ninetri + 8] = triPos[8];
 
-    cellsConn[3 * tri    ] = 3 * tri;
-    cellsConn[3 * tri + 1] = 3 * tri + 1;
-    cellsConn[3 * tri + 2] = 3 * tri + 2;
+    cellsConn[threetri    ] = threetri;
+    cellsConn[threetri + 1] = threetri + 1;
+    cellsConn[threetri + 2] = threetri + 2;
 
     cellsMSCIds[tri] = msLabelMap[msLabels[tri]];
   }
