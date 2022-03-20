@@ -575,10 +575,10 @@ namespace ttk {
       ttk::AbstractTriangulation *triangulation) const {
       int success = 0;
       success += triangulation->preconditionVertexNeighbors();
-      success += triangulation->preconditionCellTriangles();
 
-      if(triangulation->getDimensionality() ==  2)
+      if(triangulation->getDimensionality() ==  2) {
         success += triangulation->preconditionBoundaryVertices();
+      }
 
       return success;
     };
@@ -871,6 +871,16 @@ namespace ttk {
       incenter[0] = d[0] * pos0[0] + d[1] * pos1[0] + d[2] * pos2[0];
       incenter[1] = d[0] * pos0[1] + d[1] * pos1[1] + d[2] * pos2[1];
       incenter[2] = d[0] * pos0[2] + d[1] * pos1[2] + d[2] * pos2[2];
+
+      return 0;
+    }
+
+    inline int getCenter(
+      float pos0[3], float pos1[3], float pos2[3], float pos3[3],
+      float incenter[3]) const {
+      incenter[0] = (pos0[0] + pos1[0] + pos2[0] + pos3[0]) / 4;
+      incenter[1] = (pos0[1] + pos1[1] + pos2[1] + pos3[1]) / 4;
+      incenter[2] = (pos0[2] + pos1[2] + pos2[2] + pos3[2]) / 4;
 
       return 0;
     }
@@ -2021,7 +2031,7 @@ if(!db_omp) {
 
       if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
         float tetCenter[3];
-        triangulation.getCellIncenter(tet, 3, tetCenter);
+        getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
         // vertex 0
         trianglePos.push_back({
@@ -2199,8 +2209,8 @@ if(!db_omp) {
         getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
 
         if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
-          float tetCenter[3];
-          triangulation.getCellIncenter(tet, 3, tetCenter);
+          float tetCenter[3] = {0,0,0};
+          getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
           long long sparseMSIds[6] = {
             getSparseId(msm[0], msm[1], numMSCRegions),
@@ -2434,7 +2444,7 @@ if(!db_omp) {
       if(tetEdgeIndicesA[0] != -1) {
         if(tetEdgeIndicesA[0] == 10) { // 4 labels on tetraeder
           float tetCenter[3];
-          triangulation.getCellIncenter(tet, 3, tetCenter);
+          getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
           // vertex 0
           trianglePos.push_back({
@@ -2549,7 +2559,7 @@ if(!db_omp) {
       if(tetEdgeIndicesD[0] != -1) {
         if(tetEdgeIndicesD[0] == 10) { // 4 labels on tetraeder
           float tetCenter[3];
-          triangulation.getCellIncenter(tet, 3, tetCenter);
+          getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
           // vertex 0
           trianglePos.push_back({
@@ -2739,7 +2749,8 @@ if(!db_omp) {
         if(tetEdgeIndicesA[0] != -1) {
           if(tetEdgeIndicesA[0] == 10) { // 4 labels on tetraeder
             float tetCenter[3];
-            triangulation.getCellIncenter(tet, 3, tetCenter);
+            getCenter(
+              vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
             // vertex 0
             trianglePosLocal.push_back({
@@ -2855,7 +2866,8 @@ if(!db_omp) {
         if(tetEdgeIndicesD[0] != -1) {
           if(tetEdgeIndicesD[0] == 10) { // 4 labels on tetraeder
             float tetCenter[3];
-            triangulation.getCellIncenter(tet, 3, tetCenter);
+            getCenter(
+              vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
             // vertex 0
             trianglePosLocal.push_back({
@@ -3187,7 +3199,7 @@ if(!db_omp) {
         caseData.push_back(lookupIndex);
       } else { // 4 labels
         float tetCenter[3];
-        triangulation.getCellIncenter(tet, 3, tetCenter);
+        getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
         // the 4 triangle centers
         float triCenter[4][3];
@@ -3559,7 +3571,7 @@ if(!db_omp) {
 
         } else { // 4 labels
           float tetCenter[3];
-          triangulation.getCellIncenter(tet, 3, tetCenter);
+          getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
           // the 4 triangle centers
           float triCenter[4][3];
