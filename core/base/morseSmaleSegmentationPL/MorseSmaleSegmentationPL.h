@@ -1251,7 +1251,7 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
     delete activeVertices;
 } else { //#else // TTK_ENABLE_OPENMP
 
-    #pragma omp parallel num_threads(this->threadNumber_)
+    #pragma omp parallel num_threads(threadNumber_)
     {
       std::vector<SimplexId>* lActiveVertices = new std::vector<SimplexId>();
 
@@ -1497,7 +1497,7 @@ if(!db_omp) { //#ifndef TTK_ENABLE_OPENMP
 
 } else { //#else // TTK_ENABLE_OPENMP
 
-  #pragma omp parallel num_threads(this->threadNumber_)
+  #pragma omp parallel num_threads(threadNumber_)
   {
     std::vector<SimplexId>* lActiveVertices = new std::vector<SimplexId>();
 
@@ -1834,7 +1834,7 @@ if(!db_omp) {
     }
   }
 } else {
-  #pragma omp parallel
+  #pragma omp parallel num_threads(threadNumber_)
   {
     #pragma omp single
     {
@@ -1889,7 +1889,7 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices2_2D(
   outputSeparatrices2_cells_cases_->resize(numEdges);
 
 #ifdef TTK_ENABLE_OPENMP
-#pragma omp parallel for schedule(static) if(numEdges > 100000)
+#pragma omp parallel for num_threads(threadNumber_) schedule(static)
 #endif
   for(int edge = 0; edge < numEdges; ++edge) {
     auto &edgeP = edgePos[edge];
@@ -2155,13 +2155,13 @@ if(!db_omp) {
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
-  #pragma omp parallel num_threads(this->threadNumber_)
+  #pragma omp parallel num_threads(threadNumber_)
   {
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
     std::vector<long long> msLabelsLocal;
 
-    #pragma omp for schedule(static) nowait
+    #pragma omp for schedule(guided,8) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
       SimplexId vertices[4];
       triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -2227,7 +2227,7 @@ if(!db_omp) {
         getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
 
         if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
-          float tetCenter[3] = {0,0,0};
+          float tetCenter[3];
           getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
           long long sparseMSIds[6] = {
@@ -2331,6 +2331,8 @@ if(!db_omp) {
         }
       }
     }
+
+    #pragma omp
 
     #pragma omp critical
     {
@@ -2702,7 +2704,7 @@ if(!db_omp) {
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
-  #pragma omp parallel num_threads(this->threadNumber_)
+  #pragma omp parallel num_threads(threadNumber_)
   {
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
@@ -3412,7 +3414,7 @@ if(!db_omp) {
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
-  #pragma omp parallel num_threads(this->threadNumber_)
+  #pragma omp parallel num_threads(threadNumber_)
   {
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
@@ -3922,7 +3924,7 @@ if(!db_omp) {
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
-  #pragma omp parallel num_threads(this->threadNumber_)
+  #pragma omp parallel num_threads(threadNumber_)
   {
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
@@ -4352,7 +4354,7 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices2_3D(
   cellsCase = caseData;
 
 #ifdef TTK_ENABLE_OPENMP
-#pragma omp parallel for schedule(static) if(numTriangles > 100000)
+#pragma omp parallel for num_threads(threadNumber_) schedule(static)
 #endif
   for(size_t tri = 0; tri < numTriangles; ++tri) {
     const size_t ninetri = 9 * tri;
