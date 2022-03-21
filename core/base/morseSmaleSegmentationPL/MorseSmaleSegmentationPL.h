@@ -849,28 +849,27 @@ namespace ttk {
       triangulation.getVertexPoint(vertexId0, p[0], p[1], p[2]);
       triangulation.getVertexPoint(vertexId1, p[3], p[4], p[5]);
 
-      incenter[0] = 0.5 * p[0] + 0.5 * p[3];
-      incenter[1] = 0.5 * p[1] + 0.5 * p[4];
-      incenter[2] = 0.5 * p[2] + 0.5 * p[5];
+      incenter[0] = 0.5 * (p[0] + p[3]);
+      incenter[1] = 0.5 * (p[1] + p[4]);
+      incenter[2] = 0.5 * (p[2] + p[5]);
+
+      return 0;
+    }
+
+    inline int getCenter(
+      float pos0[3], float pos1[3], float incenter[3]) const {
+      incenter[0] = 0.5 * (pos0[0] + pos1[0]);
+      incenter[1] = 0.5 * (pos0[1] + pos1[1]);
+      incenter[2] = 0.5 * (pos0[2] + pos1[2]);
 
       return 0;
     }
 
     inline int getCenter(
       float pos0[3], float pos1[3], float pos2[3], float incenter[3]) const {
-      float d[3];
-      d[0] = Geometry::distance(pos1, pos2);
-      d[1] = Geometry::distance(pos0, pos2);
-      d[2] = Geometry::distance(pos0, pos1);
-      const float sum = d[0] + d[1] + d[2];
-
-      d[0] = d[0] / sum;
-      d[1] = d[1] / sum;
-      d[2] = d[2] / sum;
-
-      incenter[0] = d[0] * pos0[0] + d[1] * pos1[0] + d[2] * pos2[0];
-      incenter[1] = d[0] * pos0[1] + d[1] * pos1[1] + d[2] * pos2[1];
-      incenter[2] = d[0] * pos0[2] + d[1] * pos1[2] + d[2] * pos2[2];
+      incenter[0] = 0.3333 * (pos0[0] + pos1[0] + pos2[0]);
+      incenter[1] = 0.3333 * (pos0[1] + pos1[1] + pos2[1]);
+      incenter[2] = 0.3333 * (pos0[2] + pos1[2] + pos2[2]);
 
       return 0;
     }
@@ -878,9 +877,9 @@ namespace ttk {
     inline int getCenter(
       float pos0[3], float pos1[3], float pos2[3], float pos3[3],
       float incenter[3]) const {
-      incenter[0] = (pos0[0] + pos1[0] + pos2[0] + pos3[0]) / 4;
-      incenter[1] = (pos0[1] + pos1[1] + pos2[1] + pos3[1]) / 4;
-      incenter[2] = (pos0[2] + pos1[2] + pos2[2] + pos3[2]) / 4;
+      incenter[0] = 0.25 * (pos0[0] + pos1[0] + pos2[0] + pos3[0]);
+      incenter[1] = 0.25 * (pos0[1] + pos1[1] + pos2[1] + pos3[1]);
+      incenter[2] = 0.25 * (pos0[2] + pos1[2] + pos2[2] + pos3[2]);
 
       return 0;
     }
@@ -3199,7 +3198,7 @@ if(!db_omp) {
         caseData.push_back(lookupIndex);
       } else { // 4 labels
         float tetCenter[3];
-        getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
+        getCenter(vPos[0], vPos[1], vPos[2], vPos[3], tetCenter);
 
         // the 4 triangle centers
         float triCenter[4][3];
@@ -3571,7 +3570,7 @@ if(!db_omp) {
 
         } else { // 4 labels
           float tetCenter[3];
-          getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
+          getCenter(vPos[0], vPos[1], vPos[2], vPos[3], tetCenter);
 
           // the 4 triangle centers
           float triCenter[4][3];
