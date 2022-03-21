@@ -578,6 +578,7 @@ namespace ttk {
 
       if(triangulation->getDimensionality() ==  2) {
         success += triangulation->preconditionBoundaryVertices();
+        success += triangulation->preconditionVertexStars();
       }
 
       return success;
@@ -2003,14 +2004,14 @@ if(!db_omp) {
     const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
     if(tetraederLookupIsMultiLabel[lookupIndex]) {
-      float edgeCenters[10][3];
-      // the 6 edge centers
-      getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
-      getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
-      getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
-      getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
-      getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
-      getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
+      // float edgeCenters[10][3];
+      // // the 6 edge centers
+      // getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
+      // getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
+      // getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
+      // getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
+      // getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
+      // getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
 
       float vertPos[4][3];
       triangulation.getVertexPoint(
@@ -2022,7 +2023,16 @@ if(!db_omp) {
       triangulation.getVertexPoint(
         vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-      // the 4 triangle centers
+      float edgeCenters[10][3];
+      // 6 edge centers
+      getCenter(vertPos[0], vertPos[1], edgeCenters[0]);
+      getCenter(vertPos[0], vertPos[2], edgeCenters[1]);
+      getCenter(vertPos[0], vertPos[3], edgeCenters[2]);
+      getCenter(vertPos[1], vertPos[2], edgeCenters[3]);
+      getCenter(vertPos[1], vertPos[3], edgeCenters[4]);
+      getCenter(vertPos[2], vertPos[3], edgeCenters[5]);
+
+      // 4 triangle centers
       getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
       getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
       getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
@@ -2176,20 +2186,20 @@ if(!db_omp) {
         const int *tetEdgeIndices = tetraederLookup[lookupIndex];
         const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
-        float edgeCenters[10][3];
-        // the 6 edge centers
-        getEdgeIncenter(
-          vertices[0], vertices[1], edgeCenters[0], triangulation);
-        getEdgeIncenter(
-          vertices[0], vertices[2], edgeCenters[1], triangulation);
-        getEdgeIncenter(
-          vertices[0], vertices[3], edgeCenters[2], triangulation);
-        getEdgeIncenter(
-          vertices[1], vertices[2], edgeCenters[3], triangulation);
-        getEdgeIncenter(
-          vertices[1], vertices[3], edgeCenters[4], triangulation);
-        getEdgeIncenter(
-          vertices[2], vertices[3], edgeCenters[5], triangulation);
+        // float edgeCenters[10][3];
+        // // the 6 edge centers
+        // getEdgeIncenter(
+        //   vertices[0], vertices[1], edgeCenters[0], triangulation);
+        // getEdgeIncenter(
+        //   vertices[0], vertices[2], edgeCenters[1], triangulation);
+        // getEdgeIncenter(
+        //   vertices[0], vertices[3], edgeCenters[2], triangulation);
+        // getEdgeIncenter(
+        //   vertices[1], vertices[2], edgeCenters[3], triangulation);
+        // getEdgeIncenter(
+        //   vertices[1], vertices[3], edgeCenters[4], triangulation);
+        // getEdgeIncenter(
+        //   vertices[2], vertices[3], edgeCenters[5], triangulation);
 
         float vertPos[4][3];
         triangulation.getVertexPoint(
@@ -2201,7 +2211,16 @@ if(!db_omp) {
         triangulation.getVertexPoint(
           vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-        // the 4 triangle centers
+        float edgeCenters[10][3];
+        // 6 edge centers
+        getCenter(vertPos[0], vertPos[1], edgeCenters[0]);
+        getCenter(vertPos[0], vertPos[2], edgeCenters[1]);
+        getCenter(vertPos[0], vertPos[3], edgeCenters[2]);
+        getCenter(vertPos[1], vertPos[2], edgeCenters[3]);
+        getCenter(vertPos[1], vertPos[3], edgeCenters[4]);
+        getCenter(vertPos[2], vertPos[3], edgeCenters[5]);
+
+        // 4 triangle centers
         getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
         getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
         getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
@@ -2415,14 +2434,14 @@ if(!db_omp) {
 
     if(tetraederLookupIsMultiLabel[lookupIndexA] 
     || tetraederLookupIsMultiLabel[lookupIndexD]) {
-      float edgeCenters[10][3];
-      // the 6 edge centers
-      getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
-      getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
-      getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
-      getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
-      getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
-      getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
+      // float edgeCenters[10][3];
+      // // the 6 edge centers
+      // getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
+      // getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
+      // getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
+      // getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
+      // getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
+      // getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
 
       float vertPos[4][3];
       triangulation.getVertexPoint(
@@ -2434,7 +2453,16 @@ if(!db_omp) {
       triangulation.getVertexPoint(
         vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-      // the 4 triangle centers
+      float edgeCenters[10][3];
+      // 6 edge centers
+      getCenter(vertPos[0], vertPos[1], edgeCenters[0]);
+      getCenter(vertPos[0], vertPos[2], edgeCenters[1]);
+      getCenter(vertPos[0], vertPos[3], edgeCenters[2]);
+      getCenter(vertPos[1], vertPos[2], edgeCenters[3]);
+      getCenter(vertPos[1], vertPos[3], edgeCenters[4]);
+      getCenter(vertPos[2], vertPos[3], edgeCenters[5]);
+
+      // 4 triangle centers
       getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
       getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
       getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
@@ -2720,14 +2748,14 @@ if(!db_omp) {
 
       if(tetraederLookupIsMultiLabel[lookupIndexA] 
       || tetraederLookupIsMultiLabel[lookupIndexD]) {
-        float edgeCenters[10][3];
-        // the 6 edge centers
-        getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
-        getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
-        getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
-        getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
-        getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
-        getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
+        // float edgeCenters[10][3];
+        // // the 6 edge centers
+        // getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
+        // getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
+        // getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
+        // getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
+        // getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
+        // getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
 
         float vertPos[4][3];
         triangulation.getVertexPoint(
@@ -2739,7 +2767,16 @@ if(!db_omp) {
         triangulation.getVertexPoint(
           vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-        // the 4 triangle centers
+        float edgeCenters[10][3];
+        // 6 edge centers
+        getCenter(vertPos[0], vertPos[1], edgeCenters[0]);
+        getCenter(vertPos[0], vertPos[2], edgeCenters[1]);
+        getCenter(vertPos[0], vertPos[3], edgeCenters[2]);
+        getCenter(vertPos[1], vertPos[2], edgeCenters[3]);
+        getCenter(vertPos[1], vertPos[3], edgeCenters[4]);
+        getCenter(vertPos[2], vertPos[3], edgeCenters[5]);
+
+        // 4 triangle centers
         getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
         getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
         getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
@@ -3476,19 +3513,28 @@ if(!db_omp) {
           getCenter(vPos[0], vPos[2], vPos[3], triCenter[2]);
           getCenter(vPos[1], vPos[2], vPos[3], triCenter[3]);
 
-          float edgeCenters[6][3];
-          getEdgeIncenter(
-            vertices[0], vertices[1], edgeCenters[0], triangulation);
-          getEdgeIncenter(
-            vertices[0], vertices[2], edgeCenters[1], triangulation);
-          getEdgeIncenter(
-            vertices[0], vertices[3], edgeCenters[2], triangulation);
-          getEdgeIncenter(
-            vertices[1], vertices[2], edgeCenters[3], triangulation);
-          getEdgeIncenter(
-            vertices[1], vertices[3], edgeCenters[4], triangulation);
-          getEdgeIncenter(
-            vertices[2], vertices[3], edgeCenters[5], triangulation);
+          // float edgeCenters[6][3];
+          // getEdgeIncenter(
+          //   vertices[0], vertices[1], edgeCenters[0], triangulation);
+          // getEdgeIncenter(
+          //   vertices[0], vertices[2], edgeCenters[1], triangulation);
+          // getEdgeIncenter(
+          //   vertices[0], vertices[3], edgeCenters[2], triangulation);
+          // getEdgeIncenter(
+          //   vertices[1], vertices[2], edgeCenters[3], triangulation);
+          // getEdgeIncenter(
+          //   vertices[1], vertices[3], edgeCenters[4], triangulation);
+          // getEdgeIncenter(
+          //   vertices[2], vertices[3], edgeCenters[5], triangulation);
+
+          float edgeCenters[10][3];
+
+          getCenter(vPos[0], vPos[1], edgeCenters[0]);
+          getCenter(vPos[0], vPos[2], edgeCenters[1]);
+          getCenter(vPos[0], vPos[3], edgeCenters[2]);
+          getCenter(vPos[1], vPos[2], edgeCenters[3]);
+          getCenter(vPos[1], vPos[3], edgeCenters[4]);
+          getCenter(vPos[2], vPos[3], edgeCenters[5]);
 
 
           float edge00[3], edge01[3], edge02[3], edge03[3], tri00[3], tri01[3],
