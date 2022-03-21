@@ -387,36 +387,6 @@ const int tetraederLookupSplitBasisns3Label[27][11] = {
   { 2,  1,  3,  0,  3,  2,  4,  1,  0,  1,  0}, // (3) 1,2,2 -26
 };
 
-/*const int tetraederLookupSplitBasisns3Label[27][4] = {
-  {-1, -1, -1, -1}, // (1) 0,0,0 - 0
-  {-1, -1, -1, -1}, // (-) 0,0,1 - 1
-  {-1, -1, -1, -1}, // (-) 0,0,2 - 2 
-  {-1, -1, -1, -1}, // (2) 0,0,3 - 3
-  {-1, -1, -1, -1}, // (-) 0,1,0 - 4
-  {-1, -1, -1, -1}, // (-) 0,1,1 - 5 
-  {-1, -1, -1, -1}, // (-) 0,1,2 - 6
-  {-1, -1, -1, -1}, // (-) 0,1,3 - 7
-  {-1, -1, -1, -1}, // (2) 0,2,0 - 8
-  {-1, -1, -1, -1}, // (-) 0,2,1 - 9
-  {-1, -1, -1, -1}, // (2) 0,2,2 -10
-  { 0,  2,  1,  3}, // (3) 0,2,3 -11
-  {-1, -1, -1, -1}, // (-) 0,3,0 -12
-  {-1, -1, -1, -1}, // (-) 0,3,1 -13
-  {-1, -1, -1, -1}, // (-) 0,3,2 -14
-  {-1, -1, -1, -1}, // (-) 0,3,3 -15
-  {-1, -1, -1, -1}, // (2) 1,0,0 -16
-  {-1, -1, -1, -1}, // (2) 1,0,1 -17
-  {-1, -1, -1, -1}, // (-) 1,0,2 -18
-  { 0,  1,  2,  3}, // (3) 1,0,3 -19
-  {-1, -1, -1, -1}, // (2) 1,1,0 -20
-  {-1, -1, -1, -1}, // (2) 1,1,1 -21
-  {-1, -1, -1, -1}, // (-) 1,1,2 -22
-  { 1,  0,  2,  3}, // (3) 1,1,3 -23
-  { 0,  1,  3,  2}, // (3) 1,2,0 -24
-  { 1,  0,  3,  2}, // (3) 1,2,1 -25
-  { 2,  0,  3,  1}, // (3) 1,2,2 -26
-};*/
-
 const int lookupOtherLabels[4][3] = {
   {1,2,3},
   {0,2,3},
@@ -575,10 +545,11 @@ namespace ttk {
       ttk::AbstractTriangulation *triangulation) const {
       int success = 0;
       success += triangulation->preconditionVertexNeighbors();
+      success += triangulation->preconditionBoundaryVertices();
+      success += triangulation->preconditionVertexStars();
 
       if(triangulation->getDimensionality() ==  2) {
-        success += triangulation->preconditionBoundaryVertices();
-        success += triangulation->preconditionVertexStars();
+        
       }
 
       return success;
@@ -2004,14 +1975,6 @@ if(!db_omp) {
     const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
     if(tetraederLookupIsMultiLabel[lookupIndex]) {
-      // float edgeCenters[10][3];
-      // // the 6 edge centers
-      // getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
-      // getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
-      // getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
-      // getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
-      // getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
-      // getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
 
       float vertPos[4][3];
       triangulation.getVertexPoint(
@@ -2155,13 +2118,15 @@ if(!db_omp) {
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
+  size_t triangleStartIndex[threadNumber_ + 1];
   #pragma omp parallel num_threads(threadNumber_)
   {
+    const int tid = omp_get_thread_num();
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
     std::vector<long long> msLabelsLocal;
 
-    #pragma omp for schedule(guided,8) nowait
+    #pragma omp for schedule(static) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
       SimplexId vertices[4];
       triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -2185,21 +2150,6 @@ if(!db_omp) {
       if(tetraederLookupIsMultiLabel[lookupIndex]) {
         const int *tetEdgeIndices = tetraederLookup[lookupIndex];
         const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
-
-        // float edgeCenters[10][3];
-        // // the 6 edge centers
-        // getEdgeIncenter(
-        //   vertices[0], vertices[1], edgeCenters[0], triangulation);
-        // getEdgeIncenter(
-        //   vertices[0], vertices[2], edgeCenters[1], triangulation);
-        // getEdgeIncenter(
-        //   vertices[0], vertices[3], edgeCenters[2], triangulation);
-        // getEdgeIncenter(
-        //   vertices[1], vertices[2], edgeCenters[3], triangulation);
-        // getEdgeIncenter(
-        //   vertices[1], vertices[3], edgeCenters[4], triangulation);
-        // getEdgeIncenter(
-        //   vertices[2], vertices[3], edgeCenters[5], triangulation);
 
         float vertPos[4][3];
         triangulation.getVertexPoint(
@@ -2332,22 +2282,40 @@ if(!db_omp) {
       }
     }
 
-    #pragma omp
+    triangleStartIndex[tid + 1] = trianglePosLocal.size();
 
-    #pragma omp critical
+    #pragma omp barrier
+
+    #pragma omp single
     {
-      trianglePos.reserve(trianglePos.size() + trianglePosLocal.size());
-      trianglePos.insert(trianglePos.end(),
-        trianglePosLocal.begin(), trianglePosLocal.end());
+      triangleStartIndex[0] = 0;
 
-      caseData.reserve(caseData.size() + caseDataLocal.size());
-      caseData.insert(caseData.end(),
-        caseDataLocal.begin(), caseDataLocal.end());
+      // Count triangle number and create iterator start indices
+      for(int t = 1; t < threadNumber_ + 1; ++t) {
+        triangleStartIndex[t] += triangleStartIndex[t-1];
+      }
 
-      msLabels.reserve(msLabels.size() + msLabelsLocal.size());
-      msLabels.insert(msLabels.end(),
-        msLabelsLocal.begin(), msLabelsLocal.end());
+      trianglePos.resize(triangleStartIndex[threadNumber_]);
     }
+
+    std::copy(trianglePosLocal.begin(), trianglePosLocal.end(),
+      trianglePos.begin() + triangleStartIndex[tid]);
+
+    #pragma omp single
+    {
+      caseData.resize(triangleStartIndex[threadNumber_]);
+    }
+
+    std::copy(caseDataLocal.begin(), caseDataLocal.end(),
+      caseData.begin() + triangleStartIndex[tid]);
+
+    #pragma omp single
+    {
+      msLabels.resize(triangleStartIndex[threadNumber_]);
+    }
+
+    std::copy(msLabelsLocal.begin(), msLabelsLocal.end(),
+      msLabels.begin() + triangleStartIndex[tid]);
   }
 } // #if TTK_OMPENMP
   this->printMsg("Computed 2-Separatrices 3D[Walls]",
@@ -2370,7 +2338,7 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D_split(
   ttk::Timer localTimer;
 
   // print the progress of the current subprocedure (currently 0%)
-  this->printMsg("Computing 2-Separatrices 3D[S]",
+  this->printMsg("Computing 2-Separatrices 3D[Split]",
                  0, // progress form 0-1
                  0, // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
@@ -2436,14 +2404,6 @@ if(!db_omp) {
 
     if(tetraederLookupIsMultiLabel[lookupIndexA] 
     || tetraederLookupIsMultiLabel[lookupIndexD]) {
-      // float edgeCenters[10][3];
-      // // the 6 edge centers
-      // getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
-      // getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
-      // getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
-      // getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
-      // getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
-      // getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
 
       float vertPos[4][3];
       triangulation.getVertexPoint(
@@ -2704,8 +2664,10 @@ if(!db_omp) {
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
+  size_t triangleStartIndex[threadNumber_ + 1];
   #pragma omp parallel num_threads(threadNumber_)
   {
+    const int tid = omp_get_thread_num();
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
     std::vector<long long> msLabelsLocal;
@@ -2750,15 +2712,6 @@ if(!db_omp) {
 
       if(tetraederLookupIsMultiLabel[lookupIndexA] 
       || tetraederLookupIsMultiLabel[lookupIndexD]) {
-        // float edgeCenters[10][3];
-        // // the 6 edge centers
-        // getEdgeIncenter(vertices[0], vertices[1], edgeCenters[0], triangulation);
-        // getEdgeIncenter(vertices[0], vertices[2], edgeCenters[1], triangulation);
-        // getEdgeIncenter(vertices[0], vertices[3], edgeCenters[2], triangulation);
-        // getEdgeIncenter(vertices[1], vertices[2], edgeCenters[3], triangulation);
-        // getEdgeIncenter(vertices[1], vertices[3], edgeCenters[4], triangulation);
-        // getEdgeIncenter(vertices[2], vertices[3], edgeCenters[5], triangulation);
-
         float vertPos[4][3];
         triangulation.getVertexPoint(
           vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
@@ -3021,23 +2974,43 @@ if(!db_omp) {
       }
     }
 
-    #pragma omp critical
+    triangleStartIndex[tid + 1] = trianglePosLocal.size();
+
+    #pragma omp barrier
+
+    #pragma omp single
     {
-      trianglePos.reserve(trianglePos.size() + trianglePosLocal.size());
-      trianglePos.insert(trianglePos.end(),
-        trianglePosLocal.begin(), trianglePosLocal.end());
+      triangleStartIndex[0] = 0;
 
-      caseData.reserve(caseData.size() + caseDataLocal.size());
-      caseData.insert(caseData.end(),
-        caseDataLocal.begin(), caseDataLocal.end());
+      // Count triangle number and create iterator start indices
+      for(int t = 1; t < threadNumber_ + 1; ++t) {
+        triangleStartIndex[t] += triangleStartIndex[t-1];
+      }
 
-      msLabels.reserve(msLabels.size() + msLabelsLocal.size());
-      msLabels.insert(msLabels.end(),
-        msLabelsLocal.begin(), msLabelsLocal.end());
+      trianglePos.resize(triangleStartIndex[threadNumber_]);
     }
+
+    std::copy(trianglePosLocal.begin(), trianglePosLocal.end(),
+      trianglePos.begin() + triangleStartIndex[tid]);
+
+    #pragma omp single
+    {
+      caseData.resize(triangleStartIndex[threadNumber_]);
+    }
+
+    std::copy(caseDataLocal.begin(), caseDataLocal.end(),
+      caseData.begin() + triangleStartIndex[tid]);
+
+    #pragma omp single
+    {
+      msLabels.resize(triangleStartIndex[threadNumber_]);
+    }
+
+    std::copy(msLabelsLocal.begin(), msLabelsLocal.end(),
+      msLabels.begin() + triangleStartIndex[tid]);
   }
 } // #if TTK_OMPENMP
-  this->printMsg("Computed 2-Separatrices 3D[S]", 1,
+  this->printMsg("Computed 2-Separatrices 3D[Split]", 1,
     localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
@@ -3070,7 +3043,7 @@ int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fine(
   const triangulationType &triangulation) const {
   ttk::Timer localTimer;
 
-  this->printMsg("Computing 2-Separatrices 3D[F]",
+  this->printMsg("Computing 2-Separatrices 3D[Fine]",
                  0, // progress form 0-1
                  0, // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
@@ -3414,14 +3387,16 @@ if(!db_omp) {
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
+  size_t triangleStartIndex[threadNumber_ + 1];
   #pragma omp parallel num_threads(threadNumber_)
   {
+    const int tid = omp_get_thread_num();
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
     std::vector<long long> msLabelsLocal;
     std::vector<SimplexId> sep2VertSetLocal;
 
-    #pragma omp for schedule(static) nowait
+    #pragma omp for schedule(guided,8) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
       SimplexId vertices[4];
       triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -3514,20 +3489,6 @@ if(!db_omp) {
           getCenter(vPos[0], vPos[1], vPos[3], triCenter[1]);
           getCenter(vPos[0], vPos[2], vPos[3], triCenter[2]);
           getCenter(vPos[1], vPos[2], vPos[3], triCenter[3]);
-
-          // float edgeCenters[6][3];
-          // getEdgeIncenter(
-          //   vertices[0], vertices[1], edgeCenters[0], triangulation);
-          // getEdgeIncenter(
-          //   vertices[0], vertices[2], edgeCenters[1], triangulation);
-          // getEdgeIncenter(
-          //   vertices[0], vertices[3], edgeCenters[2], triangulation);
-          // getEdgeIncenter(
-          //   vertices[1], vertices[2], edgeCenters[3], triangulation);
-          // getEdgeIncenter(
-          //   vertices[1], vertices[3], edgeCenters[4], triangulation);
-          // getEdgeIncenter(
-          //   vertices[2], vertices[3], edgeCenters[5], triangulation);
 
           float edgeCenters[10][3];
 
@@ -3794,23 +3755,43 @@ if(!db_omp) {
       }
     }
 
-    #pragma omp critical
+    triangleStartIndex[tid + 1] = trianglePosLocal.size();
+
+    #pragma omp barrier
+
+    #pragma omp single
     {
-      trianglePos.reserve(trianglePos.size() + trianglePosLocal.size());
-      trianglePos.insert(trianglePos.end(),
-        trianglePosLocal.begin(), trianglePosLocal.end());
+      triangleStartIndex[0] = 0;
 
-      caseData.reserve(caseData.size() + caseDataLocal.size());
-      caseData.insert(caseData.end(),
-        caseDataLocal.begin(), caseDataLocal.end());
+      // Count triangle number and create iterator start indices
+      for(int t = 1; t < threadNumber_ + 1; ++t) {
+        triangleStartIndex[t] += triangleStartIndex[t-1];
+      }
 
-      msLabels.reserve(msLabels.size() + msLabelsLocal.size());
-      msLabels.insert(msLabels.end(),
-        msLabelsLocal.begin(), msLabelsLocal.end());
+      trianglePos.resize(triangleStartIndex[threadNumber_]);
     }
+
+    std::copy(trianglePosLocal.begin(), trianglePosLocal.end(),
+      trianglePos.begin() + triangleStartIndex[tid]);
+
+    #pragma omp single
+    {
+      caseData.resize(triangleStartIndex[threadNumber_]);
+    }
+
+    std::copy(caseDataLocal.begin(), caseDataLocal.end(),
+      caseData.begin() + triangleStartIndex[tid]);
+
+    #pragma omp single
+    {
+      msLabels.resize(triangleStartIndex[threadNumber_]);
+    }
+
+    std::copy(msLabelsLocal.begin(), msLabelsLocal.end(),
+      msLabels.begin() + triangleStartIndex[tid]);
   }
 } // TTK_ENABLE_OPENMP
-  this->printMsg("Computed 2-Separatrices 3D[F]",
+  this->printMsg("Computed 2-Separatrices 3D[Fine]",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
@@ -3825,7 +3806,7 @@ int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fast(
   const triangulationType &triangulation) const {
   ttk::Timer localTimer;
 
-  this->printMsg("Computing 2-Separatrices 3D[F]",
+  this->printMsg("Computing 2-Separatrices 3D[Fast]",
                  0, // progress form 0-1
                  0, // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
@@ -3924,8 +3905,10 @@ if(!db_omp) {
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
+  size_t triangleStartIndex[threadNumber_ + 1];
   #pragma omp parallel num_threads(threadNumber_)
   {
+    const int tid = omp_get_thread_num();
     std::vector<std::array<float, 9>> trianglePosLocal;
     std::vector<SimplexId> caseDataLocal;
     std::vector<long long> msLabelsLocal;
@@ -3980,23 +3963,43 @@ if(!db_omp) {
       }
     }
 
-    #pragma omp critical
+    triangleStartIndex[tid + 1] = trianglePosLocal.size();
+
+    #pragma omp barrier
+
+    #pragma omp single
     {
-      trianglePos.reserve(trianglePos.size() + trianglePosLocal.size());
-      trianglePos.insert(trianglePos.end(),
-        trianglePosLocal.begin(), trianglePosLocal.end());
+      triangleStartIndex[0] = 0;
 
-      caseData.reserve(caseData.size() + caseDataLocal.size());
-      caseData.insert(caseData.end(),
-        caseDataLocal.begin(), caseDataLocal.end());
+      // Count triangle number and create iterator start indices
+      for(int t = 1; t < threadNumber_ + 1; ++t) {
+        triangleStartIndex[t] += triangleStartIndex[t-1];
+      }
 
-      msLabels.reserve(msLabels.size() + msLabelsLocal.size());
-      msLabels.insert(msLabels.end(),
-        msLabelsLocal.begin(), msLabelsLocal.end());
+      trianglePos.resize(triangleStartIndex[threadNumber_]);
     }
+
+    std::copy(trianglePosLocal.begin(), trianglePosLocal.end(),
+      trianglePos.begin() + triangleStartIndex[tid]);
+
+    #pragma omp single
+    {
+      caseData.resize(triangleStartIndex[threadNumber_]);
+    }
+
+    std::copy(caseDataLocal.begin(), caseDataLocal.end(),
+      caseData.begin() + triangleStartIndex[tid]);
+
+    #pragma omp single
+    {
+      msLabels.resize(triangleStartIndex[threadNumber_]);
+    }
+
+    std::copy(msLabelsLocal.begin(), msLabelsLocal.end(),
+      msLabels.begin() + triangleStartIndex[tid]);
   }
 } // TTK_ENABLE_OPENMP
-  this->printMsg("Computed 2-Separatrices 3D[F]",
+  this->printMsg("Computed 2-Separatrices 3D[Fast]",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
@@ -4018,14 +4021,17 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
                  0, localTimer.getElapsedTime(), 
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
-  std::vector<std::pair<SimplexId, SimplexId>> reachableExtrema[2];
-  std::queue<mscq::Separatrix> saddleSaddleQueue[2];
-  std::unordered_map<SimplexId, int> critMap;
-  std::set<SimplexId> saddle1Set, saddle2Set;
+size_t sadExtrStartIndex[threadNumber_ + 1];
+#pragma omp parallel num_threads(threadNumber_)
+{
+  const int tid = omp_get_thread_num();
+  std::vector<mscq::Separatrix> sadExtrConnsLocal;
 
+  std::vector<std::pair<SimplexId, SimplexId>> reachableExtrema[2];
+
+  #pragma omp for schedule(static) nowait
   for(size_t c = 0; c < criticalPoints.size(); ++c) {
     const std::pair<SimplexId, char> &crit = criticalPoints[c];
-    critMap.insert({crit.first, c});
     
     const bool isSaddle1 = crit.second == (char)CriticalType::Saddle1;
     const bool isSaddle2 = crit.second == (char)CriticalType::Saddle2;
@@ -4033,12 +4039,6 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
     if(isSaddle1 || isSaddle2) {
       std::map<SimplexId, SimplexId> neigborSeedsAsc;
       std::map<SimplexId, SimplexId> neigborSeedsDsc;
-
-      if(isSaddle1) {
-        saddle1Set.insert(crit.first);
-      } else {
-        saddle2Set.insert(crit.first);
-      }
 
       const SimplexId numNeighbors
         = triangulation.getVertexNeighborNumber(crit.first);
@@ -4077,10 +4077,6 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
     }
   }
 
-  this->printMsg("Computing crit point connectors",
-                 0.25, localTimer.getElapsedTime(), 
-                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
-
   std::map<long long, size_t> s1ToMin;
   for(const auto& c : reachableExtrema[0]) { // 1-saddle -> minimum
     mscq::Separatrix sadExtrConn(c.first);
@@ -4095,7 +4091,7 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
 
     sadExtrConn.geometry_.push_back(currentVert);
 
-    sadExtrConns.push_back(sadExtrConn);
+    sadExtrConnsLocal.push_back(sadExtrConn);
   }
 
   std::map<long long, size_t> s2ToMax;
@@ -4112,8 +4108,28 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
 
     sadExtrConn.geometry_.push_back(currentVert);
 
-    sadExtrConns.push_back(sadExtrConn);
+    sadExtrConnsLocal.push_back(sadExtrConn);
   }
+
+  sadExtrStartIndex[tid + 1] = sadExtrConnsLocal.size();
+
+  #pragma omp barrier
+
+  #pragma omp single
+  {
+    sadExtrStartIndex[0] = 0;
+
+    // Count triangle number and create iterator start indices
+    for(int t = 1; t < threadNumber_ + 1; ++t) {
+      sadExtrStartIndex[t] += sadExtrStartIndex[t-1];
+    }
+
+    sadExtrConns.resize(sadExtrStartIndex[threadNumber_]);
+  }
+
+  std::copy(sadExtrConnsLocal.begin(), sadExtrConnsLocal.end(),
+    sadExtrConns.begin() + sadExtrStartIndex[tid]);
+}
 
   this->printMsg("Computed crit point connectors",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
@@ -4139,7 +4155,15 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D_fast(
                  localTimer.getElapsedTime(), // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
-  for(const auto& crit : criticalPoints) {
+size_t sadExtrStartIndex[threadNumber_ + 1];
+#pragma omp parallel num_threads(threadNumber_)
+{
+  const int tid = omp_get_thread_num();
+  std::vector<mscq::Separatrix> sadExtrConnsLocal;
+
+  #pragma omp for schedule(static) nowait
+  for(size_t c = 0; c < criticalPoints.size(); ++c) {
+    const std::pair<SimplexId, char> &crit = criticalPoints[c];
     const bool isSaddle1 = crit.second == (char)CriticalType::Saddle1;
     const bool isSaddle2 = crit.second == (char)CriticalType::Saddle2;
 
@@ -4167,13 +4191,33 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D_fast(
           }
 
           sadExtrConn.geometry_.push_back(neighbor);
-          sadExtrConns.push_back(sadExtrConn);
+          sadExtrConnsLocal.push_back(sadExtrConn);
 
           neigborSet.insert(neighbor);
         }
       }
     }
   }
+
+  sadExtrStartIndex[tid + 1] = sadExtrConnsLocal.size();
+
+  #pragma omp barrier
+
+  #pragma omp single
+  {
+    sadExtrStartIndex[0] = 0;
+
+    // Count triangle number and create iterator start indices
+    for(int t = 1; t < threadNumber_ + 1; ++t) {
+      sadExtrStartIndex[t] += sadExtrStartIndex[t-1];
+    }
+
+    sadExtrConns.resize(sadExtrStartIndex[threadNumber_]);
+  }
+
+  std::copy(sadExtrConnsLocal.begin(), sadExtrConnsLocal.end(),
+    sadExtrConns.begin() + sadExtrStartIndex[tid]);
+}
 
   this->printMsg("Computed crit point connectors[F]",
                  1, // progress form 0-1
