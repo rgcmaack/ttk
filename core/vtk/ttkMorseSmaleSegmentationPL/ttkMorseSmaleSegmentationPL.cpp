@@ -234,13 +234,12 @@ int ttkMorseSmaleSegmentationPL::dispatch(
   SimplexId s2_numberOfCells{};
   separatrices2_points.clear();
   separatrices2_cells_mscIds.clear();
-  separatrices2_cells_caseTypes.clear();
   separatrices1_cells_extremaDistance.clear();
 
   this->setOutputSeparatrices2(
     &s2_numberOfPoints, &separatrices2_points,
     &s2_numberOfCells, &separatrices2_cells_connectivity,
-    &separatrices2_cells_mscIds, &separatrices2_cells_caseTypes);
+    &separatrices2_cells_mscIds);
 
   const int ret = this->execute<triangulationType>(
     SeparatricesManifold, Separaticies1Mode, Separaticies2Mode, ComputeSaddles,
@@ -408,11 +407,6 @@ int ttkMorseSmaleSegmentationPL::dispatch(
     mscIds->SetName("MSCIds");
     setArray(mscIds, separatrices2_cells_mscIds);
 
-    vtkNew<ttkSimplexIdTypeArray> caseTypes{};
-    caseTypes->SetNumberOfComponents(1);
-    caseTypes->SetName("CaseType");
-    setArray(caseTypes, separatrices2_cells_caseTypes);
-
     if(triangulation.getDimensionality() == 3) {
 #ifdef TTK_ENABLE_OPENMP
 #pragma omp parallel for num_threads(this->threadNumber_)
@@ -446,7 +440,6 @@ int ttkMorseSmaleSegmentationPL::dispatch(
 
     auto cellData = outputSeparatrices2->GetCellData();
     cellData->AddArray(mscIds);
-    cellData->AddArray(caseTypes);
   }
 
   return 0;
