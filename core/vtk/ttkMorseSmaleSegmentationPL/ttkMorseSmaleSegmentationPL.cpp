@@ -101,7 +101,7 @@ int ttkMorseSmaleSegmentationPL::RequestData(vtkInformation *ttkNotUsed(request)
   }
 #endif
 
-  this->preconditionTriangulation(triangulation);
+  this->preconditionTriangulation(ComputeSaddles, triangulation);
   const SimplexId numberOfVertices = triangulation->getNumberOfVertices();
 
 #ifndef TTK_ENABLE_KAMIKAZE

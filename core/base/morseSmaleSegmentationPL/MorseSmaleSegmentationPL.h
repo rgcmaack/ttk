@@ -573,14 +573,14 @@ namespace ttk {
     };    
 
     int preconditionTriangulation(
+      const bool calculateSaddles,
       ttk::AbstractTriangulation *triangulation) const {
       int success = 0;
       success += triangulation->preconditionVertexNeighbors();
-      success += triangulation->preconditionBoundaryVertices();
-      success += triangulation->preconditionVertexStars();
-
-      if(triangulation->getDimensionality() ==  2) {
-        
+      
+      if(calculateSaddles) {
+        success += triangulation->preconditionBoundaryVertices();
+        success += triangulation->preconditionVertexStars();
       }
 
       return success;
@@ -745,15 +745,16 @@ namespace ttk {
     int computeSeparatrices1Pieces_2D(
       std::vector<std::array<float, 6>> &edgePos,
       std::vector<long long> &msLabels,
-      std::unordered_set<SimplexId> &sep2VertSet,
+      std::vector<SimplexId> &sep2VertSet,
       const SimplexId &numMSCRegions,
       const SimplexId *const morseSmaleManifold,
+      const bool computeSaddles,
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
     int findSaddlesFromCadidates(
       std::vector<std::pair<SimplexId, char>> &criticalPoints,
-      const std::unordered_set<SimplexId> &sep2VertSet,
+      const std::vector<SimplexId> &sep2VertSet,
       const triangulationType &triangulation) const;
 
     int setSeparatrices2_2D(
@@ -1097,12 +1098,12 @@ int ttk::MorseSmaleSegmentationPL::execute(
   } else if(dim == 2) {
     std::vector<std::array<float, 6>> edgePos;
     std::vector<long long> msLabels;
-    std::unordered_set<SimplexId> sep2VertSet;
+    std::vector<SimplexId> sep2VertSet;
     std::map<long long, SimplexId> msLabelMap;
 
     computeSeparatrices1Pieces_2D(
       edgePos, msLabels, sep2VertSet, numberOfMSCRegions, 
-      morseSmaleManifold, triangulation);
+      sepManifold, computeSaddles, triangulation);
 
     if(computeSaddles) {
       findSaddlesFromCadidates(criticalPoints, sep2VertSet, triangulation);
@@ -1301,7 +1302,7 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
 
           // check if fully compressed
           if(vo != manifold[vo]) {
-            lActiveVertices->push_back(v);
+            newActiveVert->push_back(v);
           }
         }
 
@@ -1313,6 +1314,8 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
       }
 
       delete newActiveVert;
+
+      #pragma omp barrier
 
       #pragma omp single
       {
@@ -1689,9 +1692,10 @@ template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeSeparatrices1Pieces_2D(
   std::vector<std::array<float, 6>> &edgePos,
   std::vector<long long> &msLabels,
-  std::unordered_set<SimplexId> &sep2VertSet,
+  std::vector<SimplexId> &sep2VertSet,
   const SimplexId &numMSCRegions,
   const SimplexId *const morseSmaleManifold,
+  const bool computeSaddles,
   const triangulationType &triangulation) const {
   // start a local timer for this subprocedure
   ttk::Timer localTimer;
@@ -1703,6 +1707,7 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices1Pieces_2D(
 
   const SimplexId numTriangles = triangulation.getNumberOfTriangles();
 
+if(threadNumber_ == 1) {
   for(SimplexId tri = 0; tri < numTriangles; tri++) {
     SimplexId vertices[3];
     triangulation.getTriangleVertex(tri, 0, vertices[0]);
@@ -1739,12 +1744,14 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices1Pieces_2D(
 
         msLabels.push_back(sparseID);
 
-        if(triangulation.isVertexOnBoundary(vertices[0]))
-          sep2VertSet.insert(vertices[0]);
-        if(triangulation.isVertexOnBoundary(vertices[1]))
-          sep2VertSet.insert(vertices[1]);
-        if(triangulation.isVertexOnBoundary(vertices[2]))
-          sep2VertSet.insert(vertices[2]);
+        if(computeSaddles) {
+          if(triangulation.isVertexOnBoundary(vertices[0]))
+            sep2VertSet.push_back(vertices[0]);
+          if(triangulation.isVertexOnBoundary(vertices[1]))
+            sep2VertSet.push_back(vertices[1]);
+          if(triangulation.isVertexOnBoundary(vertices[2]))
+            sep2VertSet.push_back(vertices[2]);
+        }
       } else {
         float edgeCenters[4][3];
         getEdgeIncenter(
@@ -1776,12 +1783,200 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices1Pieces_2D(
         msLabels.push_back(sparseID[1]);
         msLabels.push_back(sparseID[2]);
 
-        sep2VertSet.insert(vertices[0]);
-        sep2VertSet.insert(vertices[1]);
-        sep2VertSet.insert(vertices[2]);
+        if(computeSaddles) {
+          sep2VertSet.insert(sep2VertSet.end(), {
+            vertices[0], vertices[1], vertices[2]});
+        }
       }
     }
   }
+} else {
+
+  size_t edgeStartIndex[threadNumber_ + 1];
+  size_t vertexStartIndex[threadNumber_ + 1];
+
+  #pragma omp parallel num_threads(threadNumber_)
+  {
+    const int tid = omp_get_thread_num();
+    std::vector<std::pair<SimplexId, unsigned char>> validCases2;
+    std::vector<SimplexId> validCases3;
+
+    size_t numThreadEdges = 0;
+    size_t numThreadIndexEdges = 0;
+    size_t numThreadVertices = 0;
+    size_t numThreadIndexVertices = 0;
+
+    #pragma omp for schedule(static) nowait
+    for(SimplexId tri = 0; tri < numTriangles; tri++) {
+      SimplexId vertices[3];
+      triangulation.getTriangleVertex(tri, 0, vertices[0]);
+      triangulation.getTriangleVertex(tri, 1, vertices[1]);
+      triangulation.getTriangleVertex(tri, 2, vertices[2]);
+
+      const SimplexId msm[3] = {
+        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+        morseSmaleManifold[vertices[2]]};
+
+      const unsigned char index0 = (msm[0] == msm[1]) ? 0x00 : 0x04; // 0 : 1
+      const unsigned char index1 = (msm[0] == msm[2]) ? 0x00 :       // 0
+                                   (msm[1] == msm[2]) ? 0x01 : 0x02; // 1 : 2
+
+      const unsigned char lookupIndex = index0 | index1;
+
+      if(triangleLookupIsMultiLabel[lookupIndex]) {
+        if(triangleLookupIs2Label[lookupIndex]) {
+          validCases2.push_back(std::make_pair(tri, lookupIndex));
+          numThreadEdges += 1;
+
+          if(computeSaddles) {
+            if(triangulation.isVertexOnBoundary(vertices[0]))
+              numThreadVertices += 1;
+            if(triangulation.isVertexOnBoundary(vertices[1]))
+              numThreadVertices += 1;
+            if(triangulation.isVertexOnBoundary(vertices[2]))
+              numThreadVertices += 1;
+          }
+        } else {
+          validCases3.push_back(tri);
+          numThreadEdges += 3;
+
+          if(computeSaddles) {
+            numThreadVertices += 3;
+          }
+        }
+      }
+    }
+
+    edgeStartIndex[tid + 1] = numThreadEdges;
+    vertexStartIndex[tid + 1] = numThreadVertices;
+
+    #pragma omp barrier
+
+    #pragma omp single
+    {
+      edgeStartIndex[0] = 0;
+      vertexStartIndex[0] = 0;
+
+      // Count triangle number and create iterator start indices
+      for(int t = 1; t < threadNumber_ + 1; ++t) {
+        edgeStartIndex[t] += edgeStartIndex[t-1];
+        vertexStartIndex[t] += vertexStartIndex[t-1];
+      }
+    }
+
+    #pragma omp single nowait
+    edgePos.resize(edgeStartIndex[threadNumber_]);
+
+    #pragma omp single nowait
+    msLabels.resize(edgeStartIndex[threadNumber_]);
+
+    #pragma omp single
+    {
+      if(computeSaddles) {
+        sep2VertSet.resize(vertexStartIndex[threadNumber_]);
+      }
+    }
+
+    numThreadIndexEdges = edgeStartIndex[tid];
+    numThreadIndexVertices = vertexStartIndex[tid];
+    
+    for (const auto& vCase : validCases2)
+    {
+      const SimplexId& tri = vCase.first;
+      const unsigned char& lookupIndex = vCase.second;
+
+      SimplexId vertices[3];
+      triangulation.getTriangleVertex(tri, 0, vertices[0]);
+      triangulation.getTriangleVertex(tri, 1, vertices[1]);
+      triangulation.getTriangleVertex(tri, 2, vertices[2]);
+
+      const SimplexId msm[3] = {
+        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+        morseSmaleManifold[vertices[2]]};
+
+      const int * edgeVerts = triangleLookupEdgeVerts[lookupIndex];
+
+      float edgeCenters[2][3];
+      getEdgeIncenter(vertices[edgeVerts[0]], vertices[edgeVerts[1]],
+        edgeCenters[0], triangulation);
+      getEdgeIncenter(vertices[edgeVerts[2]], vertices[edgeVerts[3]],
+        edgeCenters[1], triangulation);
+
+      edgePos[numThreadIndexEdges] = {
+        edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2],
+        edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2]};
+
+      const long long sparseID = getSparseId(
+        msm[edgeVerts[0]], msm[edgeVerts[1]], numMSCRegions);
+
+      msLabels[numThreadIndexEdges] = sparseID;
+
+      numThreadIndexEdges += 1;
+
+      if(computeSaddles) {
+        if(triangulation.isVertexOnBoundary(vertices[0]))
+          sep2VertSet[numThreadIndexVertices++] = vertices[0];
+        if(triangulation.isVertexOnBoundary(vertices[1]))
+          sep2VertSet[numThreadIndexVertices++] = vertices[1];
+        if(triangulation.isVertexOnBoundary(vertices[2]))
+          sep2VertSet[numThreadIndexVertices++] = vertices[2];
+      }
+    }
+    
+    for (const auto& tri : validCases3)
+    {
+      SimplexId vertices[3];
+      triangulation.getTriangleVertex(tri, 0, vertices[0]);
+      triangulation.getTriangleVertex(tri, 1, vertices[1]);
+      triangulation.getTriangleVertex(tri, 2, vertices[2]);
+
+      const SimplexId msm[3] = {
+        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+        morseSmaleManifold[vertices[2]]};
+
+      float edgeCenters[4][3];
+      getEdgeIncenter(
+        vertices[0], vertices[1], edgeCenters[0], triangulation);
+      getEdgeIncenter(
+        vertices[1], vertices[2], edgeCenters[1], triangulation);
+      getEdgeIncenter(
+        vertices[2], vertices[0], edgeCenters[2], triangulation);
+
+      triangulation.getTriangleIncenter(tri, edgeCenters[3]);
+
+      edgePos[numThreadIndexEdges] = {
+        edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2],
+        edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2]};
+
+      edgePos[numThreadIndexEdges+1] = {
+        edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
+        edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2]};
+
+      edgePos[numThreadIndexEdges+2] = {
+        edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2],
+        edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2]};
+
+      const long long sparseID[3] = {
+      getSparseId(msm[0], msm[1], numMSCRegions),
+      getSparseId(msm[1], msm[2], numMSCRegions),
+      getSparseId(msm[2], msm[0], numMSCRegions)};
+
+      msLabels[numThreadIndexEdges] = sparseID[0];
+      msLabels[numThreadIndexEdges+1] = sparseID[1];
+      msLabels[numThreadIndexEdges+2] = sparseID[2];
+
+      numThreadIndexEdges += 3;
+
+      if(computeSaddles) {
+        sep2VertSet[numThreadIndexVertices] = vertices[0];
+        sep2VertSet[numThreadIndexVertices+1] = vertices[1];
+        sep2VertSet[numThreadIndexVertices+2] = vertices[2];
+
+        numThreadIndexVertices += 3;
+      }
+    }
+  }
+}
 
   this->printMsg("Computed 1-separatrix pieces", 1, localTimer.getElapsedTime(),
                  this->threadNumber_);
@@ -1792,7 +1987,7 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices1Pieces_2D(
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::findSaddlesFromCadidates(
   std::vector<std::pair<SimplexId, char>> &criticalPoints,
-  const std::unordered_set<SimplexId> &sep2VertSet,
+  const std::vector<SimplexId> &sep2VertSet,
   const triangulationType &triangulation) const {
 
   ttk::Timer localTimer;
@@ -1812,7 +2007,7 @@ int ttk::MorseSmaleSegmentationPL::findSaddlesFromCadidates(
   sfcp.setDomainDimension(dim);
   
 if(threadNumber_ == 1) {
-  for(SimplexId candidate: sep2VertSet) {
+  for(const SimplexId& candidate: sep2VertSet) {
     const CriticalType critC = (CriticalType)sfcp.getCriticalType(
       candidate, orderArr, (AbstractTriangulation*)&triangulation);
 
@@ -1825,19 +2020,19 @@ if(threadNumber_ == 1) {
 } else {
   #pragma omp parallel num_threads(threadNumber_)
   {
-    #pragma omp single
+    #pragma omp for schedule(static)
+    for(const SimplexId& candidate: sep2VertSet)
     {
-      for(auto it = sep2VertSet.begin();
-        it != sep2VertSet.end(); it++) {
-        #pragma omp task
+      const CriticalType critC = (CriticalType)sfcp.getCriticalType(
+        candidate, orderArr, (AbstractTriangulation*)&triangulation);
+      
+      if(critC == CriticalType::Saddle1 || critC == CriticalType::Saddle2) {
+        #pragma omp critical
         {
-          const CriticalType critC = (CriticalType)sfcp.getCriticalType(
-            *it, orderArr, (AbstractTriangulation*)&triangulation);
-          
           if(critC == CriticalType::Saddle1) {
-            criticalPoints.push_back(std::make_pair(*it, 1));
-          } else if(critC == CriticalType::Saddle2) {
-            criticalPoints.push_back(std::make_pair(*it, 2));
+            criticalPoints.push_back(std::make_pair(candidate, 1));
+         } else {
+           criticalPoints.push_back(std::make_pair(candidate, 2));
           }
         }
       }
