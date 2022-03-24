@@ -2399,21 +2399,21 @@ namespace ttk {
       gridDimensions_[1] = yDim;
       gridDimensions_[2] = zDim;
 
-      int retPeriodic = periodicImplicitTriangulation_.setInputGrid(
-        xOrigin, yOrigin, zOrigin, xSpacing, ySpacing, zSpacing, xDim, yDim,
-        zDim);
+      // int retPeriodic = periodicImplicitTriangulation_.setInputGrid(
+      //   xOrigin, yOrigin, zOrigin, xSpacing, ySpacing, zSpacing, xDim, yDim,
+      //   zDim);
       int ret = implicitTriangulation_.setInputGrid(xOrigin, yOrigin, zOrigin,
                                                     xSpacing, ySpacing,
                                                     zSpacing, xDim, yDim, zDim);
 
-      if(hasPeriodicBoundaries_) {
-        abstractTriangulation_ = &periodicImplicitTriangulation_;
-        return retPeriodic;
-      } else {
+      // if(hasPeriodicBoundaries_) {
+      //   abstractTriangulation_ = &periodicImplicitTriangulation_;
+      //   return retPeriodic;
+      // } else {
         abstractTriangulation_ = &implicitTriangulation_;
         return ret;
-      }
-      return 0;
+      // }
+      // return 0;
     }
 
     /// Set the input grid to use period boundary conditions.
