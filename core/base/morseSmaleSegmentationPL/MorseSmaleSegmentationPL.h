@@ -1688,7 +1688,7 @@ if(threadNumber_ == 1) {
     // parallel conquer unordered_sets
     while(numConquer > 0) {
       #pragma omp for schedule(static) nowait
-      for(int i = 0; i < numConquer; i += 2) {
+      for(int i = 0; i < numConquer * 2; i += 2) {
         lIdSet[i * cS2pow]->insert(lIdSet[i * cS2pow + cS2pow]->begin(), lIdSet[i * cS2pow + cS2pow]->end());
       }
 
