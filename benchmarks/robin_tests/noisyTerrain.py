@@ -1,6 +1,6 @@
 ### USAGE
-### noisyTerrain.py <#threads>
-### modes == msc / mss
+### noisyTerrain.py <mode> <#threads>
+### mode = msc / mss
 
 from paraview.simple import *
 paraview.simple._DisableFirstRenderCameraReset()

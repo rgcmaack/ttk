@@ -1,6 +1,6 @@
 ### USAGE
-### hugeNoisyTerrain.py <#threads>
-### modes == msc / msswall / mssfine / mssfast / msssplit
+### hugeNoisyTerrain.py  <mode> <#threads>
+### mode = msc / mss
 
 from paraview.simple import *
 paraview.simple._DisableFirstRenderCameraReset()
