@@ -1633,54 +1633,115 @@ int ttk::MorseSmaleSegmentationPL::computeFinalSegmentation(
                  ttk::debug::LineMode::REPLACE);
   
   const size_t nVerts = triangulation.getNumberOfVertices();
+  size_t numSparseIDs = 0;
+  std::vector<SimplexId> sparseIds;
+  std::map<SimplexId, size_t> sparseToDenseRegionId{};
+  
 
 //#ifndef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+  std::unordered_set<SimplexId> idSet;
   for(size_t i = 0; i < nVerts; ++i) {
     morseSmaleManifold[i] = ascendingManifold[i] * numberOfMinima +
       descendingManifold[i];
+    idSet.insert(morseSmaleManifold[i]);
+  }
+
+  numSparseIDs = idSet.size();
+  sparseIds.reserve(numSparseIDs);
+  std::copy(idSet.begin(), idSet.end(), std::back_inserter(sparseIds));
+  TTK_PSORT(this->threadNumber_, sparseIds.begin(), sparseIds.end());
+
+  // "sparse region id" -> "dense region id"
+  for(size_t i = 0; i < numSparseIDs; ++i) {
+    sparseToDenseRegionId[sparseIds[i]] = i;
+  }
+
+  for(size_t i = 0; i < nVerts; ++i) {
+    morseSmaleManifold[i] = sparseToDenseRegionId[morseSmaleManifold[i]];
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
-  const size_t numCacheLineEntries =
-  hardware_destructive_interference_size / sizeof(SimplexId);
+  std::unordered_set<SimplexId>* lIdSet[threadNumber_];
+
+  // parallel conquer unordered_sets variables
+  int numConquer = threadNumber_ / 2;
+  int conquerStep = 1;
+  int cS2pow = 1;
+  int unmergedSet = -1;
+  bool isConquerEven = !(bool)(threadNumber_ % 2);
+
   #pragma omp parallel num_threads(threadNumber_)
   {
-    #pragma omp for schedule(static, numCacheLineEntries) nowait
+    const int tid = omp_get_thread_num();
+    lIdSet[tid] = new std::unordered_set<SimplexId>;
+    std::unordered_set<SimplexId>* localSet = lIdSet[tid];
+
+    // Create sparseIds
+    #pragma omp for schedule(static)
     for(size_t i = 0; i < nVerts; ++i) {
       morseSmaleManifold[i] = ascendingManifold[i] * numberOfMinima +
         descendingManifold[i];
+      localSet->insert(morseSmaleManifold[i]);
+    }
+
+    // parallel conquer unordered_sets
+    while(numConquer > 0) {
+      #pragma omp for schedule(static) nowait
+      for(int i = 0; i < numConquer; i += 2) {
+        lIdSet[i * cS2pow]->insert(lIdSet[i * cS2pow + cS2pow]->begin(), lIdSet[i * cS2pow + cS2pow]->end());
+      }
+
+      #pragma omp single
+      { // Fix border problems
+        if(!isConquerEven) {
+          if(unmergedSet == -1) {
+            unmergedSet = 2 * numConquer * cS2pow;
+          } else {
+            int unmergedSet2 = 2 * numConquer * cS2pow;
+            lIdSet[unmergedSet2]->insert(lIdSet[unmergedSet]->begin(), lIdSet[unmergedSet]->end());
+            unmergedSet = unmergedSet2;
+          }
+        }
+      }
+
+      #pragma omp single
+      {
+        conquerStep += 1;
+        cS2pow = std::pow(2, conquerStep - 1);
+        isConquerEven = !(bool)(numConquer % 2);
+        numConquer = numConquer / 2;
+      }
+    }
+
+    // Merge unmerged Set with set 0, sort ids and create a map
+    #pragma omp single
+    {
+      if(unmergedSet != -1) {
+        lIdSet[0]->insert(lIdSet[unmergedSet]->begin(), lIdSet[unmergedSet]->end());
+      }
+
+      numSparseIDs = lIdSet[0]->size();
+      sparseIds.reserve(numSparseIDs);
+      std::copy(lIdSet[0]->begin(), lIdSet[0]->end(), std::back_inserter(sparseIds));
+      TTK_PSORT(this->threadNumber_, sparseIds.begin(), sparseIds.end());
+
+      // "sparse region id" -> "dense region id"
+      for(size_t i = 0; i < numSparseIDs; ++i) {
+        sparseToDenseRegionId[sparseIds[i]] = i;
+      }
+    }
+
+    delete(localSet);
+
+    #pragma omp for schedule(static)
+    for(size_t i = 0; i < nVerts; ++i) {
+      morseSmaleManifold[i] = sparseToDenseRegionId[morseSmaleManifold[i]];
     }
   }
 }
 
-  // associate a unique "sparse region id" to each (ascending, descending) pair
-
-  // store the "sparse region ids" by copying the morseSmaleManifold output
-  std::vector<SimplexId> sparseRegionIds(
-    morseSmaleManifold, morseSmaleManifold + nVerts);
-
-  // get unique "sparse region ids"
-  TTK_PSORT(this->threadNumber_, sparseRegionIds.begin(), sparseRegionIds.end());
-  const auto last = std::unique(sparseRegionIds.begin(), sparseRegionIds.end());
-  sparseRegionIds.erase(last, sparseRegionIds.end());
-
-  numManifolds = sparseRegionIds.size();
-
-  // "sparse region id" -> "dense region id"
-  std::map<SimplexId, size_t> sparseToDenseRegionId{};
-
-  for(size_t i = 0; i < sparseRegionIds.size(); ++i) {
-    sparseToDenseRegionId[sparseRegionIds[i]] = i;
-  }
-
-  // update region id on all vertices: "sparse id" -> "dense id"
-#ifdef TTK_ENABLE_OPENMP
-#pragma omp parallel for num_threads(threadNumber_)
-#endif // TTK_ENABLE_OPENMP
-  for(size_t i = 0; i < nVerts; ++i) {
-    morseSmaleManifold[i] = sparseToDenseRegionId[morseSmaleManifold[i]];
-  }
+  numManifolds = numSparseIDs;
 
   this->printMsg("Computed MSC Manifold",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
