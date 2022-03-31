@@ -7,6 +7,7 @@ docker buildx build \
     -f scripts/docker/Dockerfile \
     .
 
+singularity build -F /tmp/ttk-private.sif oci-archive://output.tar && rm output.tar
 
 
 

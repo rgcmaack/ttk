@@ -92,6 +92,7 @@ RUN apt-get update \
         libgoogle-perftools-dev \
         google-perftools \
         binutils \
+        gdb \
  && apt-get clean \
  && rm -rf /var/cache/apt/lists
 
