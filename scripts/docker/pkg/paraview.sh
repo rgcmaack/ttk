@@ -31,18 +31,17 @@ fetch-src "https://www.paraview.org/paraview-downloads/download.php?submit=Downl
 enable_rt=$(test -f /usr/local/lib/libospray.so && echo "ON" || echo "OFF")
 enable_dn=$(test -f /usr/local/lib/libOpenImageDenoise.so && echo "ON" || echo "OFF")
 
-export CMAKE_BUILD_TYPE=Release
 
 conf_args \
-    -DCMAKE_BUILD_TYPE=RELEASE                  \
+    -DCMAKE_BUILD_TYPE=Release                  \
     -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON     \
     -DPARAVIEW_ENABLE_RAYTRACING=${enable_rt}   \
-    -DPARAVIEW_USE_VTKM=ON					    \
+    -DPARAVIEW_USE_VTKM=OFF					    \
     -DPARAVIEW_USE_PYTHON=ON                    \
     -DPARAVIEW_USE_QT=OFF 				        \
     -DVTK_USE_X:BOOL=OFF 					    \
     -DVTK_OPENGL_HAS_OSMESA:BOOL=ON 		    \
-    -DVTK_SMP_IMPLEMENTATION_TYPE=OpenMP        \
+    -DVTK_SMP_IMPLEMENTATION_TYPE=TBB           \
     -DVTKOSPRAY_ENABLE_DENOISER=${enable_dn}
 
 cmake-default
