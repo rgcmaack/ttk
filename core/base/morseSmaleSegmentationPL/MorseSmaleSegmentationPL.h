@@ -138,6 +138,67 @@ const size_t tetraederNumTrianglesWalls[28] = {
   {12} // (4) 1,2,3 -27
 };
 
+const size_t tetraederNumTrianglesFine[28] = {
+  {0}, // (1) 0,0,0 - 0
+  {0}, // (-) 0,0,1 - 1
+  {0}, // (-) 0,0,2 - 2 
+  {2}, // (2) 0,0,3 - 3
+  {0}, // (-) 0,1,0 - 4
+  {0}, // (-) 0,1,1 - 5 
+  {0}, // (-) 0,1,2 - 6
+  {0}, // (-) 0,1,3 - 7
+  {2}, // (2) 0,2,0 - 8
+  {0}, // (-) 0,2,1 - 9
+  {4}, // (2) 0,2,2 -10
+  {10}, // (3) 0,2,3 -11
+  {0}, // (-) 0,3,0 -12
+  {0}, // (-) 0,3,1 -13
+  {0}, // (-) 0,3,2 -14
+  {0}, // (-) 0,3,3 -15
+  {2}, // (2) 1,0,0 -16
+  {4}, // (2) 1,0,1 -17
+  {0}, // (-) 1,0,2 -18
+  {10}, // (3) 1,0,3 -19
+  {4}, // (2) 1,1,0 -20
+  {2}, // (2) 1,1,1 -21
+  {0}, // (-) 1,1,2 -22
+  {10}, // (3) 1,1,3 -23
+  {10}, // (3) 1,2,0 -24
+  {10}, // (3) 1,2,1 -25
+  {10}, // (3) 1,2,2 -26
+  {24} // (4) 1,2,3 -27
+};
+
+const int tetraederUniqueLabels[27][2] = {
+  {-1, -1}, // (1) 0,0,0 - 0
+  {-1, -1}, // (-) 0,0,1 - 1
+  {-1, -1}, // (-) 0,0,2 - 2 
+  { 3, -1}, // (2) 0,0,3 - 3
+  {-1, -1}, // (-) 0,1,0 - 4
+  {-1, -1}, // (-) 0,1,1 - 5 
+  {-1, -1}, // (-) 0,1,2 - 6
+  {-1, -1}, // (-) 0,1,3 - 7
+  { 2, -1}, // (2) 0,2,0 - 8
+  {-1, -1}, // (-) 0,2,1 - 9
+  { 2, -1}, // (2) 0,2,2 -10
+  { 2,  3}, // (3) 0,2,3 -11
+  {-1, -1}, // (-) 0,3,0 -12
+  {-1, -1}, // (-) 0,3,1 -13
+  {-1, -1}, // (-) 0,3,2 -14
+  {-1, -1}, // (-) 0,3,3 -15
+  { 1, -1}, // (2) 1,0,0 -16
+  { 1, -1}, // (2) 1,0,1 -17
+  {-1, -1}, // (-) 1,0,2 -18
+  { 1,  3}, // (3) 1,0,3 -19
+  { 1, -1}, // (2) 1,1,0 -20
+  { 1, -1}, // (2) 1,1,1 -21
+  {-1, -1}, // (-) 1,1,2 -22
+  { 1,  3}, // (3) 1,1,3 -23
+  { 1,  2}, // (3) 1,2,0 -24
+  { 1,  2}, // (3) 1,2,1 -25
+  { 1, -1}  // (3) 1,2,2 -26
+};
+
 const size_t tetraederFineNumTriangles[28] = {
   {0}, // (1) 0,0,0 - 0
   {0}, // (-) 0,0,1 - 1
@@ -769,16 +830,12 @@ namespace ttk {
 
     template <typename triangulationType>
     int computeSeparatrices2_3D(
-      std::vector<std::array<float, 9>> &trianglePos,
-      std::vector<long long> &msLabels,
       const SimplexId &numMSCRegions,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
     int computeSeparatrices2_3D_split(
-      std::vector<std::array<float, 9>> &trianglePos,
-      std::vector<long long> &msLabels,
       const SimplexId &numAscRegions,
       const SimplexId &numDscRegions,
       const SimplexId *const ascManifold,
@@ -787,15 +844,11 @@ namespace ttk {
 
     template <typename triangulationType>
     int computeBasinSeparation_3D_fine(
-      std::vector<std::array<float, 9>> &trianglePos,
-      std::vector<long long> &msLabels,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
     template <typename triangulationType>
     int computeBasinSeparation_3D_fast(
-      std::vector<std::array<float, 9>> &trianglePos,
-      std::vector<long long> &msLabels,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
@@ -1041,35 +1094,17 @@ int ttk::MorseSmaleSegmentationPL::execute(
     if(SepManifoldIsValid) {
       if(sep2Mode == SEPARATRICES2_MODE::WALLS) {
         computeSeparatrices2_3D<triangulationType>(
-          trianglePos, msLabels, numberOfMSCRegions, sepManifold,
-          triangulation);
-
-        computeMSLabelMap(msLabels, msLabelMap);
-
+          numberOfMSCRegions, sepManifold, triangulation);
       } else if(sep2Mode == SEPARATRICES2_MODE::SEPARATEBASINSFINE) {
         computeBasinSeparation_3D_fine<triangulationType>(
-                                  trianglePos, msLabels,
                                   sepManifold, triangulation);
-
-        for(int i = -1; i < numberOfMSCRegions; ++i) {
-          msLabelMap.insert({i,i});
-        }
-
       } else if(sep2Mode == SEPARATRICES2_MODE::SEPARATEBASINSFAST) {
         computeBasinSeparation_3D_fast<triangulationType>(
-                                  trianglePos, msLabels,
                                   sepManifold, triangulation);
-
-        for(int i = -1; i < numberOfMSCRegions; ++i) {
-          msLabelMap.insert({i,i});
-        } 
-
       } else if(sep2Mode == SEPARATRICES2_MODE::EXPERIMENT) {
         computeSeparatrices2_3D_split<triangulationType>(
-          trianglePos, msLabels, numberOfMinima, numberOfMinima,
+          numberOfMinima, numberOfMinima,
           ascendingManifold, descendingManifold, triangulation);
-
-        computeMSLabelMap(msLabels, msLabelMap);
       }
     }
 
@@ -1093,8 +1128,6 @@ int ttk::MorseSmaleSegmentationPL::execute(
     }
 
     setSeparatrices1_3D<triangulationType>(sadExtrConns, triangulation);            
-
-    setSeparatrices2_3D(trianglePos, msLabels, msLabelMap);
   } else if(dim == 2) {
     std::vector<std::array<float, 6>> edgePos;
     std::vector<long long> msLabels;
@@ -1149,10 +1182,9 @@ int ttk::MorseSmaleSegmentationPL::computeManifold(
                   0, // elapsed time so far
                   this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
-  int iterations = 1;
   numberOfExtrema = 0;
 
-  
+  const bool computeCriticalPoints = criticalPoints != nullptr;
   const bool computeNeighbor = (neighbor != nullptr);
 
   // -----------------------------------------------------------------------
@@ -1171,12 +1203,11 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
 
     // find maxima and intialize vector of not fully compressed vertices
     for(SimplexId i = 0; i < nVertices; i++) {
+      SimplexId neighborId;
       const SimplexId numNeighbors =
         triangulation.getVertexNeighborNumber(i);
-
-      SimplexId neighborId;
+      
       bool hasBiggerNeighbor = false;
-
       SimplexId &dmi = manifold[i];
       dmi = i;
 
@@ -1197,13 +1228,26 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
       }
       if(hasBiggerNeighbor) {
         activeVertices->push_back(i);
-      }
-      else {
+      } else {
+        if(ascending) {
+          if(computeCriticalPoints) {
+            criticalPoints->push_back(
+              std::make_pair(i, (char)(CriticalType::Local_minimum)));
+          }
+        } else {
+          if(computeCriticalPoints) {
+            criticalPoints->push_back(
+              std::make_pair(i, (char)(CriticalType::Local_maximum)));
+          }
+        }
+
         critMap.insert({numberOfExtrema, i});
         extremas.insert({i, numberOfExtrema++});
       }
 
-      neighbor[i] = dmi;
+      if(computeNeighbor) {
+        neighbor[i] = dmi;
+      }
     }
 
     nActiveVertices = activeVertices->size();
@@ -1226,7 +1270,6 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
         }
       }
 
-      iterations += 1;
       delete activeVertices;
       activeVertices = newActiveVert;
 
@@ -2186,8 +2229,6 @@ int ttk::MorseSmaleSegmentationPL::getSaddles(
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D(
-  std::vector<std::array<float, 9>> &trianglePos,
-  std::vector<long long> &msLabels,
   const SimplexId &numMSCRegions,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
@@ -2218,9 +2259,16 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D(
   }
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
+  size_t numSparseIDs = 0;
+  std::vector<long long> sparseIdVect;
+  std::map<long long, SimplexId> msLabelMap;
 
 //#ifndef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+  std::vector<std::pair<SimplexId, unsigned char>> validCases;
+  std::unordered_set<long long> msLabelSet;
+  SimplexId numTriangles = 0;
+
   for(SimplexId tet = 0; tet < numTetra; tet++) {
     SimplexId vertices[4];
     triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -2240,103 +2288,13 @@ if(threadNumber_ == 1) {
                                  (msm[2] == msm[3]) ? 0x02 : 0x03; // 2 : 3
 
     const unsigned char lookupIndex = index1 | index2 | index3;
-    const int *tetEdgeIndices = tetraederLookup[lookupIndex];
-    const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
-
     if(tetraederLookupIsMultiLabel[lookupIndex]) {
+      validCases.push_back(std::make_pair(tet, lookupIndex));
+      numTriangles += tetraederNumTrianglesWalls[lookupIndex];
 
-      float vertPos[4][3];
-      triangulation.getVertexPoint(
-        vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
-      triangulation.getVertexPoint(
-        vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
-      triangulation.getVertexPoint(
-        vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
-      triangulation.getVertexPoint(
-        vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
-
-      float edgeCenters[10][3];
-      // 6 edge centers
-      getCenter(vertPos[0], vertPos[1], edgeCenters[0]);
-      getCenter(vertPos[0], vertPos[2], edgeCenters[1]);
-      getCenter(vertPos[0], vertPos[3], edgeCenters[2]);
-      getCenter(vertPos[1], vertPos[2], edgeCenters[3]);
-      getCenter(vertPos[1], vertPos[3], edgeCenters[4]);
-      getCenter(vertPos[2], vertPos[3], edgeCenters[5]);
-
-      // 4 triangle centers
-      getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
-      getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
-      getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
-      getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
-
+      const int *tetEdgeIndices = tetraederLookup[lookupIndex];
       if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
-        float tetCenter[3];
-        getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
-
-        // vertex 0
-        trianglePos.push_back({
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
-          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
-          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-        trianglePos.push_back({
-          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]
-        });
-
-        long long sparseMSIds[] = {
+        long long sparseMSIds[6] = {
           getSparseId(msm[0], msm[1], numMSCRegions),
           getSparseId(msm[0], msm[2], numMSCRegions),
           getSparseId(msm[0], msm[3], numMSCRegions),
@@ -2344,47 +2302,221 @@ if(threadNumber_ == 1) {
           getSparseId(msm[1], msm[3], numMSCRegions),
           getSparseId(msm[2], msm[3], numMSCRegions)
         };
-        msLabels.insert(msLabels.end(), {
-          sparseMSIds[0], sparseMSIds[0],
-          sparseMSIds[1], sparseMSIds[1],
-          sparseMSIds[2], sparseMSIds[2],
-          sparseMSIds[3], sparseMSIds[3],
-          sparseMSIds[4], sparseMSIds[4],
-          sparseMSIds[5], sparseMSIds[5]
-        });
-      } else { // 2 or 3 labels on tetraeder
-        const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
-        long long sparseIds[numTris];
-        for(size_t t = 0; t < numTris; ++t) {
-          trianglePos.push_back({
-            edgeCenters[tetEdgeIndices[(t * 3)    ]][0],
-            edgeCenters[tetEdgeIndices[(t * 3)    ]][1],
-            edgeCenters[tetEdgeIndices[(t * 3)    ]][2],
-            edgeCenters[tetEdgeIndices[(t * 3) + 1]][0],
-            edgeCenters[tetEdgeIndices[(t * 3) + 1]][1],
-            edgeCenters[tetEdgeIndices[(t * 3) + 1]][2],
-            edgeCenters[tetEdgeIndices[(t * 3) + 2]][0],
-            edgeCenters[tetEdgeIndices[(t * 3) + 2]][1],
-            edgeCenters[tetEdgeIndices[(t * 3) + 2]][2]
-          });
 
-          sparseIds[t] = getSparseId(msm[tetVertLabel[t * 2]],
-                                     msm[tetVertLabel[(t * 2) + 1]],
-                                     numMSCRegions);
-          msLabels.push_back(sparseIds[t]);
+        msLabelSet.insert({
+          sparseMSIds[0], sparseMSIds[1], sparseMSIds[2], 
+          sparseMSIds[3], sparseMSIds[4], sparseMSIds[5]});
+      } else {
+        const int * const unqLabels = tetraederUniqueLabels[lookupIndex];
+
+        if(tetraederLookupIs2Label[lookupIndex]) {            
+          msLabelSet.insert(getSparseId(
+            msm[0], msm[unqLabels[0]], numMSCRegions));
+
+        } else {
+          long long sparseMSIds[3] = {
+            getSparseId(msm[0], msm[unqLabels[0]], numMSCRegions),
+            getSparseId(msm[0], msm[unqLabels[1]], numMSCRegions),
+            getSparseId(msm[unqLabels[0]], msm[unqLabels[1]], numMSCRegions)};
+
+          msLabelSet.insert({
+            sparseMSIds[0], sparseMSIds[1], sparseMSIds[2]});
         }
+      }
+    }
+  }
+
+  numSparseIDs = msLabelSet.size();
+  sparseIdVect.reserve(numSparseIDs);
+  std::copy(msLabelSet.begin(), msLabelSet.end(),
+    std::back_inserter(sparseIdVect));
+  TTK_PSORT(this->threadNumber_, sparseIdVect.begin(), sparseIdVect.end());
+
+  // "sparse id" -> "dense id"
+  for(size_t i = 0; i < numSparseIDs; ++i) {
+    msLabelMap[sparseIdVect[i]] = i;
+  }
+
+  outputSeparatrices2_points_->resize(9 * numTriangles);
+  outputSeparatrices2_cells_connectivity_->resize(3 * numTriangles);
+  outputSeparatrices2_cells_mscIds_->resize(numTriangles);
+  *outputSeparatrices2_numberOfPoints_ = 3 * numTriangles;
+  *outputSeparatrices2_numberOfCells_ = numTriangles;
+
+  auto &points = *outputSeparatrices2_points_;
+  auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+  auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
+
+  float* p = points.data();
+  SimplexId* c = cellsConn.data();
+  SimplexId* m = cellsMSCIds.data();
+  SimplexId cellIndex = 0;
+
+  for (const auto& vCase : validCases)
+  {
+    const SimplexId& tet = vCase.first;
+    const unsigned char& lookupIndex = vCase.second;
+
+    const int *tetEdgeIndices = tetraederLookup[lookupIndex];
+    const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
+
+    SimplexId vertices[4];
+    triangulation.getCellVertex(tet, 0, vertices[0]);
+    triangulation.getCellVertex(tet, 1, vertices[1]);
+    triangulation.getCellVertex(tet, 2, vertices[2]);
+    triangulation.getCellVertex(tet, 3, vertices[3]);
+
+    const SimplexId msm[4] = {
+      morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+      morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
+
+    float vertPos[4][3];
+    triangulation.getVertexPoint(
+      vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+    triangulation.getVertexPoint(
+      vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+    triangulation.getVertexPoint(
+      vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+    triangulation.getVertexPoint(
+      vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+
+    float eC[10][3];
+    // 6 edge centers
+    getCenter(vertPos[0], vertPos[1], eC[0]);
+    getCenter(vertPos[0], vertPos[2], eC[1]);
+    getCenter(vertPos[0], vertPos[3], eC[2]);
+    getCenter(vertPos[1], vertPos[2], eC[3]);
+    getCenter(vertPos[1], vertPos[3], eC[4]);
+    getCenter(vertPos[2], vertPos[3], eC[5]);
+
+    // 4 triangle centers
+    getCenter(vertPos[0], vertPos[1], vertPos[2], eC[6]);
+    getCenter(vertPos[0], vertPos[1], vertPos[3], eC[7]);
+    getCenter(vertPos[0], vertPos[2], vertPos[3], eC[8]);
+    getCenter(vertPos[1], vertPos[2], vertPos[3], eC[9]);
+
+    if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+      float tetCenter[3];
+      getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
+
+      long long sparseMSIds[6] = {
+        msLabelMap[getSparseId(msm[0], msm[1], numMSCRegions)],
+        msLabelMap[getSparseId(msm[0], msm[2], numMSCRegions)],
+        msLabelMap[getSparseId(msm[0], msm[3], numMSCRegions)],
+        msLabelMap[getSparseId(msm[1], msm[2], numMSCRegions)],
+        msLabelMap[getSparseId(msm[1], msm[3], numMSCRegions)],
+        msLabelMap[getSparseId(msm[2], msm[3], numMSCRegions)]
+      };
+
+      *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+      *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+      *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+      *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+      *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2]; 
+      *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+      *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+      *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+      *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2];
+      *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+      *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2]; 
+      *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2];
+      *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+
+      *m++ = sparseMSIds[0]; *m++ = sparseMSIds[0];        
+      *m++ = sparseMSIds[1]; *m++ = sparseMSIds[1];
+      *m++ = sparseMSIds[2]; *m++ = sparseMSIds[2];        
+      *m++ = sparseMSIds[3]; *m++ = sparseMSIds[3];       
+      *m++ = sparseMSIds[4]; *m++ = sparseMSIds[4];
+      *m++ = sparseMSIds[5]; *m++ = sparseMSIds[5];
+    } else { // 2 or 3 labels on tetraeder
+      const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
+      long long sparseIds[numTris];
+      for(size_t t = 0; t < numTris; ++t) {
+        sparseIds[t] = msLabelMap[getSparseId(msm[tetVertLabel[t * 2]],
+                                     msm[tetVertLabel[(t * 2) + 1]],
+                                     numMSCRegions)];
+
+        *p++ = eC[tetEdgeIndices[(t * 3)    ]][0];
+        *p++ = eC[tetEdgeIndices[(t * 3)    ]][1];
+        *p++ = eC[tetEdgeIndices[(t * 3)    ]][2];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 1]][0];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 1]][1];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 1]][2];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 2]][0];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 2]][1];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 2]][2];
+
+        *c++ = cellIndex++;
+        *c++ = cellIndex++;
+        *c++ = cellIndex++;
+
+        *m++ = sparseIds[t];
       }
     }
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
   size_t triangleStartIndex[threadNumber_ + 1];
+
+  // parallel conquer unordered_sets variables
+  std::unordered_set<long long>* msSets[threadNumber_];
+  int numConquer = threadNumber_ / 2;
+  int conquerStep = 1;
+  int cS2pow = 1;
+  int unmergedSet = -1;
+  bool isConquerEven = !(bool)(threadNumber_ % 2);
+
   #pragma omp parallel num_threads(threadNumber_)
   {
     const int tid = omp_get_thread_num();
     std::vector<std::pair<SimplexId, unsigned char>> validCases;
     size_t numThreadTriangles = 0;
     size_t numThreadIndex = 0;
+
+    msSets[tid] = new std::unordered_set<long long>;
+    std::unordered_set<long long>* localMSSet = msSets[tid];
 
     #pragma omp for schedule(static) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
@@ -2410,8 +2542,97 @@ if(threadNumber_ == 1) {
       if(tetraederLookupIsMultiLabel[lookupIndex]) {
         validCases.push_back(std::make_pair(tet, lookupIndex));
         numThreadTriangles += tetraederNumTrianglesWalls[lookupIndex];
+
+        const int *tetEdgeIndices = tetraederLookup[lookupIndex];
+        if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+          long long sparseMSIds[6] = {
+            getSparseId(msm[0], msm[1], numMSCRegions),
+            getSparseId(msm[0], msm[2], numMSCRegions),
+            getSparseId(msm[0], msm[3], numMSCRegions),
+            getSparseId(msm[1], msm[2], numMSCRegions),
+            getSparseId(msm[1], msm[3], numMSCRegions),
+            getSparseId(msm[2], msm[3], numMSCRegions)
+          };
+
+          localMSSet->insert({
+            sparseMSIds[0], sparseMSIds[1], sparseMSIds[2], 
+            sparseMSIds[3], sparseMSIds[4], sparseMSIds[5]});
+        } else {
+          const int * const unqLabels = tetraederUniqueLabels[lookupIndex];
+
+          if(tetraederLookupIs2Label[lookupIndex]) {            
+            localMSSet->insert(getSparseId(
+              msm[0], msm[unqLabels[0]], numMSCRegions));
+
+          } else {
+            long long sparseMSIds[3] = {
+              getSparseId(msm[0], msm[unqLabels[0]], numMSCRegions),
+              getSparseId(msm[0], msm[unqLabels[1]], numMSCRegions),
+              getSparseId(msm[unqLabels[0]], msm[unqLabels[1]], numMSCRegions)};
+
+            localMSSet->insert({
+              sparseMSIds[0], sparseMSIds[1], sparseMSIds[2]});
+          }
+        }
       }  
     }
+
+    /************ CONQUER SETS ************/
+
+    while(numConquer > 0) {
+      #pragma omp for schedule(static) nowait
+      for(int i = 0; i < numConquer * 2; i += 2) {
+        msSets[i * cS2pow]->insert(
+          msSets[i * cS2pow + cS2pow]->begin(),
+          msSets[i * cS2pow + cS2pow]->end());
+      }
+
+      #pragma omp single
+      { // Fix border problems
+        if(!isConquerEven) {
+          if(unmergedSet == -1) {
+            unmergedSet = 2 * numConquer * cS2pow;
+          } else {
+            int unmergedSet2 = 2 * numConquer * cS2pow;
+            msSets[unmergedSet2]->insert(
+              msSets[unmergedSet]->begin(), msSets[unmergedSet]->end());
+            unmergedSet = unmergedSet2;
+          }
+        }
+      }
+
+      #pragma omp single
+      {
+        conquerStep += 1;
+        cS2pow = std::pow(2, conquerStep - 1);
+        isConquerEven = !(bool)(numConquer % 2);
+        numConquer = numConquer / 2;
+      }
+    }
+
+    // Merge unmerged set with set 0, sort ids and create map
+    #pragma omp single
+    {
+      if(unmergedSet != -1) {
+        msSets[0]->insert(
+          msSets[unmergedSet]->begin(), msSets[unmergedSet]->end());
+      }
+
+      numSparseIDs = msSets[0]->size();
+      sparseIdVect.reserve(numSparseIDs);
+      std::copy(msSets[0]->begin(), msSets[0]->end(),
+        std::back_inserter(sparseIdVect));
+      TTK_PSORT(this->threadNumber_, sparseIdVect.begin(), sparseIdVect.end());
+
+      // "sparse id" -> "dense id"
+      for(size_t i = 0; i < numSparseIDs; ++i) {
+        msLabelMap[sparseIdVect[i]] = i;
+      }
+    }
+
+    delete(localMSSet);
+
+    /************ END CONQUER SETS ************/
 
     triangleStartIndex[tid + 1] = numThreadTriangles;
 
@@ -2427,13 +2648,37 @@ if(threadNumber_ == 1) {
       }
     }
 
+    const size_t numTriangles = triangleStartIndex[threadNumber_];
     numThreadIndex = triangleStartIndex[tid];
 
     #pragma omp single nowait
-    trianglePos.resize(triangleStartIndex[threadNumber_]);
+    outputSeparatrices2_points_->resize(9 * numTriangles);
+
+    #pragma omp single nowait
+    outputSeparatrices2_cells_connectivity_->resize(3 * numTriangles);
+
+    #pragma omp single nowait
+    outputSeparatrices2_cells_mscIds_->resize(numTriangles);
 
     #pragma omp single
-    msLabels.resize(triangleStartIndex[threadNumber_]);
+    {
+      *outputSeparatrices2_numberOfPoints_ = 3 * numTriangles;
+      *outputSeparatrices2_numberOfCells_ = numTriangles;
+    }
+  
+    auto &points = *outputSeparatrices2_points_;
+    auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+    auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
+
+    float* p = points.data();
+    SimplexId* c = cellsConn.data();
+    SimplexId* m = cellsMSCIds.data();
+
+    p += (numThreadIndex * 9);
+    c += (numThreadIndex * 3);
+    m += numThreadIndex;
+
+    numThreadIndex = 3 * numThreadIndex;
 
     for (const auto& vCase : validCases)
     {
@@ -2463,119 +2708,120 @@ if(threadNumber_ == 1) {
       triangulation.getVertexPoint(
         vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-      float edgeCenters[10][3];
+      float eC[10][3];
       // 6 edge centers
-      getCenter(vertPos[0], vertPos[1], edgeCenters[0]);
-      getCenter(vertPos[0], vertPos[2], edgeCenters[1]);
-      getCenter(vertPos[0], vertPos[3], edgeCenters[2]);
-      getCenter(vertPos[1], vertPos[2], edgeCenters[3]);
-      getCenter(vertPos[1], vertPos[3], edgeCenters[4]);
-      getCenter(vertPos[2], vertPos[3], edgeCenters[5]);
+      getCenter(vertPos[0], vertPos[1], eC[0]);
+      getCenter(vertPos[0], vertPos[2], eC[1]);
+      getCenter(vertPos[0], vertPos[3], eC[2]);
+      getCenter(vertPos[1], vertPos[2], eC[3]);
+      getCenter(vertPos[1], vertPos[3], eC[4]);
+      getCenter(vertPos[2], vertPos[3], eC[5]);
 
       // 4 triangle centers
-      getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
-      getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
-      getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
-      getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
+      getCenter(vertPos[0], vertPos[1], vertPos[2], eC[6]);
+      getCenter(vertPos[0], vertPos[1], vertPos[3], eC[7]);
+      getCenter(vertPos[0], vertPos[2], vertPos[3], eC[8]);
+      getCenter(vertPos[1], vertPos[2], vertPos[3], eC[9]);
 
       if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
         float tetCenter[3];
         getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
         long long sparseMSIds[6] = {
-          getSparseId(msm[0], msm[1], numMSCRegions),
-          getSparseId(msm[0], msm[2], numMSCRegions),
-          getSparseId(msm[0], msm[3], numMSCRegions),
-          getSparseId(msm[1], msm[2], numMSCRegions),
-          getSparseId(msm[1], msm[3], numMSCRegions),
-          getSparseId(msm[2], msm[3], numMSCRegions)
+          msLabelMap[getSparseId(msm[0], msm[1], numMSCRegions)],
+          msLabelMap[getSparseId(msm[0], msm[2], numMSCRegions)],
+          msLabelMap[getSparseId(msm[0], msm[3], numMSCRegions)],
+          msLabelMap[getSparseId(msm[1], msm[2], numMSCRegions)],
+          msLabelMap[getSparseId(msm[1], msm[3], numMSCRegions)],
+          msLabelMap[getSparseId(msm[2], msm[3], numMSCRegions)]
         };
 
-        trianglePos[numThreadIndex  ] = {
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+1] = {
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+2] = {
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+3] = {
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+4] = {
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+5] = {
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+6] = {
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+7] = {
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+8] = {
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
-          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+9] = {
-          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+10] = {
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
-          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+11] = {
-          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]}; 
+        *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+        *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+        *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+        *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+        *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2]; 
+        *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+        *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+        *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+        *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2];
+        *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+        *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2]; 
+        *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2];
+        *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
 
-        msLabels[numThreadIndex  ]  = sparseMSIds[0];
-        msLabels[numThreadIndex+1]  = sparseMSIds[0];
-        msLabels[numThreadIndex+2]  = sparseMSIds[1];
-        msLabels[numThreadIndex+3]  = sparseMSIds[1];
-        msLabels[numThreadIndex+4]  = sparseMSIds[2];
-        msLabels[numThreadIndex+5]  = sparseMSIds[2];
-        msLabels[numThreadIndex+6]  = sparseMSIds[3];
-        msLabels[numThreadIndex+7]  = sparseMSIds[3];
-        msLabels[numThreadIndex+8]  = sparseMSIds[4];
-        msLabels[numThreadIndex+9]  = sparseMSIds[4];
-        msLabels[numThreadIndex+10] = sparseMSIds[5];
-        msLabels[numThreadIndex+11] = sparseMSIds[5];
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
 
-        numThreadIndex += 12;
+        *m++ = sparseMSIds[0]; *m++ = sparseMSIds[0];
+        *m++ = sparseMSIds[1]; *m++ = sparseMSIds[1];
+        *m++ = sparseMSIds[2]; *m++ = sparseMSIds[2];
+        *m++ = sparseMSIds[3]; *m++ = sparseMSIds[3];
+        *m++ = sparseMSIds[4]; *m++ = sparseMSIds[4];
+        *m++ = sparseMSIds[5]; *m++ = sparseMSIds[5];
+        
       } else { // 2 or 3 labels on tetraeder
         const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
         long long sparseIds[numTris];
         for(size_t t = 0; t < numTris; ++t) {
-          sparseIds[t] = getSparseId(msm[tetVertLabel[t * 2]],
+          sparseIds[t] = msLabelMap[getSparseId(msm[tetVertLabel[t * 2]],
                                      msm[tetVertLabel[(t * 2) + 1]],
-                                     numMSCRegions);
+                                     numMSCRegions)];
 
-          trianglePos[numThreadIndex] = {
-            edgeCenters[tetEdgeIndices[(t * 3)    ]][0],
-            edgeCenters[tetEdgeIndices[(t * 3)    ]][1],
-            edgeCenters[tetEdgeIndices[(t * 3)    ]][2],
-            edgeCenters[tetEdgeIndices[(t * 3) + 1]][0],
-            edgeCenters[tetEdgeIndices[(t * 3) + 1]][1],
-            edgeCenters[tetEdgeIndices[(t * 3) + 1]][2],
-            edgeCenters[tetEdgeIndices[(t * 3) + 2]][0],
-            edgeCenters[tetEdgeIndices[(t * 3) + 2]][1],
-            edgeCenters[tetEdgeIndices[(t * 3) + 2]][2]};
+          *p++ = eC[tetEdgeIndices[(t * 3)    ]][0];
+          *p++ = eC[tetEdgeIndices[(t * 3)    ]][1];
+          *p++ = eC[tetEdgeIndices[(t * 3)    ]][2];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 1]][0];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 1]][1];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 1]][2];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 2]][0];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 2]][1];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 2]][2];
 
-          msLabels[numThreadIndex] = sparseIds[t];
+          *c++ = numThreadIndex++;
+          *c++ = numThreadIndex++;
+          *c++ = numThreadIndex++;
 
-          numThreadIndex += 1;
+          *m++ = sparseIds[t];
         }
       }
     }
@@ -2589,8 +2835,6 @@ if(threadNumber_ == 1) {
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D_split(
-  std::vector<std::array<float, 9>> &trianglePos,
-  std::vector<long long> &msLabels,
   const SimplexId &numAscRegions,
   const SimplexId &numDscRegions,
   const SimplexId *const ascManifold,
@@ -2624,9 +2868,17 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D_split(
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
   const long long ascSparseIDOffset = (numAscRegions * numAscRegions);
+  size_t numSparseIDs = 0;
+  std::vector<long long> sparseIdVect;
+  std::map<long long, SimplexId> msLabelMap;
 
 //#ifndef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+  std::vector<std::pair<SimplexId, unsigned char>> validCasesA;
+  std::vector<std::pair<SimplexId, unsigned char>> validCasesD;
+  std::unordered_set<long long> msLabelSet;
+  SimplexId numTriangles = 0;
+
   for(SimplexId tet = 0; tet < numTetra; tet++) {
     SimplexId vertices[4];
     triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -2657,258 +2909,419 @@ if(threadNumber_ == 1) {
                                   (dsc[2] == dsc[3]) ? 0x02 : 0x03; // 2 : 3
 
     const unsigned char lookupIndexA = index1A | index2A | index3A;
-    const int *tetEdgeIndicesA = tetraederLookup[lookupIndexA];
-    const int *tetVertLabelA = tetraederLabelLookup[lookupIndexA];
-
     const unsigned char lookupIndexD = index1D | index2D | index3D;
-    const int *tetEdgeIndicesD = tetraederLookup[lookupIndexD];
-    const int *tetVertLabelD = tetraederLabelLookup[lookupIndexD];
 
-    if(tetraederLookupIsMultiLabel[lookupIndexA] 
-    || tetraederLookupIsMultiLabel[lookupIndexD]) {
+    if(tetraederLookupIsMultiLabel[lookupIndexA]) {
+      validCasesA.push_back(std::make_pair(tet, lookupIndexA));
+      numTriangles += tetraederNumTrianglesWalls[lookupIndexA];
 
-      float vertPos[4][3];
-      triangulation.getVertexPoint(
-        vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
-      triangulation.getVertexPoint(
-        vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
-      triangulation.getVertexPoint(
-        vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
-      triangulation.getVertexPoint(
-        vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+      const int *tetEdgeIndices = tetraederLookup[lookupIndexA];
+      if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+        long long sparseMSIds[6] = {
+          getSparseId(asc[0], asc[1], numAscRegions),
+          getSparseId(asc[0], asc[2], numAscRegions),
+          getSparseId(asc[0], asc[3], numAscRegions),
+          getSparseId(asc[1], asc[2], numAscRegions),
+          getSparseId(asc[1], asc[3], numAscRegions),
+          getSparseId(asc[2], asc[3], numAscRegions)
+        };
 
-      float edgeCenters[10][3];
-      // 6 edge centers
-      getCenter(vertPos[0], vertPos[1], edgeCenters[0]);
-      getCenter(vertPos[0], vertPos[2], edgeCenters[1]);
-      getCenter(vertPos[0], vertPos[3], edgeCenters[2]);
-      getCenter(vertPos[1], vertPos[2], edgeCenters[3]);
-      getCenter(vertPos[1], vertPos[3], edgeCenters[4]);
-      getCenter(vertPos[2], vertPos[3], edgeCenters[5]);
+        msLabelSet.insert({
+          sparseMSIds[0], sparseMSIds[1], sparseMSIds[2], 
+          sparseMSIds[3], sparseMSIds[4], sparseMSIds[5]});
+      } else {
+        const int * const unqLabels = tetraederUniqueLabels[lookupIndexA];
 
-      // 4 triangle centers
-      getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
-      getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
-      getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
-      getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
+        if(tetraederLookupIs2Label[lookupIndexA]) {            
+          msLabelSet.insert(getSparseId(
+            asc[0], asc[unqLabels[0]], numAscRegions));
 
-      if(tetEdgeIndicesA[0] != -1) {
-        if(tetEdgeIndicesA[0] == 10) { // 4 labels on tetraeder
-          float tetCenter[3];
-          getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
+        } else {
+          long long sparseMSIds[3] = {
+            getSparseId(asc[0], asc[unqLabels[0]], numAscRegions),
+            getSparseId(asc[0], asc[unqLabels[1]], numAscRegions),
+            getSparseId(asc[unqLabels[0]], asc[unqLabels[1]], numAscRegions)};
 
-          // vertex 0
-          trianglePos.push_back({
-            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-            edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-            edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
-            edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-            edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
-            edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
-            edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
-            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-
-          long long sparseAscIds[] = {
-            getSparseId(asc[0], asc[1], numAscRegions),
-            getSparseId(asc[0], asc[2], numAscRegions),
-            getSparseId(asc[0], asc[3], numAscRegions),
-            getSparseId(asc[1], asc[2], numAscRegions),
-            getSparseId(asc[1], asc[3], numAscRegions),
-            getSparseId(asc[2], asc[3], numAscRegions)
-          };
-          msLabels.insert(msLabels.end(), {
-            sparseAscIds[0], sparseAscIds[0],
-            sparseAscIds[1], sparseAscIds[1],
-            sparseAscIds[2], sparseAscIds[2],
-            sparseAscIds[3], sparseAscIds[3],
-            sparseAscIds[4], sparseAscIds[4],
-            sparseAscIds[5], sparseAscIds[5]
-          });
-        } else { // 2 or 3 labels on tetraeder
-          const size_t numTris = tetraederNumTrianglesWalls[lookupIndexA];
-          long long sparseIds[numTris];
-          for(size_t t = 0; t < numTris; ++t) {
-            trianglePos.push_back({
-              edgeCenters[tetEdgeIndicesA[(t * 3)    ]][0],
-              edgeCenters[tetEdgeIndicesA[(t * 3)    ]][1],
-              edgeCenters[tetEdgeIndicesA[(t * 3)    ]][2],
-              edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][0],
-              edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][1],
-              edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][2],
-              edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][0],
-              edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][1],
-              edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][2]
-            });
-
-            sparseIds[t] = getSparseId(asc[tetVertLabelA[t * 2]],
-                                       asc[tetVertLabelA[(t * 2) + 1]],
-                                       numAscRegions);
-            msLabels.push_back(sparseIds[t]);
-          }
+          msLabelSet.insert({
+            sparseMSIds[0], sparseMSIds[1], sparseMSIds[2]});
         }
       }
-      if(tetEdgeIndicesD[0] != -1) {
-        if(tetEdgeIndicesD[0] == 10) { // 4 labels on tetraeder
-          float tetCenter[3];
-          getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
+    }
 
-          // vertex 0
-          trianglePos.push_back({
-            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-            edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-            edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
-            edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-            edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
-            edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
-            edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
-          trianglePos.push_back({
-            edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
-            edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-            tetCenter[0], tetCenter[1], tetCenter[2]
-          });
+    if(tetraederLookupIsMultiLabel[lookupIndexD]) {
+      validCasesD.push_back(std::make_pair(tet, lookupIndexD));
+      numTriangles += tetraederNumTrianglesWalls[lookupIndexD];
 
-          long long sparseDscIds[] = {
-            getSparseId(dsc[0], dsc[1], numDscRegions),
-            getSparseId(dsc[0], dsc[2], numDscRegions),
-            getSparseId(dsc[0], dsc[3], numDscRegions),
-            getSparseId(dsc[1], dsc[2], numDscRegions),
-            getSparseId(dsc[1], dsc[3], numDscRegions),
-            getSparseId(dsc[2], dsc[3], numDscRegions)
-          };
-          msLabels.insert(msLabels.end(), {
-            sparseDscIds[0], sparseDscIds[0],
-            sparseDscIds[1], sparseDscIds[1],
-            sparseDscIds[2], sparseDscIds[2],
-            sparseDscIds[3], sparseDscIds[3],
-            sparseDscIds[4], sparseDscIds[4],
-            sparseDscIds[5], sparseDscIds[5]
-          });
-        } else { // 2 or 3 labels on tetraeder
-          const size_t numTris = tetraederNumTrianglesWalls[lookupIndexD];
-          long long sparseIds[numTris];
-          for(size_t t = 0; t < numTris; ++t) {
-            trianglePos.push_back({
-              edgeCenters[tetEdgeIndicesD[(t * 3)    ]][0],
-              edgeCenters[tetEdgeIndicesD[(t * 3)    ]][1],
-              edgeCenters[tetEdgeIndicesD[(t * 3)    ]][2],
-              edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][0],
-              edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][1],
-              edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][2],
-              edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][0],
-              edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][1],
-              edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][2]
-            });
+      const int *tetEdgeIndices = tetraederLookup[lookupIndexD];
+      if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+        long long sparseMSIds[6] = {
+          getSparseId(dsc[0], dsc[1], numDscRegions) + ascSparseIDOffset,
+          getSparseId(dsc[0], dsc[2], numDscRegions) + ascSparseIDOffset,
+          getSparseId(dsc[0], dsc[3], numDscRegions) + ascSparseIDOffset,
+          getSparseId(dsc[1], dsc[2], numDscRegions) + ascSparseIDOffset,
+          getSparseId(dsc[1], dsc[3], numDscRegions) + ascSparseIDOffset,
+          getSparseId(dsc[2], dsc[3], numDscRegions) + ascSparseIDOffset
+        };
 
-            sparseIds[t] = getSparseId(dsc[tetVertLabelD[t * 2]],
-                                       dsc[tetVertLabelD[(t * 2) + 1]],
-                                       numDscRegions);
-            msLabels.push_back(sparseIds[t] + ascSparseIDOffset);
-          }
+        msLabelSet.insert({
+          sparseMSIds[0], sparseMSIds[1], sparseMSIds[2], 
+          sparseMSIds[3], sparseMSIds[4], sparseMSIds[5]});
+      } else {
+        const int * const unqLabels = tetraederUniqueLabels[lookupIndexD];
+
+        if(tetraederLookupIs2Label[lookupIndexD]) {            
+          msLabelSet.insert(getSparseId(
+            dsc[0], dsc[unqLabels[0]], numDscRegions) + ascSparseIDOffset);
+
+        } else {
+          long long sparseMSIds[3] = {
+            getSparseId(dsc[0], dsc[unqLabels[0]], numDscRegions)
+            + ascSparseIDOffset,
+            getSparseId(dsc[0], dsc[unqLabels[1]], numDscRegions)
+            + ascSparseIDOffset,
+            getSparseId(dsc[unqLabels[0]], dsc[unqLabels[1]], numDscRegions)
+            + ascSparseIDOffset};
+
+          msLabelSet.insert({
+            sparseMSIds[0], sparseMSIds[1], sparseMSIds[2]});
         }
+      }
+    }
+  }
+
+  numSparseIDs = msLabelSet.size();
+  sparseIdVect.reserve(numSparseIDs);
+  std::copy(msLabelSet.begin(), msLabelSet.end(),
+    std::back_inserter(sparseIdVect));
+  TTK_PSORT(this->threadNumber_, sparseIdVect.begin(), sparseIdVect.end());
+
+  // "sparse id" -> "dense id"
+  for(size_t i = 0; i < numSparseIDs; ++i) {
+    msLabelMap[sparseIdVect[i]] = i;
+  }
+
+  outputSeparatrices2_points_->resize(9 * numTriangles);
+  outputSeparatrices2_cells_connectivity_->resize(3 * numTriangles);
+  outputSeparatrices2_cells_mscIds_->resize(numTriangles);
+  *outputSeparatrices2_numberOfPoints_ = 3 * numTriangles;
+  *outputSeparatrices2_numberOfCells_ = numTriangles;
+
+  auto &points = *outputSeparatrices2_points_;
+  auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+  auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
+
+  float* p = points.data();
+  SimplexId* c = cellsConn.data();
+  SimplexId* m = cellsMSCIds.data();
+  SimplexId cellIndex = 0;
+
+  for (const auto& vCase : validCasesA)
+  {
+    const SimplexId& tet = vCase.first;
+    const unsigned char& lookupIndex = vCase.second;
+
+    const int *tetEdgeIndices = tetraederLookup[lookupIndex];
+    const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
+
+    SimplexId vertices[4];
+    triangulation.getCellVertex(tet, 0, vertices[0]);
+    triangulation.getCellVertex(tet, 1, vertices[1]);
+    triangulation.getCellVertex(tet, 2, vertices[2]);
+    triangulation.getCellVertex(tet, 3, vertices[3]);
+
+    const SimplexId msm[4] = {
+      ascManifold[vertices[0]], ascManifold[vertices[1]],
+      ascManifold[vertices[2]], ascManifold[vertices[3]]};
+
+    float vertPos[4][3];
+    triangulation.getVertexPoint(
+      vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+    triangulation.getVertexPoint(
+      vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+    triangulation.getVertexPoint(
+      vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+    triangulation.getVertexPoint(
+      vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+
+    float eC[10][3];
+    // 6 edge centers
+    getCenter(vertPos[0], vertPos[1], eC[0]);
+    getCenter(vertPos[0], vertPos[2], eC[1]);
+    getCenter(vertPos[0], vertPos[3], eC[2]);
+    getCenter(vertPos[1], vertPos[2], eC[3]);
+    getCenter(vertPos[1], vertPos[3], eC[4]);
+    getCenter(vertPos[2], vertPos[3], eC[5]);
+
+    // 4 triangle centers
+    getCenter(vertPos[0], vertPos[1], vertPos[2], eC[6]);
+    getCenter(vertPos[0], vertPos[1], vertPos[3], eC[7]);
+    getCenter(vertPos[0], vertPos[2], vertPos[3], eC[8]);
+    getCenter(vertPos[1], vertPos[2], vertPos[3], eC[9]);
+
+    if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+      float tetCenter[3];
+      getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
+
+      long long sparseMSIds[6] = {
+        msLabelMap[getSparseId(msm[0], msm[1], numAscRegions)],
+        msLabelMap[getSparseId(msm[0], msm[2], numAscRegions)],
+        msLabelMap[getSparseId(msm[0], msm[3], numAscRegions)],
+        msLabelMap[getSparseId(msm[1], msm[2], numAscRegions)],
+        msLabelMap[getSparseId(msm[1], msm[3], numAscRegions)],
+        msLabelMap[getSparseId(msm[2], msm[3], numAscRegions)]
+      };
+
+      *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+      *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+      *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+      *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+      *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2]; 
+      *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+      *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+      *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+      *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2];
+      *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+      *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2]; 
+      *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2];
+      *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+
+      *m++ = sparseMSIds[0]; *m++ = sparseMSIds[0];        
+      *m++ = sparseMSIds[1]; *m++ = sparseMSIds[1];
+      *m++ = sparseMSIds[2]; *m++ = sparseMSIds[2];        
+      *m++ = sparseMSIds[3]; *m++ = sparseMSIds[3];       
+      *m++ = sparseMSIds[4]; *m++ = sparseMSIds[4];
+      *m++ = sparseMSIds[5]; *m++ = sparseMSIds[5];
+    } else { // 2 or 3 labels on tetraeder
+      const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
+      long long sparseIds[numTris];
+      for(size_t t = 0; t < numTris; ++t) {
+        sparseIds[t] = msLabelMap[getSparseId(msm[tetVertLabel[t * 2]],
+                                     msm[tetVertLabel[(t * 2) + 1]],
+                                     numAscRegions)];
+
+        *p++ = eC[tetEdgeIndices[(t * 3)    ]][0];
+        *p++ = eC[tetEdgeIndices[(t * 3)    ]][1];
+        *p++ = eC[tetEdgeIndices[(t * 3)    ]][2];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 1]][0];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 1]][1];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 1]][2];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 2]][0];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 2]][1];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 2]][2];
+
+        *c++ = cellIndex++;
+        *c++ = cellIndex++;
+        *c++ = cellIndex++;
+
+        *m++ = sparseIds[t];
+      }
+    }
+  }
+
+  for (const auto& vCase : validCasesD)
+  {
+    const SimplexId& tet = vCase.first;
+    const unsigned char& lookupIndex = vCase.second;
+
+    const int *tetEdgeIndices = tetraederLookup[lookupIndex];
+    const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
+
+    SimplexId vertices[4];
+    triangulation.getCellVertex(tet, 0, vertices[0]);
+    triangulation.getCellVertex(tet, 1, vertices[1]);
+    triangulation.getCellVertex(tet, 2, vertices[2]);
+    triangulation.getCellVertex(tet, 3, vertices[3]);
+
+    const SimplexId msm[4] = {
+      dscManifold[vertices[0]], dscManifold[vertices[1]],
+      dscManifold[vertices[2]], dscManifold[vertices[3]]};
+
+    float vertPos[4][3];
+    triangulation.getVertexPoint(
+      vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+    triangulation.getVertexPoint(
+      vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+    triangulation.getVertexPoint(
+      vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+    triangulation.getVertexPoint(
+      vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+
+    float eC[10][3];
+    // 6 edge centers
+    getCenter(vertPos[0], vertPos[1], eC[0]);
+    getCenter(vertPos[0], vertPos[2], eC[1]);
+    getCenter(vertPos[0], vertPos[3], eC[2]);
+    getCenter(vertPos[1], vertPos[2], eC[3]);
+    getCenter(vertPos[1], vertPos[3], eC[4]);
+    getCenter(vertPos[2], vertPos[3], eC[5]);
+
+    // 4 triangle centers
+    getCenter(vertPos[0], vertPos[1], vertPos[2], eC[6]);
+    getCenter(vertPos[0], vertPos[1], vertPos[3], eC[7]);
+    getCenter(vertPos[0], vertPos[2], vertPos[3], eC[8]);
+    getCenter(vertPos[1], vertPos[2], vertPos[3], eC[9]);
+
+    if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+      float tetCenter[3];
+      getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
+
+      long long sparseMSIds[6] = {
+        msLabelMap[getSparseId(msm[0], msm[1], numDscRegions)
+        + ascSparseIDOffset],
+        msLabelMap[getSparseId(msm[0], msm[2], numDscRegions)
+        + ascSparseIDOffset],
+        msLabelMap[getSparseId(msm[0], msm[3], numDscRegions)
+        + ascSparseIDOffset],
+        msLabelMap[getSparseId(msm[1], msm[2], numDscRegions)
+        + ascSparseIDOffset],
+        msLabelMap[getSparseId(msm[1], msm[3], numDscRegions)
+        + ascSparseIDOffset],
+        msLabelMap[getSparseId(msm[2], msm[3], numDscRegions)
+        + ascSparseIDOffset]
+      };
+
+      *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+      *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+      *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+      *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+      *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2]; 
+      *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+      *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+      *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+      *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2];
+      *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+      *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2]; 
+      *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2]; 
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+      *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2];
+      *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+      *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+
+      *m++ = sparseMSIds[0]; *m++ = sparseMSIds[0];        
+      *m++ = sparseMSIds[1]; *m++ = sparseMSIds[1];
+      *m++ = sparseMSIds[2]; *m++ = sparseMSIds[2];        
+      *m++ = sparseMSIds[3]; *m++ = sparseMSIds[3];       
+      *m++ = sparseMSIds[4]; *m++ = sparseMSIds[4];
+      *m++ = sparseMSIds[5]; *m++ = sparseMSIds[5];
+    } else { // 2 or 3 labels on tetraeder
+      const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
+      long long sparseIds[numTris];
+      for(size_t t = 0; t < numTris; ++t) {
+        sparseIds[t] = msLabelMap[getSparseId(msm[tetVertLabel[t * 2]],
+                                  msm[tetVertLabel[(t * 2) + 1]],
+                                  numDscRegions) + ascSparseIDOffset];
+
+        *p++ = eC[tetEdgeIndices[(t * 3)    ]][0];
+        *p++ = eC[tetEdgeIndices[(t * 3)    ]][1];
+        *p++ = eC[tetEdgeIndices[(t * 3)    ]][2];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 1]][0];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 1]][1];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 1]][2];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 2]][0];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 2]][1];
+        *p++ = eC[tetEdgeIndices[(t * 3) + 2]][2];
+
+        *c++ = cellIndex++;
+        *c++ = cellIndex++;
+        *c++ = cellIndex++;
+
+        *m++ = sparseIds[t];
       }
     }
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
   size_t triangleStartIndex[threadNumber_ + 1];
+
+  // parallel conquer unordered_sets variables
+  std::unordered_set<long long>* msSets[threadNumber_];
+  int numConquer = threadNumber_ / 2;
+  int conquerStep = 1;
+  int cS2pow = 1;
+  int unmergedSet = -1;
+  bool isConquerEven = !(bool)(threadNumber_ % 2);
+
   #pragma omp parallel num_threads(threadNumber_)
   {
     const int tid = omp_get_thread_num();
@@ -2916,6 +3329,9 @@ if(threadNumber_ == 1) {
     std::vector<std::pair<SimplexId, unsigned char>> validCasesD;
     size_t numThreadTriangles = 0;
     size_t numThreadIndex = 0;
+
+    msSets[tid] = new std::unordered_set<long long>;
+    std::unordered_set<long long>* localMSSet = msSets[tid];
 
     #pragma omp for schedule(static) nowait
     for(SimplexId tet = 0; tet < numTetra; tet++) {
@@ -2953,13 +3369,143 @@ if(threadNumber_ == 1) {
       if(tetraederLookupIsMultiLabel[lookupIndexA]) {
         validCasesA.push_back(std::make_pair(tet, lookupIndexA));
         numThreadTriangles += tetraederFineNumTriangles[lookupIndexA];
+
+        const int *tetEdgeIndices = tetraederLookup[lookupIndexA];
+        if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+          long long sparseMSIds[6] = {
+            getSparseId(asc[0], asc[1], numAscRegions),
+            getSparseId(asc[0], asc[2], numAscRegions),
+            getSparseId(asc[0], asc[3], numAscRegions),
+            getSparseId(asc[1], asc[2], numAscRegions),
+            getSparseId(asc[1], asc[3], numAscRegions),
+            getSparseId(asc[2], asc[3], numAscRegions)
+          };
+
+          localMSSet->insert({
+            sparseMSIds[0], sparseMSIds[1], sparseMSIds[2], 
+            sparseMSIds[3], sparseMSIds[4], sparseMSIds[5]});
+        } else {
+          const int * const unqLabels = tetraederUniqueLabels[lookupIndexA];
+
+          if(tetraederLookupIs2Label[lookupIndexA]) {            
+            localMSSet->insert(getSparseId(
+              asc[0], asc[unqLabels[0]], numAscRegions));
+
+          } else {
+            long long sparseMSIds[3] = {
+              getSparseId(asc[0], asc[unqLabels[0]], numAscRegions),
+              getSparseId(asc[0], asc[unqLabels[1]], numAscRegions),
+              getSparseId(asc[unqLabels[0]], asc[unqLabels[1]], numAscRegions)};
+
+            localMSSet->insert({
+              sparseMSIds[0], sparseMSIds[1], sparseMSIds[2]});
+          }
+        }
       }
 
       if(tetraederLookupIsMultiLabel[lookupIndexD]) {
         validCasesD.push_back(std::make_pair(tet, lookupIndexD));
         numThreadTriangles += tetraederFineNumTriangles[lookupIndexD];
+
+        const int *tetEdgeIndices = tetraederLookup[lookupIndexD];
+        if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
+          long long sparseMSIds[6] = {
+            getSparseId(dsc[0], dsc[1], numDscRegions)
+            + ascSparseIDOffset,
+            getSparseId(dsc[0], dsc[2], numDscRegions)
+            + ascSparseIDOffset,
+            getSparseId(dsc[0], dsc[3], numDscRegions)
+            + ascSparseIDOffset,
+            getSparseId(dsc[1], dsc[2], numDscRegions)
+            + ascSparseIDOffset,
+            getSparseId(dsc[1], dsc[3], numDscRegions)
+            + ascSparseIDOffset,
+            getSparseId(dsc[2], dsc[3], numDscRegions)
+            + ascSparseIDOffset
+          };
+
+          localMSSet->insert({
+            sparseMSIds[0], sparseMSIds[1], sparseMSIds[2], 
+            sparseMSIds[3], sparseMSIds[4], sparseMSIds[5]});
+        } else {
+          const int * const unqLabels = tetraederUniqueLabels[lookupIndexD];
+
+          if(tetraederLookupIs2Label[lookupIndexD]) {            
+            localMSSet->insert(getSparseId(
+              dsc[0], dsc[unqLabels[0]], numDscRegions) + ascSparseIDOffset);
+
+          } else {
+            long long sparseMSIds[3] = {
+              getSparseId(dsc[0], dsc[unqLabels[0]], numDscRegions)
+              + ascSparseIDOffset,
+              getSparseId(dsc[0], dsc[unqLabels[1]], numDscRegions)
+              + ascSparseIDOffset,
+              getSparseId(dsc[unqLabels[0]], dsc[unqLabels[1]], numDscRegions)
+              + ascSparseIDOffset};
+
+            localMSSet->insert({
+              sparseMSIds[0], sparseMSIds[1], sparseMSIds[2]});
+          }
+        }
       }
     }
+
+    /************ CONQUER SETS ************/
+
+    while(numConquer > 0) {
+      #pragma omp for schedule(static) nowait
+      for(int i = 0; i < numConquer * 2; i += 2) {
+        msSets[i * cS2pow]->insert(
+          msSets[i * cS2pow + cS2pow]->begin(),
+          msSets[i * cS2pow + cS2pow]->end());
+      }
+
+      #pragma omp single
+      { // Fix border problems
+        if(!isConquerEven) {
+          if(unmergedSet == -1) {
+            unmergedSet = 2 * numConquer * cS2pow;
+          } else {
+            int unmergedSet2 = 2 * numConquer * cS2pow;
+            msSets[unmergedSet2]->insert(
+              msSets[unmergedSet]->begin(), msSets[unmergedSet]->end());
+            unmergedSet = unmergedSet2;
+          }
+        }
+      }
+
+      #pragma omp single
+      {
+        conquerStep += 1;
+        cS2pow = std::pow(2, conquerStep - 1);
+        isConquerEven = !(bool)(numConquer % 2);
+        numConquer = numConquer / 2;
+      }
+    }
+
+    // Merge unmerged set with set 0, sort ids and create map
+    #pragma omp single
+    {
+      if(unmergedSet != -1) {
+        msSets[0]->insert(
+          msSets[unmergedSet]->begin(), msSets[unmergedSet]->end());
+      }
+
+      numSparseIDs = msSets[0]->size();
+      sparseIdVect.reserve(numSparseIDs);
+      std::copy(msSets[0]->begin(), msSets[0]->end(),
+        std::back_inserter(sparseIdVect));
+      TTK_PSORT(this->threadNumber_, sparseIdVect.begin(), sparseIdVect.end());
+
+      // "sparse id" -> "dense id"
+      for(size_t i = 0; i < numSparseIDs; ++i) {
+        msLabelMap[sparseIdVect[i]] = i;
+      }
+    }
+
+    delete(localMSSet);
+
+    /************ END CONQUER SETS ************/
 
     triangleStartIndex[tid + 1] = numThreadTriangles;
 
@@ -2975,18 +3521,45 @@ if(threadNumber_ == 1) {
       }
     }
 
+    const size_t numTriangles = triangleStartIndex[threadNumber_];
     numThreadIndex = triangleStartIndex[tid];
 
     #pragma omp single nowait
-    trianglePos.resize(triangleStartIndex[threadNumber_]);
+    outputSeparatrices2_points_->resize(9 * numTriangles);
+
+    #pragma omp single nowait
+    outputSeparatrices2_cells_connectivity_->resize(3 * numTriangles);
+
+    #pragma omp single nowait
+    outputSeparatrices2_cells_mscIds_->resize(numTriangles);
 
     #pragma omp single
-    msLabels.resize(triangleStartIndex[threadNumber_]);
+    {
+      *outputSeparatrices2_numberOfPoints_ = 3 * numTriangles;
+      *outputSeparatrices2_numberOfCells_ = numTriangles;
+    }
+  
+    auto &points = *outputSeparatrices2_points_;
+    auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+    auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
+
+    float* p = points.data();
+    SimplexId* c = cellsConn.data();
+    SimplexId* m = cellsMSCIds.data();
+
+    p += (numThreadIndex * 9);
+    c += (numThreadIndex * 3);
+    m += numThreadIndex;
+
+    numThreadIndex = 3 * numThreadIndex;
 
     for (const auto& vCase : validCasesA)
     {
       const SimplexId& tet = vCase.first;
       const unsigned char& lookupIndex = vCase.second;
+      
+      const int *tetEdgeIndices = tetraederLookup[lookupIndex];
+      const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
       SimplexId vertices[4];
       triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -2998,9 +3571,6 @@ if(threadNumber_ == 1) {
         ascManifold[vertices[0]], ascManifold[vertices[1]],
         ascManifold[vertices[2]], ascManifold[vertices[3]]};
 
-      const int *tetEdgeIndicesA = tetraederLookup[lookupIndex];
-      const int *tetVertLabelA = tetraederLabelLookup[lookupIndex];
-
       float vertPos[4][3];
       triangulation.getVertexPoint(
         vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
@@ -3011,120 +3581,120 @@ if(threadNumber_ == 1) {
       triangulation.getVertexPoint(
         vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-      float edgeCenters[10][3];
+      float eC[10][3];
       // 6 edge centers
-      getCenter(vertPos[0], vertPos[1], edgeCenters[0]);
-      getCenter(vertPos[0], vertPos[2], edgeCenters[1]);
-      getCenter(vertPos[0], vertPos[3], edgeCenters[2]);
-      getCenter(vertPos[1], vertPos[2], edgeCenters[3]);
-      getCenter(vertPos[1], vertPos[3], edgeCenters[4]);
-      getCenter(vertPos[2], vertPos[3], edgeCenters[5]);
+      getCenter(vertPos[0], vertPos[1], eC[0]);
+      getCenter(vertPos[0], vertPos[2], eC[1]);
+      getCenter(vertPos[0], vertPos[3], eC[2]);
+      getCenter(vertPos[1], vertPos[2], eC[3]);
+      getCenter(vertPos[1], vertPos[3], eC[4]);
+      getCenter(vertPos[2], vertPos[3], eC[5]);
 
       // 4 triangle centers
-      getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
-      getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
-      getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
-      getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
+      getCenter(vertPos[0], vertPos[1], vertPos[2], eC[6]);
+      getCenter(vertPos[0], vertPos[1], vertPos[3], eC[7]);
+      getCenter(vertPos[0], vertPos[2], vertPos[3], eC[8]);
+      getCenter(vertPos[1], vertPos[2], vertPos[3], eC[9]);
 
-      if(tetEdgeIndicesA[0] == 10) { // 4 labels on tetraeder
+      if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
         float tetCenter[3];
-        getCenter(
-          vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
+        getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
-        trianglePos[numThreadIndex  ] = {
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+1] = {
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+2] = {
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+3] = {
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+4] = {
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+5] = {
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+6] = {
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+7] = {
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+8] = {
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
-          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+9] = {
-          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+10] = {
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
-          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+11] = {
-          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]}; 
-
-        long long sparseAscIds[] = {
-          getSparseId(asc[0], asc[1], numAscRegions),
-          getSparseId(asc[0], asc[2], numAscRegions),
-          getSparseId(asc[0], asc[3], numAscRegions),
-          getSparseId(asc[1], asc[2], numAscRegions),
-          getSparseId(asc[1], asc[3], numAscRegions),
-          getSparseId(asc[2], asc[3], numAscRegions)
+        long long sparseMSIds[6] = {
+          msLabelMap[getSparseId(asc[0], asc[1], numAscRegions)],
+          msLabelMap[getSparseId(asc[0], asc[2], numAscRegions)],
+          msLabelMap[getSparseId(asc[0], asc[3], numAscRegions)],
+          msLabelMap[getSparseId(asc[1], asc[2], numAscRegions)],
+          msLabelMap[getSparseId(asc[1], asc[3], numAscRegions)],
+          msLabelMap[getSparseId(asc[2], asc[3], numAscRegions)]
         };
 
-        msLabels[numThreadIndex  ]  = sparseAscIds[0];
-        msLabels[numThreadIndex+1]  = sparseAscIds[0];
-        msLabels[numThreadIndex+2]  = sparseAscIds[1];
-        msLabels[numThreadIndex+3]  = sparseAscIds[1];
-        msLabels[numThreadIndex+4]  = sparseAscIds[2];
-        msLabels[numThreadIndex+5]  = sparseAscIds[2];
-        msLabels[numThreadIndex+6]  = sparseAscIds[3];
-        msLabels[numThreadIndex+7]  = sparseAscIds[3];
-        msLabels[numThreadIndex+8]  = sparseAscIds[4];
-        msLabels[numThreadIndex+9]  = sparseAscIds[4];
-        msLabels[numThreadIndex+10] = sparseAscIds[5];
-        msLabels[numThreadIndex+11] = sparseAscIds[5];
+        *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+        *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+        *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+        *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+        *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2]; 
+        *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+        *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+        *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+        *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2];
+        *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+        *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2]; 
+        *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2];
+        *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
 
-        numThreadIndex += 12;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+
+        *m++ = sparseMSIds[0]; *m++ = sparseMSIds[0];
+        *m++ = sparseMSIds[1]; *m++ = sparseMSIds[1];
+        *m++ = sparseMSIds[2]; *m++ = sparseMSIds[2];
+        *m++ = sparseMSIds[3]; *m++ = sparseMSIds[3];
+        *m++ = sparseMSIds[4]; *m++ = sparseMSIds[4];
+        *m++ = sparseMSIds[5]; *m++ = sparseMSIds[5];
+        
       } else { // 2 or 3 labels on tetraeder
         const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
         long long sparseIds[numTris];
         for(size_t t = 0; t < numTris; ++t) {
-          sparseIds[t] = getSparseId(asc[tetVertLabelA[t * 2]],
-                                     asc[tetVertLabelA[(t * 2) + 1]],
-                                     numAscRegions);
+          sparseIds[t] = msLabelMap[getSparseId(asc[tetVertLabel[t * 2]],
+                                     asc[tetVertLabel[(t * 2) + 1]],
+                                     numAscRegions)];
 
-          trianglePos[numThreadIndex] = {
-            edgeCenters[tetEdgeIndicesA[(t * 3)    ]][0],
-            edgeCenters[tetEdgeIndicesA[(t * 3)    ]][1],
-            edgeCenters[tetEdgeIndicesA[(t * 3)    ]][2],
-            edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][0],
-            edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][1],
-            edgeCenters[tetEdgeIndicesA[(t * 3) + 1]][2],
-            edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][0],
-            edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][1],
-            edgeCenters[tetEdgeIndicesA[(t * 3) + 2]][2]};
-          
-          msLabels[numThreadIndex] = sparseIds[t];
+          *p++ = eC[tetEdgeIndices[(t * 3)    ]][0];
+          *p++ = eC[tetEdgeIndices[(t * 3)    ]][1];
+          *p++ = eC[tetEdgeIndices[(t * 3)    ]][2];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 1]][0];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 1]][1];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 1]][2];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 2]][0];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 2]][1];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 2]][2];
 
-          numThreadIndex += 1;
+          *c++ = numThreadIndex++;
+          *c++ = numThreadIndex++;
+          *c++ = numThreadIndex++;
+
+          *m++ = sparseIds[t];
         }
       }
     }
@@ -3133,6 +3703,9 @@ if(threadNumber_ == 1) {
     {
       const SimplexId& tet = vCase.first;
       const unsigned char& lookupIndex = vCase.second;
+      
+      const int *tetEdgeIndices = tetraederLookup[lookupIndex];
+      const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
 
       SimplexId vertices[4];
       triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -3141,11 +3714,8 @@ if(threadNumber_ == 1) {
       triangulation.getCellVertex(tet, 3, vertices[3]);
 
       const SimplexId dsc[4] = {
-      dscManifold[vertices[0]], dscManifold[vertices[1]],
-      dscManifold[vertices[2]], dscManifold[vertices[3]]};
-
-      const int *tetEdgeIndicesD = tetraederLookup[lookupIndex];
-      const int *tetVertLabelD = tetraederLabelLookup[lookupIndex];
+        dscManifold[vertices[0]], dscManifold[vertices[1]],
+        dscManifold[vertices[2]], dscManifold[vertices[3]]};
 
       float vertPos[4][3];
       triangulation.getVertexPoint(
@@ -3157,120 +3727,126 @@ if(threadNumber_ == 1) {
       triangulation.getVertexPoint(
         vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-      float edgeCenters[10][3];
+      float eC[10][3];
       // 6 edge centers
-      getCenter(vertPos[0], vertPos[1], edgeCenters[0]);
-      getCenter(vertPos[0], vertPos[2], edgeCenters[1]);
-      getCenter(vertPos[0], vertPos[3], edgeCenters[2]);
-      getCenter(vertPos[1], vertPos[2], edgeCenters[3]);
-      getCenter(vertPos[1], vertPos[3], edgeCenters[4]);
-      getCenter(vertPos[2], vertPos[3], edgeCenters[5]);
+      getCenter(vertPos[0], vertPos[1], eC[0]);
+      getCenter(vertPos[0], vertPos[2], eC[1]);
+      getCenter(vertPos[0], vertPos[3], eC[2]);
+      getCenter(vertPos[1], vertPos[2], eC[3]);
+      getCenter(vertPos[1], vertPos[3], eC[4]);
+      getCenter(vertPos[2], vertPos[3], eC[5]);
 
       // 4 triangle centers
-      getCenter(vertPos[0], vertPos[1], vertPos[2], edgeCenters[6]);
-      getCenter(vertPos[0], vertPos[1], vertPos[3], edgeCenters[7]);
-      getCenter(vertPos[0], vertPos[2], vertPos[3], edgeCenters[8]);
-      getCenter(vertPos[1], vertPos[2], vertPos[3], edgeCenters[9]);
+      getCenter(vertPos[0], vertPos[1], vertPos[2], eC[6]);
+      getCenter(vertPos[0], vertPos[1], vertPos[3], eC[7]);
+      getCenter(vertPos[0], vertPos[2], vertPos[3], eC[8]);
+      getCenter(vertPos[1], vertPos[2], vertPos[3], eC[9]);
 
-      if(tetEdgeIndicesD[0] == 10) { // 4 labels on tetraeder
+      if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
         float tetCenter[3];
-        getCenter(
-          vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
+        getCenter(vertPos[0], vertPos[1], vertPos[2], vertPos[3], tetCenter);
 
-         long long sparseDscIds[] = {
-          getSparseId(dsc[0], dsc[1], numDscRegions),
-          getSparseId(dsc[0], dsc[2], numDscRegions),
-          getSparseId(dsc[0], dsc[3], numDscRegions),
-          getSparseId(dsc[1], dsc[2], numDscRegions),
-          getSparseId(dsc[1], dsc[3], numDscRegions),
-          getSparseId(dsc[2], dsc[3], numDscRegions)
+        long long sparseMSIds[6] = {
+          msLabelMap[getSparseId(dsc[0], dsc[1], numDscRegions) 
+          + ascSparseIDOffset],
+          msLabelMap[getSparseId(dsc[0], dsc[2], numDscRegions) 
+          + ascSparseIDOffset],
+          msLabelMap[getSparseId(dsc[0], dsc[3], numDscRegions) 
+          + ascSparseIDOffset],
+          msLabelMap[getSparseId(dsc[1], dsc[2], numDscRegions) 
+          + ascSparseIDOffset],
+          msLabelMap[getSparseId(dsc[1], dsc[3], numDscRegions) 
+          + ascSparseIDOffset],
+          msLabelMap[getSparseId(dsc[2], dsc[3], numDscRegions) 
+          + ascSparseIDOffset]
         };
 
-          trianglePos[numThreadIndex  ] = {
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+1] = {
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2], 
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+2] = {
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+3] = {
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+4] = {
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2], 
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+5] = {
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2], 
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+6] = {
-          edgeCenters[6][0], edgeCenters[6][1], edgeCenters[6][2],
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+7] = {
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2],
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+8] = {
-          edgeCenters[7][0], edgeCenters[7][1], edgeCenters[7][2],
-          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+9] = {
-          edgeCenters[4][0], edgeCenters[4][1], edgeCenters[4][2],
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+10] = {
-          edgeCenters[9][0], edgeCenters[9][1], edgeCenters[9][2], 
-          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2], 
-          tetCenter[0], tetCenter[1], tetCenter[2]};
-        trianglePos[numThreadIndex+11] = {
-          edgeCenters[5][0], edgeCenters[5][1], edgeCenters[5][2],
-          edgeCenters[8][0], edgeCenters[8][1], edgeCenters[8][2],
-          tetCenter[0], tetCenter[1], tetCenter[2]}; 
+        *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+        *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[0][0]; *p++ = eC[0][1]; *p++ = eC[0][2]; 
+        *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+        *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[1][0]; *p++ = eC[1][1]; *p++ = eC[1][2];
+        *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2]; 
+        *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[2][0]; *p++ = eC[2][1]; *p++ = eC[2][2]; 
+        *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[6][0]; *p++ = eC[6][1]; *p++ = eC[6][2];
+        *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[3][0]; *p++ = eC[3][1]; *p++ = eC[3][2];
+        *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[7][0]; *p++ = eC[7][1]; *p++ = eC[7][2];
+        *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[4][0]; *p++ = eC[4][1]; *p++ = eC[4][2];
+        *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[9][0]; *p++ = eC[9][1]; *p++ = eC[9][2]; 
+        *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2]; 
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
+        *p++ = eC[5][0]; *p++ = eC[5][1]; *p++ = eC[5][2];
+        *p++ = eC[8][0]; *p++ = eC[8][1]; *p++ = eC[8][2];
+        *p++ = tetCenter[0]; *p++ = tetCenter[1]; *p++ = tetCenter[2];
 
-        msLabels[numThreadIndex  ]  = sparseDscIds[0];
-        msLabels[numThreadIndex+1]  = sparseDscIds[0];
-        msLabels[numThreadIndex+2]  = sparseDscIds[1];
-        msLabels[numThreadIndex+3]  = sparseDscIds[1];
-        msLabels[numThreadIndex+4]  = sparseDscIds[2];
-        msLabels[numThreadIndex+5]  = sparseDscIds[2];
-        msLabels[numThreadIndex+6]  = sparseDscIds[3];
-        msLabels[numThreadIndex+7]  = sparseDscIds[3];
-        msLabels[numThreadIndex+8]  = sparseDscIds[4];
-        msLabels[numThreadIndex+9]  = sparseDscIds[4];
-        msLabels[numThreadIndex+10] = sparseDscIds[5];
-        msLabels[numThreadIndex+11] = sparseDscIds[5];
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
 
-        numThreadIndex += 12;
+        *m++ = sparseMSIds[0]; *m++ = sparseMSIds[0];
+        *m++ = sparseMSIds[1]; *m++ = sparseMSIds[1];
+        *m++ = sparseMSIds[2]; *m++ = sparseMSIds[2];
+        *m++ = sparseMSIds[3]; *m++ = sparseMSIds[3];
+        *m++ = sparseMSIds[4]; *m++ = sparseMSIds[4];
+        *m++ = sparseMSIds[5]; *m++ = sparseMSIds[5];
+        
       } else { // 2 or 3 labels on tetraeder
         const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
         long long sparseIds[numTris];
         for(size_t t = 0; t < numTris; ++t) {
-          sparseIds[t] = getSparseId(dsc[tetVertLabelD[t * 2]],
-                                     dsc[tetVertLabelD[(t * 2) + 1]],
-                                     numDscRegions);
+          sparseIds[t] = msLabelMap[getSparseId(dsc[tetVertLabel[t * 2]],
+                                     dsc[tetVertLabel[(t * 2) + 1]],
+                                     numDscRegions) + ascSparseIDOffset];
 
-          trianglePos[numThreadIndex] = {
-            edgeCenters[tetEdgeIndicesD[(t * 3)    ]][0],
-            edgeCenters[tetEdgeIndicesD[(t * 3)    ]][1],
-            edgeCenters[tetEdgeIndicesD[(t * 3)    ]][2],
-            edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][0],
-            edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][1],
-            edgeCenters[tetEdgeIndicesD[(t * 3) + 1]][2],
-            edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][0],
-            edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][1],
-            edgeCenters[tetEdgeIndicesD[(t * 3) + 2]][2]};
+          *p++ = eC[tetEdgeIndices[(t * 3)    ]][0];
+          *p++ = eC[tetEdgeIndices[(t * 3)    ]][1];
+          *p++ = eC[tetEdgeIndices[(t * 3)    ]][2];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 1]][0];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 1]][1];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 1]][2];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 2]][0];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 2]][1];
+          *p++ = eC[tetEdgeIndices[(t * 3) + 2]][2];
 
-          msLabels[numThreadIndex] = sparseIds[t] + ascSparseIDOffset;
+          *c++ = numThreadIndex++;
+          *c++ = numThreadIndex++;
+          *c++ = numThreadIndex++;
 
-          numThreadIndex += 1;
+          *m++ = sparseIds[t];
         }
       }
     }
@@ -3303,8 +3879,6 @@ int ttk::MorseSmaleSegmentationPL::computeMSLabelMap(
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fine(
-  std::vector<std::array<float, 9>> &trianglePos,
-  std::vector<long long> &msLabels,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
   ttk::Timer localTimer;
@@ -3340,6 +3914,9 @@ int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fine(
 
 //#ifndef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+  std::vector<std::pair<SimplexId, unsigned char>> validCases;
+  SimplexId numTriangles = 0;
+
   for(SimplexId tet = 0; tet < numTetra; tet++) {
     SimplexId vertices[4];
     triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -3361,283 +3938,384 @@ if(threadNumber_ == 1) {
     const unsigned char lookupIndex = index1 | index2 | index3;
 
     if(tetraederLookupIsMultiLabel[lookupIndex]) {
-      float vPos[4][3];
-      triangulation.getVertexPoint(
-        vertices[0], vPos[0][0], vPos[0][1], vPos[0][2]);
-      triangulation.getVertexPoint(
-        vertices[1], vPos[1][0], vPos[1][1], vPos[1][2]);
-      triangulation.getVertexPoint(
-        vertices[2], vPos[2][0], vPos[2][1], vPos[2][2]);
-      triangulation.getVertexPoint(
-        vertices[3], vPos[3][0], vPos[3][1], vPos[3][2]);
+      validCases.push_back(std::make_pair(tet, lookupIndex));
+      numTriangles += tetraederNumTrianglesFine[lookupIndex];
+    }
+  }
 
-      if(tetraederLookupIs2Label[lookupIndex]) { // 2 labels (eg. AAAB / AABB)
-        const int *vIds = tetraederLookupSplitBasisns2Label[lookupIndex];
+  outputSeparatrices2_points_->resize(9 * numTriangles);
+  outputSeparatrices2_cells_connectivity_->resize(3 * numTriangles);
+  outputSeparatrices2_cells_mscIds_->resize(numTriangles);
+  *outputSeparatrices2_numberOfPoints_ = 3 * numTriangles;
+  *outputSeparatrices2_numberOfCells_ = numTriangles;
 
-        float vert00[3], vert01[3], vert02[3],
-              vert10[3], vert11[3], vert12[3];
+  auto &points = *outputSeparatrices2_points_;
+  auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+  auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
 
-        interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d0, vert00);
-        interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d0, vert01);
-        interpolatePoints(vPos[vIds[4]], vPos[vIds[5]], d0, vert02);
-        interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d1, vert10);
-        interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d1, vert11);
-        interpolatePoints(vPos[vIds[4]], vPos[vIds[5]], d1, vert12);
+  float* p = points.data();
+  SimplexId* c = cellsConn.data();
+  SimplexId* m = cellsMSCIds.data();
+  SimplexId cellIndex = 0;
 
-        trianglePos.insert(trianglePos.end(), {{
-          vert00[0], vert00[1], vert00[2], 
-          vert01[0], vert01[1], vert01[2], 
-          vert02[0], vert02[1], vert02[2]},{
-          vert10[0], vert10[1], vert10[2], 
-          vert11[0], vert11[1], vert11[2], 
-          vert12[0], vert12[1], vert12[2]}});
+  for (const auto& vCase : validCases)
+  {
+    const SimplexId& tet = vCase.first;
+    const unsigned char& lookupIndex = vCase.second;
 
-        msLabels.insert(msLabels.end(), {msm[vIds[0]], msm[vIds[1]]});
+    SimplexId vertices[4];
+    triangulation.getCellVertex(tet, 0, vertices[0]);
+    triangulation.getCellVertex(tet, 1, vertices[1]);
+    triangulation.getCellVertex(tet, 2, vertices[2]);
+    triangulation.getCellVertex(tet, 3, vertices[3]);
 
-        if(vIds[6] != -1) { // 2 vertices per label (e.g. AABB)
-          float vert03[3], vert13[3];
+    const SimplexId msm[4] = {
+      morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+      morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
+    
+    float vPos[4][3];
+    triangulation.getVertexPoint(
+      vertices[0], vPos[0][0], vPos[0][1], vPos[0][2]);
+    triangulation.getVertexPoint(
+      vertices[1], vPos[1][0], vPos[1][1], vPos[1][2]);
+    triangulation.getVertexPoint(
+      vertices[2], vPos[2][0], vPos[2][1], vPos[2][2]);
+    triangulation.getVertexPoint(
+      vertices[3], vPos[3][0], vPos[3][1], vPos[3][2]);
 
-          interpolatePoints(vPos[vIds[6]], vPos[vIds[7]], d0, vert03);
-          interpolatePoints(vPos[vIds[6]], vPos[vIds[7]], d1, vert13);
+    if(tetraederLookupIs2Label[lookupIndex]) { // 2 labels (eg. AAAB / AABB)
+      const int *vIds = tetraederLookupSplitBasisns2Label[lookupIndex];
 
-          trianglePos.insert(trianglePos.end(), {{
-            vert00[0], vert00[1], vert00[2], 
-            vert01[0], vert01[1], vert01[2], 
-            vert03[0], vert03[1], vert03[2]},{
-            vert10[0], vert10[1], vert10[2], 
-            vert11[0], vert11[1], vert11[2], 
-            vert13[0], vert13[1], vert13[2]}});
+      float vert00[3], vert01[3], vert02[3],
+            vert10[3], vert11[3], vert12[3];
 
-          msLabels.insert(msLabels.end(), {msm[vIds[0]], msm[vIds[1]]});
-        }
-      } else if(tetraederLookupIs3Label[lookupIndex]) {
-        const int *vIds = tetraederLookupSplitBasisns3Label[lookupIndex];
+      interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d0, vert00);
+      interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d0, vert01);
+      interpolatePoints(vPos[vIds[4]], vPos[vIds[5]], d0, vert02);
+      interpolatePoints(vPos[vIds[0]], vPos[vIds[1]], d1, vert10);
+      interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d1, vert11);
+      interpolatePoints(vPos[vIds[4]], vPos[vIds[5]], d1, vert12);
 
-        float triCenter[4][3];
-        getCenter(vPos[0], vPos[1], vPos[2], triCenter[0]);
-        getCenter(vPos[0], vPos[1], vPos[3], triCenter[1]);
-        getCenter(vPos[0], vPos[2], vPos[3], triCenter[2]);
-        getCenter(vPos[1], vPos[2], vPos[3], triCenter[3]);
+      *p++ = vert00[0]; *p++ = vert00[1]; *p++ = vert00[2]; 
+      *p++ = vert01[0]; *p++ = vert01[1]; *p++ = vert01[2]; 
+      *p++ = vert02[0]; *p++ = vert02[1]; *p++ = vert02[2];
 
-        float edgeCenters[10][3];
+      *p++ = vert10[0]; *p++ = vert10[1]; *p++ = vert10[2]; 
+      *p++ = vert11[0]; *p++ = vert11[1]; *p++ = vert11[2]; 
+      *p++ = vert12[0]; *p++ = vert12[1]; *p++ = vert12[2];
 
-        getCenter(vPos[0], vPos[1], edgeCenters[0]);
-        getCenter(vPos[0], vPos[2], edgeCenters[1]);
-        getCenter(vPos[0], vPos[3], edgeCenters[2]);
-        getCenter(vPos[1], vPos[2], edgeCenters[3]);
-        getCenter(vPos[1], vPos[3], edgeCenters[4]);
-        getCenter(vPos[2], vPos[3], edgeCenters[5]);
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
 
+      *m++ = msm[vIds[0]]; *m++ = msm[vIds[1]];
 
-        float edge00[3], edge01[3], edge02[3], edge03[3], tri00[3], tri01[3],
-              edge10[3], edge11[3], edge12[3], tri10[3], tri11[3],
-              edge20[3], edge21[3], edge22[3], tri20[3], tri21[3];
+      if(vIds[6] != -1) { // 2 vertices per label (e.g. AABB)
+        float vert03[3], vert13[3];
 
-        interpolatePoints(vPos[vIds[0]], edgeCenters[vIds[1]],  dc, edge00);
-        interpolatePoints(vPos[vIds[0]], edgeCenters[vIds[2]],  dc, edge01);
-        interpolatePoints(vPos[vIds[0]], triCenter[vIds[3]],    dc, tri00);
-        interpolatePoints(vPos[vIds[4]], edgeCenters[vIds[5]],  dc, edge02);
-        interpolatePoints(vPos[vIds[4]], edgeCenters[vIds[6]],  dc, edge03);
-        interpolatePoints(vPos[vIds[4]], triCenter[vIds[7]],    dc, tri01);
- 
-        interpolatePoints(vPos[vIds[8]], edgeCenters[vIds[1]],  dc, edge10);
-        interpolatePoints(vPos[vIds[8]], edgeCenters[vIds[5]],  dc, edge11);
-        interpolatePoints(vPos[vIds[8]], edgeCenters[vIds[10]], dc, edge12);
-        interpolatePoints(vPos[vIds[8]], triCenter[vIds[3]],    dc, tri10);
-        interpolatePoints(vPos[vIds[8]], triCenter[vIds[7]],    dc, tri11);
- 
-        interpolatePoints(vPos[vIds[9]], edgeCenters[vIds[2]],  dc, edge20);
-        interpolatePoints(vPos[vIds[9]], edgeCenters[vIds[6]],  dc, edge21);
-        interpolatePoints(vPos[vIds[9]], edgeCenters[vIds[10]], dc, edge22);
-        interpolatePoints(vPos[vIds[9]], triCenter[vIds[3]],    dc, tri20);
-        interpolatePoints(vPos[vIds[9]], triCenter[vIds[7]],    dc, tri21);
+        interpolatePoints(vPos[vIds[6]], vPos[vIds[7]], d0, vert03);
+        interpolatePoints(vPos[vIds[6]], vPos[vIds[7]], d1, vert13);
 
-          // Label 0
-        trianglePos.insert(trianglePos.end(), {{
-          edge00[0], edge00[1], edge00[2], 
-          edge02[0], edge02[1], edge02[2], 
-          tri00[0], tri00[1], tri00[2]},{  
-          edge02[0], edge02[1], edge02[2], 
-          tri00[0], tri00[1], tri00[2], 
-          tri01[0], tri01[1], tri01[2]},{              
-          edge01[0], edge01[1], edge01[2], 
-          edge03[0], edge03[1], edge03[2], 
-          tri00[0], tri00[1], tri00[2]},{  
-          edge03[0], edge03[1], edge03[2], 
-          tri00[0], tri00[1], tri00[2], 
-          tri01[0], tri01[1], tri01[2]},{
+        *p++ = vert00[0]; *p++ = vert00[1]; *p++ = vert00[2]; 
+        *p++ = vert01[0]; *p++ = vert01[1]; *p++ = vert01[2]; 
+        *p++ = vert03[0]; *p++ = vert03[1]; *p++ = vert03[2];
+        *p++ = vert10[0]; *p++ = vert10[1]; *p++ = vert10[2]; 
+        *p++ = vert11[0]; *p++ = vert11[1]; *p++ = vert11[2]; 
+        *p++ = vert13[0]; *p++ = vert13[1]; *p++ = vert13[2];
 
-          // Label 1           
-          edge10[0], edge10[1], edge10[2], 
-          edge11[0], edge11[1], edge11[2], 
-          tri10[0], tri10[1], tri10[2]},{  
-          edge11[0], edge11[1], edge11[2], 
-          tri10[0], tri10[1], tri10[2], 
-          tri11[0], tri11[1], tri11[2]},{  
-          edge12[0], edge12[1], edge12[2], 
-          tri10[0], tri10[1], tri10[2], 
-          tri11[0], tri11[1], tri11[2]},{
+        *c++ = cellIndex++; *c++ = cellIndex++;
+        *c++ = cellIndex++; *c++ = cellIndex++;
+        *c++ = cellIndex++; *c++ = cellIndex++;
 
-          // Label 2           
-          edge20[0], edge20[1], edge20[2], 
-          edge21[0], edge21[1], edge21[2], 
-          tri20[0], tri20[1], tri20[2]},{  
-          edge21[0], edge21[1], edge21[2], 
-          tri20[0], tri20[1], tri20[2], 
-          tri21[0], tri21[1], tri21[2]},{  
-          edge22[0], edge22[1], edge22[2], 
-          tri20[0], tri20[1], tri20[2], 
-          tri21[0], tri21[1], tri21[2]}});
-
-        msLabels.insert(msLabels.end(), {
-          msm[vIds[0]], msm[vIds[0]], msm[vIds[0]], msm[vIds[0]],
-          msm[vIds[8]], msm[vIds[8]], msm[vIds[8]],
-          msm[vIds[9]], msm[vIds[9]], msm[vIds[9]]});
-      } else { // 4 labels
-        float tetCenter[3];
-        getCenter(vPos[0], vPos[1], vPos[2], vPos[3], tetCenter);
-
-        // the 4 triangle centers
-        float triCenter[4][3];
-        getCenter(vPos[0], vPos[1], vPos[2], triCenter[0]);
-        getCenter(vPos[0], vPos[1], vPos[3], triCenter[1]);
-        getCenter(vPos[0], vPos[2], vPos[3], triCenter[2]);
-        getCenter(vPos[1], vPos[2], vPos[3], triCenter[3]);
-
-        float vert00[3], vert01[3], vert02[3], vert0tet[3],
-              vert0t0[3], vert0t1[3], vert0t2[3], 
-              vert10[3], vert11[3], vert12[3], vert1tet[3],
-              vert1t0[3], vert1t1[3], vert1t2[3], 
-              vert20[3], vert21[3], vert22[3], vert2tet[3],
-              vert2t0[3], vert2t1[3], vert2t2[3], 
-              vert30[3], vert31[3], vert32[3], vert3tet[3],
-              vert3t0[3], vert3t1[3], vert3t2[3]; 
-
-        interpolatePoints(vPos[0], vPos[1], d0, vert00);
-        interpolatePoints(vPos[0], vPos[2], d0, vert01);
-        interpolatePoints(vPos[0], vPos[3], d0, vert02);
-        interpolatePoints(vPos[0], tetCenter, dc, vert0tet);
-        interpolatePoints(vPos[0], triCenter[0], dc, vert0t0);
-        interpolatePoints(vPos[0], triCenter[1], dc, vert0t1);
-        interpolatePoints(vPos[0], triCenter[2], dc, vert0t2);
-
-        interpolatePoints(vPos[1], vPos[0], d0, vert10);
-        interpolatePoints(vPos[1], vPos[2], d0, vert11);
-        interpolatePoints(vPos[1], vPos[3], d0, vert12);
-        interpolatePoints(vPos[1], tetCenter, dc, vert1tet);
-        interpolatePoints(vPos[1], triCenter[0], dc, vert1t0);
-        interpolatePoints(vPos[1], triCenter[1], dc, vert1t1);
-        interpolatePoints(vPos[1], triCenter[3], dc, vert1t2);
-
-        interpolatePoints(vPos[2], vPos[0], d0, vert20);
-        interpolatePoints(vPos[2], vPos[1], d0, vert21);
-        interpolatePoints(vPos[2], vPos[3], d0, vert22);
-        interpolatePoints(vPos[2], tetCenter, dc, vert2tet);
-        interpolatePoints(vPos[2], triCenter[0], dc, vert2t0);
-        interpolatePoints(vPos[2], triCenter[2], dc, vert2t1);
-        interpolatePoints(vPos[2], triCenter[3], dc, vert2t2);
-
-        interpolatePoints(vPos[3], vPos[0], d0, vert30);
-        interpolatePoints(vPos[3], vPos[1], d0, vert31);
-        interpolatePoints(vPos[3], vPos[2], d0, vert32);
-        interpolatePoints(vPos[3], tetCenter, dc, vert3tet);
-        interpolatePoints(vPos[3], triCenter[1], dc, vert3t0);
-        interpolatePoints(vPos[3], triCenter[2], dc, vert3t1);
-        interpolatePoints(vPos[3], triCenter[3], dc, vert3t2);
-
-          // Label Vert 0
-        trianglePos.insert(trianglePos.end(), {{
-          vert00[0],   vert00[1],   vert00[2], 
-          vert0t0[0],  vert0t0[1],  vert0t0[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]},{
-          vert00[0],   vert00[1],   vert00[2], 
-          vert0t1[0],  vert0t1[1],  vert0t1[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]},{
-          vert01[0],   vert01[1],   vert01[2], 
-          vert0t0[0],  vert0t0[1],  vert0t0[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]},{
-          vert01[0],   vert01[1],   vert01[2], 
-          vert0t2[0],  vert0t2[1],  vert0t2[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]},{
-          vert02[0],   vert02[1],   vert02[2], 
-          vert0t2[0],  vert0t2[1],  vert0t2[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]},{
-          vert02[0],   vert02[1],   vert02[2], 
-          vert0t1[0],  vert0t1[1],  vert0t1[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]},{
-
-        // Label Vert 1       
-          vert10[0],   vert10[1],   vert10[2], 
-          vert1t0[0],  vert1t0[1],  vert1t0[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]},{
-          vert10[0],   vert10[1],   vert10[2], 
-          vert1t1[0],  vert1t1[1],  vert1t1[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]},{
-          vert11[0],   vert11[1],   vert11[2], 
-          vert1t0[0],  vert1t0[1],  vert1t0[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]},{
-          vert11[0],   vert11[1],   vert11[2], 
-          vert1t2[0],  vert1t2[1],  vert1t2[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]},{
-          vert12[0],   vert12[1],   vert12[2], 
-          vert1t2[0],  vert1t2[1],  vert1t2[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]},{
-          vert12[0],   vert12[1],   vert12[2], 
-          vert1t1[0],  vert1t1[1],  vert1t1[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]},{
-
-
-        // Label Vert 2     
-          vert20[0],   vert20[1],   vert20[2], 
-          vert2t0[0],  vert2t0[1],  vert2t0[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]},{
-          vert20[0],   vert20[1],   vert20[2], 
-          vert2t1[0],  vert2t1[1],  vert2t1[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]},{
-          vert21[0],   vert21[1],   vert21[2], 
-          vert2t0[0],  vert2t0[1],  vert2t0[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]},{
-          vert21[0],   vert21[1],   vert21[2], 
-          vert2t2[0],  vert2t2[1],  vert2t2[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]},{
-          vert22[0],   vert22[1],   vert22[2], 
-          vert2t2[0],  vert2t2[1],  vert2t2[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]},{
-          vert22[0],   vert22[1],   vert22[2], 
-          vert2t1[0],  vert2t1[1],  vert2t1[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]},{
-
-        // Label Vert 3      
-          vert30[0],   vert30[1],   vert30[2], 
-          vert3t0[0],  vert3t0[1],  vert3t0[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]},{            
-          vert30[0],   vert30[1],   vert30[2], 
-          vert3t1[0],  vert3t1[1],  vert3t1[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]},{
-          vert31[0],   vert31[1],   vert31[2], 
-          vert3t0[0],  vert3t0[1],  vert3t0[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]},{
-          vert31[0],   vert31[1],   vert31[2], 
-          vert3t2[0],  vert3t2[1],  vert3t2[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]},{
-          vert32[0],   vert32[1],   vert32[2], 
-          vert3t2[0],  vert3t2[1],  vert3t2[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]},{
-          vert32[0],   vert32[1],   vert32[2], 
-          vert3t1[0],  vert3t1[1],  vert3t1[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]}});
-
-        msLabels.insert(msLabels.end(), {
-          msm[0], msm[0], msm[0], msm[0], msm[0], msm[0],
-          msm[1], msm[1], msm[1], msm[1], msm[1], msm[1],
-          msm[2], msm[2], msm[2], msm[2], msm[2], msm[2],
-          msm[3], msm[3], msm[3], msm[3], msm[3], msm[3]});
+        *m++ = msm[vIds[0]]; *m++ = msm[vIds[1]];
       }
+    } else if(tetraederLookupIs3Label[lookupIndex]) {
+      const int *vIds = tetraederLookupSplitBasisns3Label[lookupIndex];
+
+      float triCenter[4][3];
+      getCenter(vPos[0], vPos[1], vPos[2], triCenter[0]);
+      getCenter(vPos[0], vPos[1], vPos[3], triCenter[1]);
+      getCenter(vPos[0], vPos[2], vPos[3], triCenter[2]);
+      getCenter(vPos[1], vPos[2], vPos[3], triCenter[3]);
+
+      float edgeCenters[10][3];
+
+      getCenter(vPos[0], vPos[1], edgeCenters[0]);
+      getCenter(vPos[0], vPos[2], edgeCenters[1]);
+      getCenter(vPos[0], vPos[3], edgeCenters[2]);
+      getCenter(vPos[1], vPos[2], edgeCenters[3]);
+      getCenter(vPos[1], vPos[3], edgeCenters[4]);
+      getCenter(vPos[2], vPos[3], edgeCenters[5]);
+
+
+      float edge00[3], edge01[3], edge02[3], edge03[3], tri00[3], tri01[3],
+            edge10[3], edge11[3], edge12[3], tri10[3], tri11[3],
+            edge20[3], edge21[3], edge22[3], tri20[3], tri21[3];
+
+      interpolatePoints(vPos[vIds[0]], edgeCenters[vIds[1]],  dc, edge00);
+      interpolatePoints(vPos[vIds[0]], edgeCenters[vIds[2]],  dc, edge01);
+      interpolatePoints(vPos[vIds[0]], triCenter[vIds[3]],    dc, tri00);
+      interpolatePoints(vPos[vIds[4]], edgeCenters[vIds[5]],  dc, edge02);
+      interpolatePoints(vPos[vIds[4]], edgeCenters[vIds[6]],  dc, edge03);
+      interpolatePoints(vPos[vIds[4]], triCenter[vIds[7]],    dc, tri01);
+ 
+      interpolatePoints(vPos[vIds[8]], edgeCenters[vIds[1]],  dc, edge10);
+      interpolatePoints(vPos[vIds[8]], edgeCenters[vIds[5]],  dc, edge11);
+      interpolatePoints(vPos[vIds[8]], edgeCenters[vIds[10]], dc, edge12);
+      interpolatePoints(vPos[vIds[8]], triCenter[vIds[3]],    dc, tri10);
+      interpolatePoints(vPos[vIds[8]], triCenter[vIds[7]],    dc, tri11);
+ 
+      interpolatePoints(vPos[vIds[9]], edgeCenters[vIds[2]],  dc, edge20);
+      interpolatePoints(vPos[vIds[9]], edgeCenters[vIds[6]],  dc, edge21);
+      interpolatePoints(vPos[vIds[9]], edgeCenters[vIds[10]], dc, edge22);
+      interpolatePoints(vPos[vIds[9]], triCenter[vIds[3]],    dc, tri20);
+      interpolatePoints(vPos[vIds[9]], triCenter[vIds[7]],    dc, tri21);
+
+      // Label 0
+      *p++ = edge00[0]; *p++ = edge00[1]; *p++ = edge00[2];
+      *p++ = edge02[0]; *p++ = edge02[1]; *p++ = edge02[2];
+      *p++ = tri00[0]; *p++ = tri00[1]; *p++ = tri00[2];
+      *p++ = edge02[0]; *p++ = edge02[1]; *p++ = edge02[2];
+      *p++ = tri00[0]; *p++ = tri00[1]; *p++ = tri00[2];
+      *p++ = tri01[0]; *p++ = tri01[1]; *p++ = tri01[2];        
+      *p++ = edge01[0]; *p++ = edge01[1]; *p++ = edge01[2];
+      *p++ = edge03[0]; *p++ = edge03[1]; *p++ = edge03[2];
+      *p++ = tri00[0]; *p++ = tri00[1]; *p++ = tri00[2];
+      *p++ = edge03[0]; *p++ = edge03[1]; *p++ = edge03[2];
+      *p++ = tri00[0]; *p++ = tri00[1]; *p++ = tri00[2];
+      *p++ = tri01[0]; *p++ = tri01[1]; *p++ = tri01[2];
+
+      // Label 1           
+      *p++ = edge10[0]; *p++ = edge10[1]; *p++ = edge10[2];
+      *p++ = edge11[0]; *p++ = edge11[1]; *p++ = edge11[2];
+      *p++ = tri10[0]; *p++ = tri10[1]; *p++ = tri10[2];
+      *p++ = edge11[0]; *p++ = edge11[1]; *p++ = edge11[2];
+      *p++ = tri10[0]; *p++ = tri10[1]; *p++ = tri10[2];
+      *p++ = tri11[0]; *p++ = tri11[1]; *p++ = tri11[2];
+      *p++ = edge12[0]; *p++ = edge12[1]; *p++ = edge12[2];
+      *p++ = tri10[0]; *p++ = tri10[1]; *p++ = tri10[2];
+      *p++ = tri11[0]; *p++ = tri11[1]; *p++ = tri11[2];
+
+      // Label 2           
+      *p++ = edge20[0]; *p++ = edge20[1]; *p++ = edge20[2];
+      *p++ = edge21[0]; *p++ = edge21[1]; *p++ = edge21[2]; 
+      *p++ = tri20[0]; *p++ = tri20[1]; *p++ = tri20[2];
+      *p++ = edge21[0]; *p++ = edge21[1]; *p++ = edge21[2];
+      *p++ = tri20[0]; *p++ = tri20[1]; *p++ = tri20[2];
+      *p++ = tri21[0]; *p++ = tri21[1]; *p++ = tri21[2];
+      *p++ = edge22[0]; *p++ = edge22[1]; *p++ = edge22[2]; 
+      *p++ = tri20[0]; *p++ = tri20[1]; *p++ = tri20[2];
+      *p++ = tri21[0]; *p++ = tri21[1]; *p++ = tri21[2];
+
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+
+      *m++ = msm[vIds[0]]; *m++ = msm[vIds[0]];        
+      *m++ = msm[vIds[0]]; *m++ = msm[vIds[0]];
+      *m++ = msm[vIds[8]]; *m++ = msm[vIds[8]];        
+      *m++ = msm[vIds[8]]; *m++ = msm[vIds[9]];       
+      *m++ = msm[vIds[9]]; *m++ = msm[vIds[9]];
+    } else { // 4 labels
+      float tetCenter[3];
+      getCenter(vPos[0], vPos[1], vPos[2], vPos[3], tetCenter);
+
+      // the 4 triangle centers
+      float triCenter[4][3];
+      getCenter(vPos[0], vPos[1], vPos[2], triCenter[0]);
+      getCenter(vPos[0], vPos[1], vPos[3], triCenter[1]);
+      getCenter(vPos[0], vPos[2], vPos[3], triCenter[2]);
+      getCenter(vPos[1], vPos[2], vPos[3], triCenter[3]);
+
+      float vert00[3], vert01[3], vert02[3], vert0tet[3],
+            vert0t0[3], vert0t1[3], vert0t2[3], 
+            vert10[3], vert11[3], vert12[3], vert1tet[3],
+            vert1t0[3], vert1t1[3], vert1t2[3], 
+            vert20[3], vert21[3], vert22[3], vert2tet[3],
+            vert2t0[3], vert2t1[3], vert2t2[3], 
+            vert30[3], vert31[3], vert32[3], vert3tet[3],
+            vert3t0[3], vert3t1[3], vert3t2[3]; 
+
+      interpolatePoints(vPos[0], vPos[1], d0, vert00);
+      interpolatePoints(vPos[0], vPos[2], d0, vert01);
+      interpolatePoints(vPos[0], vPos[3], d0, vert02);
+      interpolatePoints(vPos[0], tetCenter, dc, vert0tet);
+      interpolatePoints(vPos[0], triCenter[0], dc, vert0t0);
+      interpolatePoints(vPos[0], triCenter[1], dc, vert0t1);
+      interpolatePoints(vPos[0], triCenter[2], dc, vert0t2);
+
+      interpolatePoints(vPos[1], vPos[0], d0, vert10);
+      interpolatePoints(vPos[1], vPos[2], d0, vert11);
+      interpolatePoints(vPos[1], vPos[3], d0, vert12);
+      interpolatePoints(vPos[1], tetCenter, dc, vert1tet);
+      interpolatePoints(vPos[1], triCenter[0], dc, vert1t0);
+      interpolatePoints(vPos[1], triCenter[1], dc, vert1t1);
+      interpolatePoints(vPos[1], triCenter[3], dc, vert1t2);
+
+      interpolatePoints(vPos[2], vPos[0], d0, vert20);
+      interpolatePoints(vPos[2], vPos[1], d0, vert21);
+      interpolatePoints(vPos[2], vPos[3], d0, vert22);
+      interpolatePoints(vPos[2], tetCenter, dc, vert2tet);
+      interpolatePoints(vPos[2], triCenter[0], dc, vert2t0);
+      interpolatePoints(vPos[2], triCenter[2], dc, vert2t1);
+      interpolatePoints(vPos[2], triCenter[3], dc, vert2t2);
+
+      interpolatePoints(vPos[3], vPos[0], d0, vert30);
+      interpolatePoints(vPos[3], vPos[1], d0, vert31);
+      interpolatePoints(vPos[3], vPos[2], d0, vert32);
+      interpolatePoints(vPos[3], tetCenter, dc, vert3tet);
+      interpolatePoints(vPos[3], triCenter[1], dc, vert3t0);
+      interpolatePoints(vPos[3], triCenter[2], dc, vert3t1);
+      interpolatePoints(vPos[3], triCenter[3], dc, vert3t2);
+
+      // Label Vert 0
+      *p++ = vert00[0];   *p++ = vert00[1];   *p++ = vert00[2]; 
+      *p++ = vert0t0[0];  *p++ = vert0t0[1];  *p++ = vert0t0[2]; 
+      *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+      *p++ = vert00[0];   *p++ = vert00[1];   *p++ = vert00[2]; 
+      *p++ = vert0t1[0];  *p++ = vert0t1[1];  *p++ = vert0t1[2]; 
+      *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+      *p++ = vert01[0];   *p++ = vert01[1];   *p++ = vert01[2]; 
+      *p++ = vert0t0[0];  *p++ = vert0t0[1];  *p++ = vert0t0[2]; 
+      *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+      *p++ = vert01[0];   *p++ = vert01[1];   *p++ = vert01[2]; 
+      *p++ = vert0t2[0];  *p++ = vert0t2[1];  *p++ = vert0t2[2]; 
+      *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+      *p++ = vert02[0];   *p++ = vert02[1];   *p++ = vert02[2]; 
+      *p++ = vert0t2[0];  *p++ = vert0t2[1];  *p++ = vert0t2[2]; 
+      *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+      *p++ = vert02[0];   *p++ = vert02[1];   *p++ = vert02[2]; 
+      *p++ = vert0t1[0];  *p++ = vert0t1[1];  *p++ = vert0t1[2]; 
+      *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+
+      // Label Vert 1       
+      *p++ = vert10[0];   *p++ = vert10[1];   *p++ = vert10[2]; 
+      *p++ = vert1t0[0];  *p++ = vert1t0[1];  *p++ = vert1t0[2]; 
+      *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+      *p++ = vert10[0];   *p++ = vert10[1];   *p++ = vert10[2]; 
+      *p++ = vert1t1[0];  *p++ = vert1t1[1];  *p++ = vert1t1[2]; 
+      *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+      *p++ = vert11[0];   *p++ = vert11[1];   *p++ = vert11[2]; 
+      *p++ = vert1t0[0];  *p++ = vert1t0[1];  *p++ = vert1t0[2]; 
+      *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+      *p++ = vert11[0];   *p++ = vert11[1];   *p++ = vert11[2]; 
+      *p++ = vert1t2[0];  *p++ = vert1t2[1];  *p++ = vert1t2[2]; 
+      *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+      *p++ = vert12[0];   *p++ = vert12[1];   *p++ = vert12[2]; 
+      *p++ = vert1t2[0];  *p++ = vert1t2[1];  *p++ = vert1t2[2]; 
+      *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+      *p++ = vert12[0];   *p++ = vert12[1];   *p++ = vert12[2]; 
+      *p++ = vert1t1[0];  *p++ = vert1t1[1];  *p++ = vert1t1[2]; 
+      *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+
+
+      // Label Vert 2     
+      *p++ = vert20[0];   *p++ = vert20[1];   *p++ = vert20[2]; 
+      *p++ = vert2t0[0];  *p++ = vert2t0[1];  *p++ = vert2t0[2]; 
+      *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+      *p++ = vert20[0];   *p++ = vert20[1];   *p++ = vert20[2]; 
+      *p++ = vert2t1[0];  *p++ = vert2t1[1];  *p++ = vert2t1[2]; 
+      *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+      *p++ = vert21[0];   *p++ = vert21[1];   *p++ = vert21[2]; 
+      *p++ = vert2t0[0];  *p++ = vert2t0[1];  *p++ = vert2t0[2]; 
+      *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+      *p++ = vert21[0];   *p++ = vert21[1];   *p++ = vert21[2]; 
+      *p++ = vert2t2[0];  *p++ = vert2t2[1];  *p++ = vert2t2[2]; 
+      *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+      *p++ = vert22[0];   *p++ = vert22[1];   *p++ = vert22[2]; 
+      *p++ = vert2t2[0];  *p++ = vert2t2[1];  *p++ = vert2t2[2]; 
+      *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+      *p++ = vert22[0];   *p++ = vert22[1];   *p++ = vert22[2]; 
+      *p++ = vert2t1[0];  *p++ = vert2t1[1];  *p++ = vert2t1[2]; 
+      *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+
+      // Label Vert 3      
+      *p++ = vert30[0];   *p++ = vert30[1];   *p++ = vert30[2]; 
+      *p++ = vert3t0[0];  *p++ = vert3t0[1];  *p++ = vert3t0[2]; 
+      *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];            
+      *p++ = vert30[0];   *p++ = vert30[1];   *p++ = vert30[2]; 
+      *p++ = vert3t1[0];  *p++ = vert3t1[1];  *p++ = vert3t1[2]; 
+      *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];
+      *p++ = vert31[0];   *p++ = vert31[1];   *p++ = vert31[2]; 
+      *p++ = vert3t0[0];  *p++ = vert3t0[1];  *p++ = vert3t0[2]; 
+      *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];
+      *p++ = vert31[0];   *p++ = vert31[1];   *p++ = vert31[2]; 
+      *p++ = vert3t2[0];  *p++ = vert3t2[1];  *p++ = vert3t2[2]; 
+      *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];
+      *p++ = vert32[0];   *p++ = vert32[1];   *p++ = vert32[2]; 
+      *p++ = vert3t2[0];  *p++ = vert3t2[1];  *p++ = vert3t2[2]; 
+      *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];
+      *p++ = vert32[0];   *p++ = vert32[1];   *p++ = vert32[2]; 
+      *p++ = vert3t1[0];  *p++ = vert3t1[1];  *p++ = vert3t1[2]; 
+      *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];
+
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+      *c++ = cellIndex++; *c++ = cellIndex++;
+
+      *m++ = msm[0]; *m++ = msm[0];
+      *m++ = msm[0]; *m++ = msm[0];
+      *m++ = msm[0]; *m++ = msm[0];
+      *m++ = msm[1]; *m++ = msm[1];
+      *m++ = msm[1]; *m++ = msm[1];
+      *m++ = msm[1]; *m++ = msm[1];
+      *m++ = msm[2]; *m++ = msm[2];
+      *m++ = msm[2]; *m++ = msm[2];
+      *m++ = msm[2]; *m++ = msm[2];
+      *m++ = msm[3]; *m++ = msm[3];
+      *m++ = msm[3]; *m++ = msm[3];
+      *m++ = msm[3]; *m++ = msm[3];
     }
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
   size_t triangleStartIndex[threadNumber_ + 1];
+
   #pragma omp parallel num_threads(threadNumber_)
   {
     const int tid = omp_get_thread_num();
@@ -3669,7 +4347,7 @@ if(threadNumber_ == 1) {
       if(tetraederLookupIsMultiLabel[lookupIndex]) {
         validCases.push_back(std::make_pair(tet, lookupIndex));
         numThreadTriangles += tetraederFineNumTriangles[lookupIndex];
-      }  
+      }
     }
 
     triangleStartIndex[tid + 1] = numThreadTriangles;
@@ -3686,13 +4364,37 @@ if(threadNumber_ == 1) {
       }
     }
 
+    const size_t numTriangles = triangleStartIndex[threadNumber_];
     numThreadIndex = triangleStartIndex[tid];
 
     #pragma omp single nowait
-    trianglePos.resize(triangleStartIndex[threadNumber_]);
+    outputSeparatrices2_points_->resize(9 * numTriangles);
+
+    #pragma omp single nowait
+    outputSeparatrices2_cells_connectivity_->resize(3 * numTriangles);
+
+    #pragma omp single nowait
+    outputSeparatrices2_cells_mscIds_->resize(numTriangles);
 
     #pragma omp single
-    msLabels.resize(triangleStartIndex[threadNumber_]);
+    {
+      *outputSeparatrices2_numberOfPoints_ = 3 * numTriangles;
+      *outputSeparatrices2_numberOfCells_ = numTriangles;
+    }
+  
+    auto &points = *outputSeparatrices2_points_;
+    auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+    auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
+
+    float* p = points.data();
+    SimplexId* c = cellsConn.data();
+    SimplexId* m = cellsMSCIds.data();
+
+    p += (numThreadIndex * 9);
+    c += (numThreadIndex * 3);
+    m += numThreadIndex;
+
+    numThreadIndex = 3 * numThreadIndex;
 
     for (const auto& vCase : validCases)
     {
@@ -3732,20 +4434,19 @@ if(threadNumber_ == 1) {
         interpolatePoints(vPos[vIds[2]], vPos[vIds[3]], d1, vert11);
         interpolatePoints(vPos[vIds[4]], vPos[vIds[5]], d1, vert12);
 
-        trianglePos[numThreadIndex  ] = {
-          vert00[0], vert00[1], vert00[2], 
-          vert01[0], vert01[1], vert01[2], 
-          vert02[0], vert02[1], vert02[2]};
+        *p++ = vert00[0]; *p++ = vert00[1]; *p++ = vert00[2]; 
+        *p++ = vert01[0]; *p++ = vert01[1]; *p++ = vert01[2]; 
+        *p++ = vert02[0]; *p++ = vert02[1]; *p++ = vert02[2];
 
-        trianglePos[numThreadIndex+1] = {
-          vert10[0], vert10[1], vert10[2], 
-          vert11[0], vert11[1], vert11[2], 
-          vert12[0], vert12[1], vert12[2]};
+        *p++ = vert10[0]; *p++ = vert10[1]; *p++ = vert10[2]; 
+        *p++ = vert11[0]; *p++ = vert11[1]; *p++ = vert11[2]; 
+        *p++ = vert12[0]; *p++ = vert12[1]; *p++ = vert12[2];
 
-        msLabels[numThreadIndex  ] = msm[vIds[0]];
-        msLabels[numThreadIndex+1] = msm[vIds[1]];
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
 
-        numThreadIndex += 2;
+        *m++ = msm[vIds[0]]; *m++ = msm[vIds[1]];
 
         if(vIds[6] != -1) { // 2 vertices per label (e.g. AABB)
           float vert03[3], vert13[3];
@@ -3753,20 +4454,18 @@ if(threadNumber_ == 1) {
           interpolatePoints(vPos[vIds[6]], vPos[vIds[7]], d0, vert03);
           interpolatePoints(vPos[vIds[6]], vPos[vIds[7]], d1, vert13);
 
-          trianglePos[numThreadIndex  ] = {
-            vert00[0], vert00[1], vert00[2], 
-            vert01[0], vert01[1], vert01[2], 
-            vert03[0], vert03[1], vert03[2]};
-          
-          trianglePos[numThreadIndex+1] = {
-            vert10[0], vert10[1], vert10[2], 
-            vert11[0], vert11[1], vert11[2], 
-            vert13[0], vert13[1], vert13[2]};
+          *p++ = vert00[0]; *p++ = vert00[1]; *p++ = vert00[2]; 
+          *p++ = vert01[0]; *p++ = vert01[1]; *p++ = vert01[2]; 
+          *p++ = vert03[0]; *p++ = vert03[1]; *p++ = vert03[2];
+          *p++ = vert10[0]; *p++ = vert10[1]; *p++ = vert10[2]; 
+          *p++ = vert11[0]; *p++ = vert11[1]; *p++ = vert11[2]; 
+          *p++ = vert13[0]; *p++ = vert13[1]; *p++ = vert13[2];
 
-          msLabels[numThreadIndex  ] = msm[vIds[0]];
-          msLabels[numThreadIndex+1] = msm[vIds[1]];
+          *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+          *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+          *c++ = numThreadIndex++; *c++ = numThreadIndex++;
 
-          numThreadIndex += 2;
+          *m++ = msm[vIds[0]]; *m++ = msm[vIds[1]];
         }
       } else if(tetraederLookupIs3Label[lookupIndex]) {
         const int *vIds = tetraederLookupSplitBasisns3Label[lookupIndex];
@@ -3810,64 +4509,63 @@ if(threadNumber_ == 1) {
         interpolatePoints(vPos[vIds[9]], triCenter[vIds[3]],    dc, tri20);
         interpolatePoints(vPos[vIds[9]], triCenter[vIds[7]],    dc, tri21);
 
-          // Label 0
-        trianglePos[numThreadIndex  ] = {
-          edge00[0], edge00[1], edge00[2], 
-          edge02[0], edge02[1], edge02[2], 
-          tri00[0], tri00[1], tri00[2]};
-        trianglePos[numThreadIndex+1] = {  
-          edge02[0], edge02[1], edge02[2], 
-          tri00[0], tri00[1], tri00[2], 
-          tri01[0], tri01[1], tri01[2]};
-        trianglePos[numThreadIndex+2] = {              
-          edge01[0], edge01[1], edge01[2], 
-          edge03[0], edge03[1], edge03[2], 
-          tri00[0], tri00[1], tri00[2]};
-        trianglePos[numThreadIndex+3] = {  
-          edge03[0], edge03[1], edge03[2], 
-          tri00[0], tri00[1], tri00[2], 
-          tri01[0], tri01[1], tri01[2]};
+        // Label 0
+        *p++ = edge00[0]; *p++ = edge00[1]; *p++ = edge00[2];
+        *p++ = edge02[0]; *p++ = edge02[1]; *p++ = edge02[2];
+        *p++ = tri00[0]; *p++ = tri00[1]; *p++ = tri00[2];
+        *p++ = edge02[0]; *p++ = edge02[1]; *p++ = edge02[2];
+        *p++ = tri00[0]; *p++ = tri00[1]; *p++ = tri00[2];
+        *p++ = tri01[0]; *p++ = tri01[1]; *p++ = tri01[2];        
+        *p++ = edge01[0]; *p++ = edge01[1]; *p++ = edge01[2];
+        *p++ = edge03[0]; *p++ = edge03[1]; *p++ = edge03[2];
+        *p++ = tri00[0]; *p++ = tri00[1]; *p++ = tri00[2];
+        *p++ = edge03[0]; *p++ = edge03[1]; *p++ = edge03[2];
+        *p++ = tri00[0]; *p++ = tri00[1]; *p++ = tri00[2];
+        *p++ = tri01[0]; *p++ = tri01[1]; *p++ = tri01[2];
 
-          // Label 1
-        trianglePos[numThreadIndex+4] = {            
-          edge10[0], edge10[1], edge10[2], 
-          edge11[0], edge11[1], edge11[2], 
-          tri10[0], tri10[1], tri10[2]};
-        trianglePos[numThreadIndex+5] = {  
-          edge11[0], edge11[1], edge11[2], 
-          tri10[0], tri10[1], tri10[2], 
-          tri11[0], tri11[1], tri11[2]};
-        trianglePos[numThreadIndex+6] = {  
-          edge12[0], edge12[1], edge12[2], 
-          tri10[0], tri10[1], tri10[2], 
-          tri11[0], tri11[1], tri11[2]};
+        // Label 1           
+        *p++ = edge10[0]; *p++ = edge10[1]; *p++ = edge10[2];
+        *p++ = edge11[0]; *p++ = edge11[1]; *p++ = edge11[2];
+        *p++ = tri10[0]; *p++ = tri10[1]; *p++ = tri10[2];
+        *p++ = edge11[0]; *p++ = edge11[1]; *p++ = edge11[2];
+        *p++ = tri10[0]; *p++ = tri10[1]; *p++ = tri10[2];
+        *p++ = tri11[0]; *p++ = tri11[1]; *p++ = tri11[2];
+        *p++ = edge12[0]; *p++ = edge12[1]; *p++ = edge12[2];
+        *p++ = tri10[0]; *p++ = tri10[1]; *p++ = tri10[2];
+        *p++ = tri11[0]; *p++ = tri11[1]; *p++ = tri11[2];
 
-          // Label 2
-        trianglePos[numThreadIndex+7] = {            
-          edge20[0], edge20[1], edge20[2], 
-          edge21[0], edge21[1], edge21[2], 
-          tri20[0], tri20[1], tri20[2]};
-        trianglePos[numThreadIndex+8] = {  
-          edge21[0], edge21[1], edge21[2], 
-          tri20[0], tri20[1], tri20[2], 
-          tri21[0], tri21[1], tri21[2]};
-        trianglePos[numThreadIndex+9] = {  
-          edge22[0], edge22[1], edge22[2], 
-          tri20[0], tri20[1], tri20[2], 
-          tri21[0], tri21[1], tri21[2]};
+        // Label 2           
+        *p++ = edge20[0]; *p++ = edge20[1]; *p++ = edge20[2];
+        *p++ = edge21[0]; *p++ = edge21[1]; *p++ = edge21[2]; 
+        *p++ = tri20[0]; *p++ = tri20[1]; *p++ = tri20[2];
+        *p++ = edge21[0]; *p++ = edge21[1]; *p++ = edge21[2];
+        *p++ = tri20[0]; *p++ = tri20[1]; *p++ = tri20[2];
+        *p++ = tri21[0]; *p++ = tri21[1]; *p++ = tri21[2];
+        *p++ = edge22[0]; *p++ = edge22[1]; *p++ = edge22[2]; 
+        *p++ = tri20[0]; *p++ = tri20[1]; *p++ = tri20[2];
+        *p++ = tri21[0]; *p++ = tri21[1]; *p++ = tri21[2];
 
-        msLabels[numThreadIndex  ] = msm[vIds[0]];
-        msLabels[numThreadIndex+1] = msm[vIds[0]];
-        msLabels[numThreadIndex+2] = msm[vIds[0]];
-        msLabels[numThreadIndex+3] = msm[vIds[0]];
-        msLabels[numThreadIndex+4] = msm[vIds[8]];
-        msLabels[numThreadIndex+5] = msm[vIds[8]];
-        msLabels[numThreadIndex+6] = msm[vIds[8]];
-        msLabels[numThreadIndex+7] = msm[vIds[9]];
-        msLabels[numThreadIndex+8] = msm[vIds[9]];
-        msLabels[numThreadIndex+9] = msm[vIds[9]];
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
 
-        numThreadIndex += 10;
+        *m++ = msm[vIds[0]]; *m++ = msm[vIds[0]];        
+        *m++ = msm[vIds[0]]; *m++ = msm[vIds[0]];
+        *m++ = msm[vIds[8]]; *m++ = msm[vIds[8]];        
+        *m++ = msm[vIds[8]]; *m++ = msm[vIds[9]];       
+        *m++ = msm[vIds[9]]; *m++ = msm[vIds[9]];
 
       } else { // 4 labels
         float tetCenter[3];
@@ -3921,138 +4619,136 @@ if(threadNumber_ == 1) {
         interpolatePoints(vPos[3], triCenter[2], dc, vert3t1);
         interpolatePoints(vPos[3], triCenter[3], dc, vert3t2);
 
-          // Label Vert 0
-        trianglePos[numThreadIndex  ] = {
-          vert00[0],   vert00[1],   vert00[2], 
-          vert0t0[0],  vert0t0[1],  vert0t0[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]};
-        trianglePos[numThreadIndex+1] = {
-          vert00[0],   vert00[1],   vert00[2], 
-          vert0t1[0],  vert0t1[1],  vert0t1[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]};
-        trianglePos[numThreadIndex+2] = {
-          vert01[0],   vert01[1],   vert01[2], 
-          vert0t0[0],  vert0t0[1],  vert0t0[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]};
-        trianglePos[numThreadIndex+3] = {
-          vert01[0],   vert01[1],   vert01[2], 
-          vert0t2[0],  vert0t2[1],  vert0t2[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]};
-        trianglePos[numThreadIndex+4] = {
-          vert02[0],   vert02[1],   vert02[2], 
-          vert0t2[0],  vert0t2[1],  vert0t2[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]};
-        trianglePos[numThreadIndex+5] = {
-          vert02[0],   vert02[1],   vert02[2], 
-          vert0t1[0],  vert0t1[1],  vert0t1[2], 
-          vert0tet[0], vert0tet[1], vert0tet[2]};
+        // Label Vert 0
+        *p++ = vert00[0];   *p++ = vert00[1];   *p++ = vert00[2]; 
+        *p++ = vert0t0[0];  *p++ = vert0t0[1];  *p++ = vert0t0[2]; 
+        *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+        *p++ = vert00[0];   *p++ = vert00[1];   *p++ = vert00[2]; 
+        *p++ = vert0t1[0];  *p++ = vert0t1[1];  *p++ = vert0t1[2]; 
+        *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+        *p++ = vert01[0];   *p++ = vert01[1];   *p++ = vert01[2]; 
+        *p++ = vert0t0[0];  *p++ = vert0t0[1];  *p++ = vert0t0[2]; 
+        *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+        *p++ = vert01[0];   *p++ = vert01[1];   *p++ = vert01[2]; 
+        *p++ = vert0t2[0];  *p++ = vert0t2[1];  *p++ = vert0t2[2]; 
+        *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+        *p++ = vert02[0];   *p++ = vert02[1];   *p++ = vert02[2]; 
+        *p++ = vert0t2[0];  *p++ = vert0t2[1];  *p++ = vert0t2[2]; 
+        *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+        *p++ = vert02[0];   *p++ = vert02[1];   *p++ = vert02[2]; 
+        *p++ = vert0t1[0];  *p++ = vert0t1[1];  *p++ = vert0t1[2]; 
+        *p++ = vert0tet[0]; *p++ = vert0tet[1]; *p++ = vert0tet[2];
+
+        // Label Vert 1       
+        *p++ = vert10[0];   *p++ = vert10[1];   *p++ = vert10[2]; 
+        *p++ = vert1t0[0];  *p++ = vert1t0[1];  *p++ = vert1t0[2]; 
+        *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+        *p++ = vert10[0];   *p++ = vert10[1];   *p++ = vert10[2]; 
+        *p++ = vert1t1[0];  *p++ = vert1t1[1];  *p++ = vert1t1[2]; 
+        *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+        *p++ = vert11[0];   *p++ = vert11[1];   *p++ = vert11[2]; 
+        *p++ = vert1t0[0];  *p++ = vert1t0[1];  *p++ = vert1t0[2]; 
+        *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+        *p++ = vert11[0];   *p++ = vert11[1];   *p++ = vert11[2]; 
+        *p++ = vert1t2[0];  *p++ = vert1t2[1];  *p++ = vert1t2[2]; 
+        *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+        *p++ = vert12[0];   *p++ = vert12[1];   *p++ = vert12[2]; 
+        *p++ = vert1t2[0];  *p++ = vert1t2[1];  *p++ = vert1t2[2]; 
+        *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
+        *p++ = vert12[0];   *p++ = vert12[1];   *p++ = vert12[2]; 
+        *p++ = vert1t1[0];  *p++ = vert1t1[1];  *p++ = vert1t1[2]; 
+        *p++ = vert1tet[0]; *p++ = vert1tet[1]; *p++ = vert1tet[2];
 
 
-        // Label Vert 1
-        trianglePos[numThreadIndex+6] = {        
-          vert10[0],   vert10[1],   vert10[2], 
-          vert1t0[0],  vert1t0[1],  vert1t0[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]};
-        trianglePos[numThreadIndex+7] = {
-          vert10[0],   vert10[1],   vert10[2], 
-          vert1t1[0],  vert1t1[1],  vert1t1[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]};
-        trianglePos[numThreadIndex+8] = {
-          vert11[0],   vert11[1],   vert11[2], 
-          vert1t0[0],  vert1t0[1],  vert1t0[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]};
-        trianglePos[numThreadIndex+9] = {
-          vert11[0],   vert11[1],   vert11[2], 
-          vert1t2[0],  vert1t2[1],  vert1t2[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]};
-        trianglePos[numThreadIndex+10] = {
-          vert12[0],   vert12[1],   vert12[2], 
-          vert1t2[0],  vert1t2[1],  vert1t2[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]};
-        trianglePos[numThreadIndex+11] = {
-          vert12[0],   vert12[1],   vert12[2], 
-          vert1t1[0],  vert1t1[1],  vert1t1[2], 
-          vert1tet[0], vert1tet[1], vert1tet[2]};
+        // Label Vert 2     
+        *p++ = vert20[0];   *p++ = vert20[1];   *p++ = vert20[2]; 
+        *p++ = vert2t0[0];  *p++ = vert2t0[1];  *p++ = vert2t0[2]; 
+        *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+        *p++ = vert20[0];   *p++ = vert20[1];   *p++ = vert20[2]; 
+        *p++ = vert2t1[0];  *p++ = vert2t1[1];  *p++ = vert2t1[2]; 
+        *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+        *p++ = vert21[0];   *p++ = vert21[1];   *p++ = vert21[2]; 
+        *p++ = vert2t0[0];  *p++ = vert2t0[1];  *p++ = vert2t0[2]; 
+        *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+        *p++ = vert21[0];   *p++ = vert21[1];   *p++ = vert21[2]; 
+        *p++ = vert2t2[0];  *p++ = vert2t2[1];  *p++ = vert2t2[2]; 
+        *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+        *p++ = vert22[0];   *p++ = vert22[1];   *p++ = vert22[2]; 
+        *p++ = vert2t2[0];  *p++ = vert2t2[1];  *p++ = vert2t2[2]; 
+        *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
+        *p++ = vert22[0];   *p++ = vert22[1];   *p++ = vert22[2]; 
+        *p++ = vert2t1[0];  *p++ = vert2t1[1];  *p++ = vert2t1[2]; 
+        *p++ = vert2tet[0]; *p++ = vert2tet[1]; *p++ = vert2tet[2];
 
+        // Label Vert 3      
+        *p++ = vert30[0];   *p++ = vert30[1];   *p++ = vert30[2]; 
+        *p++ = vert3t0[0];  *p++ = vert3t0[1];  *p++ = vert3t0[2]; 
+        *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];            
+        *p++ = vert30[0];   *p++ = vert30[1];   *p++ = vert30[2]; 
+        *p++ = vert3t1[0];  *p++ = vert3t1[1];  *p++ = vert3t1[2]; 
+        *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];
+        *p++ = vert31[0];   *p++ = vert31[1];   *p++ = vert31[2]; 
+        *p++ = vert3t0[0];  *p++ = vert3t0[1];  *p++ = vert3t0[2]; 
+        *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];
+        *p++ = vert31[0];   *p++ = vert31[1];   *p++ = vert31[2]; 
+        *p++ = vert3t2[0];  *p++ = vert3t2[1];  *p++ = vert3t2[2]; 
+        *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];
+        *p++ = vert32[0];   *p++ = vert32[1];   *p++ = vert32[2]; 
+        *p++ = vert3t2[0];  *p++ = vert3t2[1];  *p++ = vert3t2[2]; 
+        *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];
+        *p++ = vert32[0];   *p++ = vert32[1];   *p++ = vert32[2]; 
+        *p++ = vert3t1[0];  *p++ = vert3t1[1];  *p++ = vert3t1[2]; 
+        *p++ = vert3tet[0]; *p++ = vert3tet[1]; *p++ = vert3tet[2];
 
-        // Label Vert 2
-        trianglePos[numThreadIndex+12] = {        
-          vert20[0],   vert20[1],   vert20[2], 
-          vert2t0[0],  vert2t0[1],  vert2t0[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]};
-        trianglePos[numThreadIndex+13] = {
-          vert20[0],   vert20[1],   vert20[2], 
-          vert2t1[0],  vert2t1[1],  vert2t1[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]};
-        trianglePos[numThreadIndex+14] = {
-          vert21[0],   vert21[1],   vert21[2], 
-          vert2t0[0],  vert2t0[1],  vert2t0[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]};
-        trianglePos[numThreadIndex+15] = {
-          vert21[0],   vert21[1],   vert21[2], 
-          vert2t2[0],  vert2t2[1],  vert2t2[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]};
-        trianglePos[numThreadIndex+16] = {
-          vert22[0],   vert22[1],   vert22[2], 
-          vert2t2[0],  vert2t2[1],  vert2t2[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]};
-        trianglePos[numThreadIndex+17] = {
-          vert22[0],   vert22[1],   vert22[2], 
-          vert2t1[0],  vert2t1[1],  vert2t1[2], 
-          vert2tet[0], vert2tet[1], vert2tet[2]};
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
+        *c++ = numThreadIndex++; *c++ = numThreadIndex++;
 
-        // Label Vert 3
-        trianglePos[numThreadIndex+18] = {        
-          vert30[0],   vert30[1],   vert30[2], 
-          vert3t0[0],  vert3t0[1],  vert3t0[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]};
-        trianglePos[numThreadIndex+19] = {            
-          vert30[0],   vert30[1],   vert30[2], 
-          vert3t1[0],  vert3t1[1],  vert3t1[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]};
-        trianglePos[numThreadIndex+20] = {
-          vert31[0],   vert31[1],   vert31[2], 
-          vert3t0[0],  vert3t0[1],  vert3t0[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]};
-        trianglePos[numThreadIndex+21] = {
-          vert31[0],   vert31[1],   vert31[2], 
-          vert3t2[0],  vert3t2[1],  vert3t2[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]};
-        trianglePos[numThreadIndex+22] = {
-          vert32[0],   vert32[1],   vert32[2], 
-          vert3t2[0],  vert3t2[1],  vert3t2[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]};
-        trianglePos[numThreadIndex+23] = {
-          vert32[0],   vert32[1],   vert32[2], 
-          vert3t1[0],  vert3t1[1],  vert3t1[2], 
-          vert3tet[0], vert3tet[1], vert3tet[2]};
-
-        msLabels[numThreadIndex  ]  = msm[0];
-        msLabels[numThreadIndex+1]  = msm[0];
-        msLabels[numThreadIndex+2]  = msm[0];
-        msLabels[numThreadIndex+3]  = msm[0];
-        msLabels[numThreadIndex+4]  = msm[0];
-        msLabels[numThreadIndex+5]  = msm[0];
-        msLabels[numThreadIndex+6]  = msm[1];
-        msLabels[numThreadIndex+7]  = msm[1];
-        msLabels[numThreadIndex+8]  = msm[1];
-        msLabels[numThreadIndex+9]  = msm[1];
-        msLabels[numThreadIndex+10] = msm[1];
-        msLabels[numThreadIndex+11] = msm[1];
-        msLabels[numThreadIndex+12] = msm[2];
-        msLabels[numThreadIndex+13] = msm[2];
-        msLabels[numThreadIndex+14] = msm[2];
-        msLabels[numThreadIndex+15] = msm[2];
-        msLabels[numThreadIndex+16] = msm[2];
-        msLabels[numThreadIndex+17] = msm[2];
-        msLabels[numThreadIndex+18] = msm[3];
-        msLabels[numThreadIndex+19] = msm[3];
-        msLabels[numThreadIndex+20] = msm[3];
-        msLabels[numThreadIndex+21] = msm[3];
-        msLabels[numThreadIndex+22] = msm[3];
-        msLabels[numThreadIndex+23] = msm[3];
-
-        numThreadIndex += 24;
+        *m++ = msm[0]; *m++ = msm[0];
+        *m++ = msm[0]; *m++ = msm[0];
+        *m++ = msm[0]; *m++ = msm[0];
+        *m++ = msm[1]; *m++ = msm[1];
+        *m++ = msm[1]; *m++ = msm[1];
+        *m++ = msm[1]; *m++ = msm[1];
+        *m++ = msm[2]; *m++ = msm[2];
+        *m++ = msm[2]; *m++ = msm[2];
+        *m++ = msm[2]; *m++ = msm[2];
+        *m++ = msm[3]; *m++ = msm[3];
+        *m++ = msm[3]; *m++ = msm[3];
+        *m++ = msm[3]; *m++ = msm[3];
       }
     }
   }
@@ -4065,8 +4761,6 @@ if(threadNumber_ == 1) {
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fast(
-  std::vector<std::array<float, 9>> &trianglePos,
-  std::vector<long long> &msLabels,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
   ttk::Timer localTimer;
@@ -4097,6 +4791,9 @@ int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fast(
 
 //#ifndef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+  std::vector<std::pair<SimplexId, unsigned char>> validCases;
+  SimplexId numTriangles = 0;
+
   for(SimplexId tet = 0; tet < numTetra; tet++) {
     SimplexId vertices[4];
     triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -4105,8 +4802,8 @@ if(threadNumber_ == 1) {
     triangulation.getCellVertex(tet, 3, vertices[3]);
 
     const SimplexId msm[4] = {
-        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
-        morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
+      morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+      morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
 
     const unsigned char index1 = (msm[0] == msm[1]) ? 0x00 : 0x10; // 0 : 1
     const unsigned char index2 = (msm[0] == msm[2]) ? 0x00 :       // 0
@@ -4117,54 +4814,67 @@ if(threadNumber_ == 1) {
 
     const unsigned char lookupIndex = index1 | index2 | index3;
 
-    if(tetraederLookupIsMultiLabel[lookupIndex]) {
-      if(tetraederLookupFast[lookupIndex]) { // <= 2 labels on tetraeder
-        float vertPos[4][3];
-        triangulation.getVertexPoint(
-          vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
-        triangulation.getVertexPoint(
-          vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
-        triangulation.getVertexPoint(
-          vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
-        triangulation.getVertexPoint(
-          vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
-
-        switch(tetraederLookupFastCase[lookupIndex]) {
-          case 0:
-            trianglePos.push_back({
-              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-              vertPos[2][0], vertPos[2][1], vertPos[2][2]
-            });
-            msLabels.push_back(msm[0]);
-            break;
-          case 1:
-            trianglePos.push_back({
-              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-              vertPos[3][0], vertPos[3][1], vertPos[3][2]
-            });
-            msLabels.push_back(msm[0]);
-            break;
-          case 2:
-            trianglePos.push_back({
-              vertPos[0][0], vertPos[0][1], vertPos[0][2], 
-              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-              vertPos[3][0], vertPos[3][1], vertPos[3][2]
-            });
-            msLabels.push_back(msm[0]);
-            break;
-          case 3:
-            trianglePos.push_back({
-              vertPos[1][0], vertPos[1][1], vertPos[1][2], 
-              vertPos[2][0], vertPos[2][1], vertPos[2][2], 
-              vertPos[3][0], vertPos[3][1], vertPos[3][2]
-            });
-            msLabels.push_back(msm[1]);
-            break;
-        }
-      }
+    if(tetraederLookupFast[lookupIndex]) {
+      validCases.push_back(std::make_pair(tet, lookupIndex));
+      numTriangles += tetraederNumTrianglesWalls[lookupIndex];
     }
+  }
+
+  outputSeparatrices2_points_->resize(9 * numTriangles);
+  outputSeparatrices2_cells_connectivity_->resize(3 * numTriangles);
+  outputSeparatrices2_cells_mscIds_->resize(numTriangles);
+  *outputSeparatrices2_numberOfPoints_ = 3 * numTriangles;
+  *outputSeparatrices2_numberOfCells_ = numTriangles;
+
+  auto &points = *outputSeparatrices2_points_;
+  auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+  auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
+
+  float* p = points.data();
+  SimplexId* c = cellsConn.data();
+  SimplexId* m = cellsMSCIds.data();
+  SimplexId cellIndex = 0;
+  
+  for (const auto& vCase : validCases) {
+    const SimplexId& tet = vCase.first;
+    const unsigned char& lookupIndex = vCase.second;
+
+    SimplexId vertices[4];
+    triangulation.getCellVertex(tet, 0, vertices[0]);
+    triangulation.getCellVertex(tet, 1, vertices[1]);
+    triangulation.getCellVertex(tet, 2, vertices[2]);
+    triangulation.getCellVertex(tet, 3, vertices[3]);
+
+    const SimplexId msm[4] = {
+      morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+      morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
+
+    const int id0 =
+      tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][0];
+    const int id1 =
+      tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][1];
+    const int id2 =
+      tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][2];
+    
+    float vertPos[4][3];
+    triangulation.getVertexPoint(
+      vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+    triangulation.getVertexPoint(
+      vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+    triangulation.getVertexPoint(
+      vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+    triangulation.getVertexPoint(
+      vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
+
+    *p++ = vertPos[id0][0]; *p++ = vertPos[id0][1]; *p++ = vertPos[id0][2];
+    *p++ = vertPos[id1][0]; *p++ = vertPos[id1][1]; *p++ = vertPos[id1][2];
+    *p++ = vertPos[id2][0]; *p++ = vertPos[id2][1]; *p++ = vertPos[id2][2];
+
+    *c++ = cellIndex++;
+    *c++ = cellIndex++;
+    *c++ = cellIndex++;
+
+    *m++ = msm[id0];
   }
 //#else // TTK_ENABLE_OPENMP
 } else {
@@ -4217,13 +4927,37 @@ if(threadNumber_ == 1) {
       }
     }
 
+    const size_t numTriangles = triangleStartIndex[threadNumber_];
     numThreadIndex = triangleStartIndex[tid];
 
     #pragma omp single nowait
-    trianglePos.resize(triangleStartIndex[threadNumber_]);
+    outputSeparatrices2_points_->resize(9 * numTriangles);
+
+    #pragma omp single nowait
+    outputSeparatrices2_cells_connectivity_->resize(3 * numTriangles);
+
+    #pragma omp single nowait
+    outputSeparatrices2_cells_mscIds_->resize(numTriangles);
 
     #pragma omp single
-    msLabels.resize(triangleStartIndex[threadNumber_]);
+    {
+      *outputSeparatrices2_numberOfPoints_ = 3 * numTriangles;
+      *outputSeparatrices2_numberOfCells_ = numTriangles;
+    }
+  
+    auto &points = *outputSeparatrices2_points_;
+    auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+    auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
+
+    float* p = points.data();
+    SimplexId* c = cellsConn.data();
+    SimplexId* m = cellsMSCIds.data();
+
+    p += (numThreadIndex * 9);
+    c += (numThreadIndex * 3);
+    m += numThreadIndex;
+
+    numThreadIndex = 3 * numThreadIndex;
 
     for (const auto& vCase : validCases)
     {
@@ -4257,14 +4991,15 @@ if(threadNumber_ == 1) {
       triangulation.getVertexPoint(
         vertices[3], vertPos[3][0], vertPos[3][1], vertPos[3][2]);
 
-      trianglePos[numThreadIndex] = {
-        vertPos[id0][0], vertPos[id0][1], vertPos[id0][2], 
-        vertPos[id1][0], vertPos[id1][1], vertPos[id1][2], 
-        vertPos[id2][0], vertPos[id2][1], vertPos[id2][2]};
+      *p++ = vertPos[id0][0]; *p++ = vertPos[id0][1]; *p++ = vertPos[id0][2];
+      *p++ = vertPos[id1][0]; *p++ = vertPos[id1][1]; *p++ = vertPos[id1][2];
+      *p++ = vertPos[id2][0]; *p++ = vertPos[id2][1]; *p++ = vertPos[id2][2];
 
-      msLabels[numThreadIndex] = msm[id0];
+      *c++ = numThreadIndex++;
+      *c++ = numThreadIndex++;
+      *c++ = numThreadIndex++;
 
-      numThreadIndex += 1;
+      *m++ = msm[id0];
     }
   }
 } // TTK_ENABLE_OPENMP
@@ -4900,7 +5635,6 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices2_3D(
                   ttk::debug::LineMode::REPLACE);
 
   const size_t numTriangles = trianglePos.size();
-
   size_t npoints = numTriangles * 3;
   size_t numCells = numTriangles;
 

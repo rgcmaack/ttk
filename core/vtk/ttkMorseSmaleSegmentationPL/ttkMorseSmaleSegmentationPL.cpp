@@ -222,6 +222,7 @@ int ttkMorseSmaleSegmentationPL::dispatch(
   separatrices1_points.clear();
   separatrices1_cells_connectivity.clear();
   separatrices1_cells_separatrixTypes.clear();
+  separatrices1_cells_extremaDistance.clear();
 
   this->setOutputSeparatrices1(
     &s1_numberOfPoints, &separatrices1_points, &s1_numberOfCells,
@@ -234,8 +235,7 @@ int ttkMorseSmaleSegmentationPL::dispatch(
   SimplexId s2_numberOfCells{};
   separatrices2_points.clear();
   separatrices2_cells_mscIds.clear();
-  separatrices1_cells_extremaDistance.clear();
-
+  
   this->setOutputSeparatrices2(
     &s2_numberOfPoints, &separatrices2_points,
     &s2_numberOfCells, &separatrices2_cells_connectivity,
