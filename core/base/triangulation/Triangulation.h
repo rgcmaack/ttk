@@ -2450,23 +2450,6 @@ namespace ttk {
       gridDimensions_[1] = yDim;
       gridDimensions_[2] = zDim;
 
-<<<<<<< HEAD
-      // int retPeriodic = periodicImplicitTriangulation_.setInputGrid(
-      //   xOrigin, yOrigin, zOrigin, xSpacing, ySpacing, zSpacing, xDim, yDim,
-      //   zDim);
-      int ret = implicitTriangulation_.setInputGrid(xOrigin, yOrigin, zOrigin,
-                                                    xSpacing, ySpacing,
-                                                    zSpacing, xDim, yDim, zDim);
-
-      // if(hasPeriodicBoundaries_) {
-      //   abstractTriangulation_ = &periodicImplicitTriangulation_;
-      //   return retPeriodic;
-      // } else {
-        abstractTriangulation_ = &implicitTriangulation_;
-        return ret;
-      // }
-      // return 0;
-=======
       int ret{};
 
       ret |= periodicImplicitTriangulation_.setInputGrid(
@@ -2487,7 +2470,6 @@ namespace ttk {
       this->switchGrid(this->hasPeriodicBoundaries_, useImplicitPreconditions);
 
       return ret;
->>>>>>> 66330d056f97c4d6f20486cc7f127db1978e9cfa
     }
 
     /// Set the input grid to use period boundary conditions.
