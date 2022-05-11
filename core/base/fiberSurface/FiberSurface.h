@@ -28,13 +28,6 @@
 #pragma once
 
 // standard includes
-#if defined(__APPLE__) || defined(_WIN32) || defined(__clang__)
-#include <algorithm>
-#include <numeric>
-#else
-#include <parallel/algorithm>
-#endif
-
 #include <array>
 #include <queue>
 
@@ -87,7 +80,7 @@ namespace ttk {
       const std::vector<std::pair<std::pair<double, double>,
                                   std::pair<double, double>>> &edgeList,
       const std::vector<SimplexId> &seedTetList,
-      const std::vector<SimplexId> *edgeIdList = NULL) const;
+      const std::vector<SimplexId> *edgeIdList = nullptr) const;
 
     template <class dataTypeU, class dataTypeV, typename triangulationType>
     inline int computeSurface(const std::pair<double, double> &rangePoint0,
@@ -168,8 +161,8 @@ namespace ttk {
 
     inline int setPolygonEdgeNumber(const SimplexId &polygonEdgeNumber) {
       polygonEdgeNumber_ = polygonEdgeNumber;
-      polygonEdgeVertexLists_.resize(polygonEdgeNumber, NULL);
-      polygonEdgeTriangleLists_.resize(polygonEdgeNumber, NULL);
+      polygonEdgeVertexLists_.resize(polygonEdgeNumber, nullptr);
+      polygonEdgeTriangleLists_.resize(polygonEdgeNumber, nullptr);
       return 0;
     }
 
@@ -385,7 +378,7 @@ namespace ttk {
       const std::vector<std::vector<Vertex>> &tetNewVertices,
       SimplexId &newTriangleNumber,
       std::vector<std::vector<IntersectionTriangle>> &tetIntersections,
-      const std::pair<double, double> *intersection = NULL) const;
+      const std::pair<double, double> *intersection = nullptr) const;
 
     int flipEdges() const;
 
@@ -620,7 +613,7 @@ inline int ttk::FiberSurface::computeBaseTriangle(
         break;
     }
 
-    std::vector<double> baryCentrics;
+    std::array<double, 2> baryCentrics{};
     std::vector<double> p0(2), p1(2), p(2);
     p0[0] = ((dataTypeU *)uField_)[vertexId0];
     p0[1] = ((dataTypeV *)vField_)[vertexId0];
@@ -764,7 +757,7 @@ inline int ttk::FiberSurface::computeCase0(
         break;
     }
 
-    std::vector<double> baryCentrics;
+    std::array<double, 2> baryCentrics{};
     std::vector<double> p0(2), p1(2), p(2);
     p0[0] = ((dataTypeU *)uField_)[vertexId0];
     p0[1] = ((dataTypeV *)vField_)[vertexId0];

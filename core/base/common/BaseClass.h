@@ -5,12 +5,7 @@
 ///
 ///\brief TTK base package.
 
-#ifndef _BASECLASS_H
-#define _BASECLASS_H
-
-#ifdef TTK_ENABLE_OPENMP
-#include <omp.h>
-#endif
+#pragma once
 
 #ifdef _WIN32
 // enable the `and` and `or` keywords on MSVC
@@ -18,6 +13,7 @@
 #endif // _WIN32
 
 #include <DataTypes.h>
+#include <OpenMP.h>
 
 #if defined(_MSC_VER) && defined(TTK_ENABLE_SHARED_BASE_LIBRARIES)
 #if defined(common_EXPORTS)
@@ -92,5 +88,3 @@ namespace ttk {
     Wrapper *wrapper_;
   };
 } // namespace ttk
-
-#endif // _BASECLASS_H

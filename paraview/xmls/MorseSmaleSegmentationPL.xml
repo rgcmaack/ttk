@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ServerManagerConfiguration>
+  <ProxyGroup name="filters">
+    <SourceProxy
+      name="ttkMorseSmaleSegmentationPL" class="ttkMorseSmaleSegmentationPL"
+      label="TTK MorseSmaleSegmentationPL">
+      <Documentation 
+        long_help="TTK order morseSmaleSegmentation plugin."
+        short_help="TTK order morseSmaleSegmentation plugin.">
+        TTK plugin for the computation of order Morse-Smale Segmentation only using
+        an order field and a triangulation.
+      </Documentation>
+
+      <!-- INPUT DATA OBJECTS -->
+      <InputProperty name="Input" command="SetInputConnection">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources" />
+          <Group name="filters" />
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkDataSet" />
+        </DataTypeDomain>
+        <InputArrayDomain
+          name="input_array" attribute_type="point" number_of_components="1" />
+        <Documentation>
+          A vtkDataSet that has at least one point data scalar array that can be
+           used to compute the MSC variant.
+        </Documentation>
+      </InputProperty>
+
+      <!-- INPUT PARAMETER WIDGETS -->
+      <StringVectorProperty
+        name="InputArray"
+        label="Input Array"
+        command="SetInputArrayToProcess"
+        element_types="0 0 0 0 2"
+        number_of_elements="5">
+        <ArrayListDomain attribute_type="Scalars" name="array_list">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+          </RequiredProperties>
+        </ArrayListDomain>
+        <Documentation>
+          The scalar array that will be used to compute the MSC variant.
+        </Documentation>
+      </StringVectorProperty>
+
+      <IntVectorProperty
+        name="SeparatricesManifold"
+        label="Separatrices Manifold"
+        command="SetSeparatricesManifold"
+        number_of_elements="1"
+        default_values="0">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="MorseSmaleManifold"/>
+          <Entry value="1" text="AscendingManifold"/>
+          <Entry value="2" text="DescendingManifold"/>
+        </EnumerationDomain>
+        <Documentation>
+          Select the field to compute Separatrices from.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeAscendingSegmentation"
+        label="Ascending Segmentation"
+        command="SetComputeAscendingSegmentation"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Create the Ascending Manifold?
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeDescendingSegmentation"
+        label="Descending Segmentation"
+        command="SetComputeDescendingSegmentation"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Create the Descending Manifold?
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeFinalSegmentation"
+        label="Morse-Smale Complex Segmentation"
+        command="SetComputeFinalSegmentation"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Create the Morse-Smale Manifold?
+          (Needs Ascending and Descending Manifold)
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="ComputeSaddles"
+        label="Compute Saddles"
+        command="SetComputeSaddles"
+        number_of_elements="1"
+        default_values="0"
+        panel_visibility="default">
+        <BooleanDomain name="bool"/>
+        <Documentation>
+          Compute Saddles?
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty
+        name="Separaticies1Mode"
+        label="1-Separaticies Mode"
+        command="SetSeparaticies1Mode"
+        number_of_elements="1"
+        default_values="1"
+        panel_visibility="advanced">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="None"/>
+          <Entry value="1" text="Detailed"/>
+          <Entry value="2" text="Simple"/>
+        </EnumerationDomain>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+            mode="visibility"
+            property="ComputeSaddles"
+            value="1" />
+        </Hints>
+        <Documentation>
+          Select the compute mode for the 1-Separaticies.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty
+        name="Separaticies2Mode"
+        label="2-Separaticies Mode"
+        command="SetSeparaticies2Mode"
+        number_of_elements="1"
+        default_values="1">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="None"/>
+          <Entry value="1" text="Walls"/>
+          <Entry value="2" text="Separate Basins fine"/>
+          <Entry value="3" text="Separate Basins fast"/>
+          <Entry value="4" text="Experiment"/>
+        </EnumerationDomain>
+        <Documentation>
+          Select the compute mode for the 2-Separaticies.
+        </Documentation>
+      </IntVectorProperty>
+
+      <PropertyGroup panel_widget="Line" label="Output options">
+        <Property name="ComputeAscendingSegmentation"/>
+        <Property name="ComputeDescendingSegmentation"/>
+        <Property name="ComputeFinalSegmentation"/>
+        <Property name="ComputeSaddles"/>
+        <Property name="Separaticies1Mode"/>
+        <Property name="Separaticies2Mode"/>
+      </PropertyGroup>
+
+      <OutputPort name="Critical Points" index="0" id="port0"/>
+      <OutputPort name="1-Separatrices" index="1" id="port1"/>
+      <OutputPort name="2-Separatrices" index="2" id="port2"/>
+      <OutputPort name="Segmentation" index="3" id="port3"/>
+
+      <!-- DEBUG -->
+      ${DEBUG_WIDGETS}
+
+      <!-- MENU CATEGORY -->
+      <Hints>
+        <ShowInMenu category="TTK - Scalar Data" />
+      </Hints>
+    </SourceProxy>
+  </ProxyGroup>
+</ServerManagerConfiguration>

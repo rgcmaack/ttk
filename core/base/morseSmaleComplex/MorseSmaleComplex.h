@@ -112,6 +112,7 @@ namespace ttk {
                        Output2Separatrices &outSeps2,
                        OutputManifold &outManifold,
                        const dataType *const scalars,
+                       const size_t scalarsMTime,
                        const SimplexId *const offsets,
                        const triangulationType &triangulation);
 
@@ -413,6 +414,7 @@ int ttk::MorseSmaleComplex::execute(OutputCriticalPoints &outCP,
                                     Output2Separatrices &outSeps2,
                                     OutputManifold &outManifold,
                                     const dataType *const scalars,
+                                    const size_t scalarsMTime,
                                     const SimplexId *const offsets,
                                     const triangulationType &triangulation) {
 #ifndef TTK_ENABLE_KAMIKAZE
@@ -435,7 +437,7 @@ int ttk::MorseSmaleComplex::execute(OutputCriticalPoints &outCP,
 
   this->discreteGradient_.setThreadNumber(threadNumber_);
   this->discreteGradient_.setDebugLevel(debugLevel_);
-  this->discreteGradient_.setInputScalarField(scalars);
+  this->discreteGradient_.setInputScalarField(scalars, scalarsMTime);
   this->discreteGradient_.setInputOffsets(offsets);
   this->discreteGradient_.buildGradient(triangulation);
 
@@ -1265,7 +1267,7 @@ int ttk::MorseSmaleComplex::setAscendingSeparatrices2(
     }
   }
 
-  PSORT(this->threadNumber_)(cellVertsIds.begin(), cellVertsIds.end());
+  TTK_PSORT(this->threadNumber_, cellVertsIds.begin(), cellVertsIds.end());
   const auto last = std::unique(cellVertsIds.begin(), cellVertsIds.end());
   cellVertsIds.erase(last, cellVertsIds.end());
 
@@ -1457,7 +1459,7 @@ int ttk::MorseSmaleComplex::setDescendingSeparatrices2(
 
   // reduce the cell vertices ids
   // (cells are triangles sharing two vertices)
-  PSORT(this->threadNumber_)(cellVertsIds.begin(), cellVertsIds.end());
+  TTK_PSORT(this->threadNumber_, cellVertsIds.begin(), cellVertsIds.end());
   const auto last = std::unique(cellVertsIds.begin(), cellVertsIds.end());
   cellVertsIds.erase(last, cellVertsIds.end());
 
@@ -1734,7 +1736,8 @@ int ttk::MorseSmaleComplex::setFinalSegmentation(
     morseSmaleManifold, morseSmaleManifold + nVerts);
 
   // get unique "sparse region ids"
-  PSORT(this->threadNumber_)(sparseRegionIds.begin(), sparseRegionIds.end());
+  TTK_PSORT(
+    this->threadNumber_, sparseRegionIds.begin(), sparseRegionIds.end());
   const auto last = std::unique(sparseRegionIds.begin(), sparseRegionIds.end());
   sparseRegionIds.erase(last, sparseRegionIds.end());
 
