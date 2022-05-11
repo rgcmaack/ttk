@@ -2218,7 +2218,7 @@ int ttk::MorseSmaleSegmentationPL::getSaddles(
   sfcp.setDomainDimension(dim);
   sfcp.setOutput(&criticalPoints);
   sfcp.setThreadNumber(this->threadNumber_);
-  sfcp.execute(orderArr, &triangulation);
+  sfcp.executeProgressive(orderArr, &triangulation);
 
   this->printMsg("Computed Critical Points", 1, localTimer.getElapsedTime(),
                  this->threadNumber_);
