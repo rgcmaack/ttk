@@ -36,17 +36,16 @@
 
 using ttk::SimplexId;
 
-// For cacheline width calculation
-#ifdef __cpp_lib_hardware_interference_size
-    using std::hardware_destructive_interference_size;
-#else
-    constexpr std::size_t hardware_destructive_interference_size
-        = 2 * sizeof(std::max_align_t);
-#endif
-
-// (#Labels) 2nd label, 3rd label, 4th label - index
-// first label is always 0 
-const int tetraederLookup[28][15] = {
+/**
+ * Lookup table to retrieve the triangle coordinates for each tetrahedron case.
+ * The comments next to each line first indicate the number of unique vertex 
+ * labels on the tetrahedron, the 2nd label, 3rd label, 4th label, and its index
+ * (the first label is alway considered to be 0). Every 3 entries in each row
+ * represent the locations on the tetrahedron to connect to a triangle, where 
+ * 0-4 are edge centers, 5-8 triangle centers, and 9 is the tetraherdron center.
+ * This allows to directly retrieve the triangulation from this lookup table
+ */
+const int tetLookupWall[28][15] = {
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (1) 0,0,0 - 0
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,1 - 1
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,2 - 2 
@@ -77,7 +76,12 @@ const int tetraederLookup[28][15] = {
   {10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10}  // (4) 1,2,3 -27
 };
 
-const int tetraederLabelLookup[27][10] = {
+/**
+ * Lookup table providing the labels of each triangle created by tetLookupWall.
+ * Every two entries describe the two labels of both vertices that are separated
+ * by each triangle, allowing to calculate a sparse Id for each triangle.
+ */
+const int tetLookupWallLabel[27][10] = {
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (1) 0,0,0 - 0
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,1 - 1
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,2 - 2 
@@ -107,7 +111,10 @@ const int tetraederLabelLookup[27][10] = {
   { 0,  1,  0,  2,  0,  2,  1,  2,  1,  2}  // (3) 1,2,2 -26
 };
 
-const size_t tetraederNumTrianglesWalls[28] = {
+/**
+ * Lookup table providing number of triangles created by tetLookupWall.
+ */
+const size_t tetLookupNumWallTriangles[28] = {
   {0}, // (1) 0,0,0 - 0
   {0}, // (-) 0,0,1 - 1
   {0}, // (-) 0,0,2 - 2 
@@ -138,37 +145,47 @@ const size_t tetraederNumTrianglesWalls[28] = {
   {12} // (4) 1,2,3 -27
 };
 
-const size_t tetraederNumTrianglesFine[28] = {
-  {0}, // (1) 0,0,0 - 0
-  {0}, // (-) 0,0,1 - 1
-  {0}, // (-) 0,0,2 - 2 
-  {2}, // (2) 0,0,3 - 3
-  {0}, // (-) 0,1,0 - 4
-  {0}, // (-) 0,1,1 - 5 
-  {0}, // (-) 0,1,2 - 6
-  {0}, // (-) 0,1,3 - 7
-  {2}, // (2) 0,2,0 - 8
-  {0}, // (-) 0,2,1 - 9
-  {4}, // (2) 0,2,2 -10
+/**
+ * Lookup table providing the number of triangles created by tetLookupWall in
+ * each case, using the "Fine" Mode that splits every triangle into two slightly
+ * shifted triangles. This gives each basin its own geometry.
+ */
+const size_t tetLookupNumFineTriangles[28] = {
+  {0},  // (1) 0,0,0 - 0
+  {0},  // (-) 0,0,1 - 1
+  {0},  // (-) 0,0,2 - 2 
+  {2},  // (2) 0,0,3 - 3
+  {0},  // (-) 0,1,0 - 4
+  {0},  // (-) 0,1,1 - 5 
+  {0},  // (-) 0,1,2 - 6
+  {0},  // (-) 0,1,3 - 7
+  {2},  // (2) 0,2,0 - 8
+  {0},  // (-) 0,2,1 - 9
+  {4},  // (2) 0,2,2 -10
   {10}, // (3) 0,2,3 -11
-  {0}, // (-) 0,3,0 -12
-  {0}, // (-) 0,3,1 -13
-  {0}, // (-) 0,3,2 -14
-  {0}, // (-) 0,3,3 -15
-  {2}, // (2) 1,0,0 -16
-  {4}, // (2) 1,0,1 -17
-  {0}, // (-) 1,0,2 -18
+  {0},  // (-) 0,3,0 -12
+  {0},  // (-) 0,3,1 -13
+  {0},  // (-) 0,3,2 -14
+  {0},  // (-) 0,3,3 -15
+  {2},  // (2) 1,0,0 -16
+  {4},  // (2) 1,0,1 -17
+  {0},  // (-) 1,0,2 -18
   {10}, // (3) 1,0,3 -19
-  {4}, // (2) 1,1,0 -20
-  {2}, // (2) 1,1,1 -21
-  {0}, // (-) 1,1,2 -22
+  {4},  // (2) 1,1,0 -20
+  {2},  // (2) 1,1,1 -21
+  {0},  // (-) 1,1,2 -22
   {10}, // (3) 1,1,3 -23
   {10}, // (3) 1,2,0 -24
   {10}, // (3) 1,2,1 -25
   {10}, // (3) 1,2,2 -26
-  {24} // (4) 1,2,3 -27
+  {24}  // (4) 1,2,3 -27
 };
 
+/**
+ * Lookup table providing the vertex with the 2nd and 3rd(if available) label of 
+ * a tetrahedron. They are given as the index of the vertex in the tetrahedron.
+ * The first label always comes from the 0th vertex of the tetrahedron.
+ */
 const int tetraederUniqueLabels[27][2] = {
   {-1, -1}, // (1) 0,0,0 - 0
   {-1, -1}, // (-) 0,0,1 - 1
@@ -199,38 +216,8 @@ const int tetraederUniqueLabels[27][2] = {
   { 1, -1}  // (3) 1,2,2 -26
 };
 
-const size_t tetraederFineNumTriangles[28] = {
-  {0}, // (1) 0,0,0 - 0
-  {0}, // (-) 0,0,1 - 1
-  {0}, // (-) 0,0,2 - 2 
-  {2}, // (2) 0,0,3 - 3
-  {0}, // (-) 0,1,0 - 4
-  {0}, // (-) 0,1,1 - 5 
-  {0}, // (-) 0,1,2 - 6
-  {0}, // (-) 0,1,3 - 7
-  {2}, // (2) 0,2,0 - 8
-  {0}, // (-) 0,2,1 - 9
-  {4}, // (2) 0,2,2 -10
-  {10}, // (3) 0,2,3 -11
-  {0}, // (-) 0,3,0 -12
-  {0}, // (-) 0,3,1 -13
-  {0}, // (-) 0,3,2 -14
-  {0}, // (-) 0,3,3 -15
-  {2}, // (2) 1,0,0 -16
-  {4}, // (2) 1,0,1 -17
-  {0}, // (-) 1,0,2 -18
-  {10}, // (3) 1,0,3 -19
-  {4}, // (2) 1,1,0 -20
-  {2}, // (2) 1,1,1 -21
-  {0}, // (-) 1,1,2 -22
-  {10}, // (3) 1,1,3 -23
-  {10}, // (3) 1,2,0 -24
-  {10}, // (3) 1,2,1 -25
-  {10}, // (3) 1,2,2 -26
-  {24} // (4) 1,2,3 -27
-};
-
-const bool tetraederLookupIsMultiLabel[28] = {
+/** Lookup table providing if a lookupIndex is a multi label case. */
+const bool tetLookupIsMultiLabel[28] = {
   false, // (1) 0,0,0 - 0
   false, // (-) 0,0,1 - 1
   false, // (-) 0,0,2 - 2 
@@ -261,7 +248,9 @@ const bool tetraederLookupIsMultiLabel[28] = {
   true   // (4) 1,2,3 -27
 };
 
-const bool tetraederLookupIs2Label[28] = {
+
+/**  Lookup table providing if a lookupIndex is a two label case. */
+const bool tetLookupIs2Label[28] = {
   false, // (1) 0,0,0 - 0
   false, // (-) 0,0,1 - 1
   false, // (-) 0,0,2 - 2 
@@ -292,7 +281,8 @@ const bool tetraederLookupIs2Label[28] = {
   false  // (4) 1,2,3 -27
 };
 
-const bool tetraederLookupIs3Label[28] = {
+/**  Lookup table providing if a lookupIndex is a three label case. */
+const bool tetLookupIs3Label[28] = {
   false, // (1) 0,0,0 - 0
   false, // (-) 0,0,1 - 1
   false, // (-) 0,0,2 - 2 
@@ -323,39 +313,11 @@ const bool tetraederLookupIs3Label[28] = {
   false  // (4) 1,2,3 -27
 };
 
-const bool tetraederLookupIs4Label[28] = {
-  false, // (1) 0,0,0 - 0
-  false, // (-) 0,0,1 - 1
-  false, // (-) 0,0,2 - 2 
-  false, // (2) 0,0,3 - 3
-  false, // (-) 0,1,0 - 4
-  false, // (-) 0,1,1 - 5 
-  false, // (-) 0,1,2 - 6
-  false, // (-) 0,1,3 - 7
-  false, // (2) 0,2,0 - 8
-  false, // (-) 0,2,1 - 9
-  false, // (2) 0,2,2 -10
-  false, // (3) 0,2,3 -11
-  false, // (-) 0,3,0 -12
-  false, // (-) 0,3,1 -13
-  false, // (-) 0,3,2 -14
-  false, // (-) 0,3,3 -15
-  false, // (2) 1,0,0 -16
-  false, // (2) 1,0,1 -17
-  false, // (-) 1,0,2 -18
-  false, // (3) 1,0,3 -19
-  false, // (2) 1,1,0 -20
-  false, // (2) 1,1,1 -21
-  false, // (-) 1,1,2 -22
-  false, // (3) 1,1,3 -23
-  false, // (3) 1,2,0 -24
-  false, // (3) 1,2,1 -25
-  false, // (3) 1,2,2 -26
-  true   // (4) 1,2,3 -27
-};
-
-
-const int tetraederLookupFastCase[28] = {
+/**
+ * Lookup table providing the vertex index(local to the tetrahedron) to specify
+ * the label for the triangles using the "Fast" Mode.
+ */
+const int tetLookupFastCase[28] = {
   {-1}, // (1) 0,0,0 - 0
   {-1}, // (-) 0,0,1 - 1
   {-1}, // (-) 0,0,2 - 2 
@@ -386,7 +348,8 @@ const int tetraederLookupFastCase[28] = {
   {-1}  // (4) 1,2,3 -27
 };
 
-const bool tetraederLookupFast[28] = {
+/** Does this tetrahedron have 3 vertices with the same label? */
+const bool tetLookupFast[28] = {
   {false}, // (1) 0,0,0 - 0
   {false}, // (-) 0,0,1 - 1
   {false}, // (-) 0,0,2 - 2 
@@ -417,14 +380,26 @@ const bool tetraederLookupFast[28] = {
   {false}  // (4) 1,2,3 -27
 };
 
-const int tetraederLookupFastTri[4][3] = {
+/** 
+ * Provide the vertex indices, local to the tetrahedron, for the cases in 
+ * lookup table tetLookupFastCase. These three vertices have the same label.
+ */
+const int tetLookupFastTri[4][3] = {
   {0, 1, 2},
   {0, 1, 3},
   {0, 2, 3},
   {1, 2, 3}
 };
 
-const int tetraederLookupSplitBasisns2Label[22][8] = {
+/**
+ * Vertex indices for interpolation in the "Fine" Mode where two labels are
+ * present at one tetrahedron. Every pair of twovertex indices is used to
+ * interpolate along their connecting edge. Therefore, three edges are given
+ * when three vertices have the same label, as onetriangle is enough to separate
+ * the remaining vertex. In the case of two vertices with the same label, two
+ * triangles are needed, so 4 edge centers are given by the 8 vertex indices.
+ */
+const int tetLookupSplitBasins2Label[22][8] = {
   {-1, -1, -1, -1, -1, -1, -1, -1}, // (1) 0,0,0 - 0
   {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,1 - 1
   {-1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,2 - 2 
@@ -449,7 +424,16 @@ const int tetraederLookupSplitBasisns2Label[22][8] = {
   { 1,  0,  2,  0,  3,  0, -1, -1}, // (2) 1,1,1 -21
 };
 
-const int tetraederLookupSplitBasisns3Label[27][11] = {
+/**
+ * Vertex indices for interpolation in the "Fine" Mode where three labels are
+ * present at one tetrahedron. In the case of three labels, two vertices have
+ * the same label. For those two vertices the vertex index local to the
+ * tetrahedron, the two edges connected to the vertices that are needed for
+ * the triangulation, and the triangle index are given at positions 0-3 and 4-7
+ * respectively. Position 8 and 9 give the vertex index of the two remaining
+ * vertices and Position 10 gives the edge index conntecting them.
+ */
+const int tetLookupSplitBasisns3Label[27][11] = {
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (1) 0,0,0 - 0
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,1 - 1
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // (-) 0,0,2 - 2 
@@ -479,13 +463,15 @@ const int tetraederLookupSplitBasisns3Label[27][11] = {
   { 2,  1,  3,  0,  3,  2,  4,  1,  0,  1,  0}, // (3) 1,2,2 -26
 };
 
+/** Retrieve all labels in the range [0,3] ignoring the index */
 const int lookupOtherLabels[4][3] = {
-  {1,2,3},
-  {0,2,3},
-  {0,1,3},
-  {0,1,2},
+  {1,2,3}, // 0
+  {0,2,3}, // 1
+  {0,1,3}, // 2
+  {0,1,2}, // 3
 };
 
+/** Multi label triangles cases. */
 const bool triangleLookupIsMultiLabel[7] = {
   false, // (1) 0,0 - 0
   false, // (-) 0,1 - 1
@@ -496,6 +482,7 @@ const bool triangleLookupIsMultiLabel[7] = {
   true   // (3) 1,2 - 6
 };
 
+/** Two label triangle cases. */
 const bool triangleLookupIs2Label[7] = {
   false, // (1) 0,0 - 0
   false, // (-) 0,1 - 1
@@ -506,6 +493,10 @@ const bool triangleLookupIs2Label[7] = {
   false  // (3) 1,2 - 6
 };
 
+/** 
+ * Two label triangle cases. Every 2 entries represent the edge idices that
+ * are used to create the splitting edge.
+ */
 const int triangleLookupEdgeVerts[7][4] = {
   {-1, -1, -1, -1}, // (1) 0,0 - 0
   {-1, -1, -1, -1}, // (-) 0,1 - 1
@@ -515,92 +506,49 @@ const int triangleLookupEdgeVerts[7][4] = {
   { 0,  1,  0,  2}, // (2) 1,1 - 5
 };
 
+/** Two label triangle cases. */
+const int triangleLookupEdgeCount[7] = {
+  0, // (1) 0,0 - 0
+  0, // (-) 0,1 - 1
+  1,  // (2) 0,2 - 2 
+  0, // (-) 0,3 - 3
+  1,  // (2) 1,0 - 4
+  1,  // (2) 1,1 - 5 
+  3  // (3) 1,2 - 6
+};
+
 namespace ttk {
 
   namespace mscq {
-    struct Separatrix {
-      // default :
-      explicit Separatrix()
-        : geometry_{} {
+
+    /**
+     * Utility class representing Piecewise Linear Integral Lines.
+     */
+    struct IntegralLine {
+
+
+      explicit IntegralLine()
+        : geometry_{}, type_{-1} {
       }
 
-      // initialization with one segment :
-      explicit Separatrix(const SimplexId segmentGeometry) {
+      /** Initialization with one segment. */
+      explicit IntegralLine(const SimplexId segmentGeometry) {
         geometry_.push_back(segmentGeometry);
       }
 
-      explicit Separatrix(const Separatrix &separatrix)
-        : geometry_{separatrix.geometry_},
-          type_{separatrix.type_} {
-      }
-
-      explicit Separatrix(Separatrix &&separatrix) noexcept
-        : geometry_{std::move(separatrix.geometry_)},
-          type_{separatrix.type_} {
-      }
-
-      Separatrix &operator=(Separatrix &&separatrix) noexcept {
+      /** Assignment by moving the content to the new Integral Line */
+      IntegralLine &operator=(const IntegralLine &separatrix) noexcept {
         geometry_ = std::move(separatrix.geometry_);
         type_ = separatrix.type_;
 
         return *this;
       }
 
-      Separatrix &operator=(const Separatrix &separatrix) noexcept {
-        geometry_ = std::move(separatrix.geometry_);
-        type_ = separatrix.type_;
-
-        return *this;
-      }
-
-      void reverse() {
-        std::reverse(geometry_.begin(), geometry_.end());
-      }
-
-      size_t length() {
-        return geometry_.size();
-      }
-
-      SimplexId Id_{-1};
-
-      /**
-       * Container of ids. Each id addresses a separate
-       * container corresponding to a dense representation
-       * of the geometry (i.e. separatricesGeometry).
-       */
+      /** Container of vertexIds of all points of the Integral Line. */
       std::vector<SimplexId> geometry_;
 
+      /** Type of IntegralLine, e.g. ascending or descending. */
       int type_{-1};
-    };
-
-    struct DoublyLinkedElement {
-      explicit DoublyLinkedElement() {
-      }
-
-      explicit DoublyLinkedElement(SimplexId neighbor) {
-        neighbors_[0] = neighbor;
-      }
-
-      void insert(SimplexId newEdge) {
-        neighbors_[1] = newEdge;
-        hasTwoNeighbors = true;
-      }
-
-      SimplexId next(SimplexId edgeFrom) {
-        if(!hasTwoNeighbors) {
-          return -1;
-        }
-
-        if(neighbors_[0] == edgeFrom) {
-          return neighbors_[1];
-        }
-
-        return neighbors_[0];
-      }
-
-      SimplexId neighbors_[2];
-      bool hasTwoNeighbors{false};
-      bool visited{false};
     };
   } // namespace mscq
 
@@ -613,18 +561,21 @@ namespace ttk {
   public:
     MorseSmaleSegmentationPL();
 
+    /** @brief Type of segmentation */
     enum class SEPARATRICES_MANIFOLD {
       MORSESMALE = 0,
       ASCENDING = 1,
       DESCENDING = 2
     };
     
+    /** @brief Type of 1-separatrix output */
     enum class SEPARATRICES1_MODE {
       NONE = 0,
       DETAILED = 1,
       SIMPLE = 2
     };
 
+    /** @brief Type of 2-separatrix output */
     enum class SEPARATRICES2_MODE {
       NONE = 0,
       WALLS = 1,
@@ -633,6 +584,13 @@ namespace ttk {
       EXPERIMENT = 4,
     };    
 
+    /**
+     * Set the input triangulation and preprocess the needed
+     * mesh traversal queries.
+     * 
+     * @param calculateSaddles Should Saddles be calculated?
+     * @param triangulation Triangulation
+     */
     int preconditionTriangulation(
       const bool calculateSaddles,
       ttk::AbstractTriangulation *triangulation) const {
@@ -656,7 +614,7 @@ namespace ttk {
     };
 
     /**
-     * Set the data pointers to the output segmentation scalar fields.
+     * Set the data pointers to the output segmentation fields.
      */
     inline int setOutputMorseComplexes(void *const ascendingManifold,
                                        void *const descendingManifold,
@@ -668,7 +626,7 @@ namespace ttk {
     };
 
     /**
-     * Set the output critical points data pointers.
+     * Set all necessary critical point output variables
      */
     inline int setOutputCriticalPoints(
       std::vector<std::array<float, 3>> *const criticalPoints_points,
@@ -681,6 +639,9 @@ namespace ttk {
       return 0;
     };
 
+    /**
+     * Set all necessary 1-separatrix output variables
+     */
     inline int setOutputSeparatrices1(
       SimplexId *const separatrices1_numberOfPoints,
       std::vector<float> *const separatrices1_points,
@@ -703,6 +664,9 @@ namespace ttk {
       return 0;
     }
 
+    /**
+     * Set all necessary 2-separatrix output variables
+     */
     inline int setOutputSeparatrices2(
       SimplexId *const separatrices2_numberOfPoints,
       std::vector<float> *const separatrices2_points,
@@ -718,6 +682,17 @@ namespace ttk {
       return 0;
     }
 
+    /**
+     * Get a consistent Sparse Id of three indicies. Used to retrieve a
+     * unique Id for a combination of three IDs in the same range [0, numIds-1]
+     * that is as small as possible and consistent by considering the smallest
+     * ID first, and the largest second.
+     * 
+     * @param simID0 First Id
+     * @param simID1 Second Id
+     * @param numIds Number of available Ids
+     * @return consistent sparse ID
+     */
     inline long long getSparseId(
       const long long simID0, const long long simID1,
       const SimplexId &numMSCRegions) const {
@@ -727,39 +702,63 @@ namespace ttk {
       return simID1 * numMSCRegions + simID0;
     }
 
+    /**
+     * Get a consistent Sparse Id of three indicies. Used to retrieve a
+     * unique Id for a combination of three IDs in the same range [0, numIds-1]
+     * that is as small as possible and consistent by considering the smallest
+     * ID first, the second smallest second and the largest third.
+     * 
+     * @param simID0 First Id
+     * @param simID1 Second Id
+     * @param simID2 Third Id
+     * @param numIds Number of available Ids
+     * @return consistent sparse ID
+     */
     inline long long getSparseId(const long long simID0,
                                  const long long simID1,
                                  const long long simID2,
-                                 const SimplexId &numMSCRegions) const {
+                                 const SimplexId &numIds) const {
       if(simID0 < simID1) {
         if(simID1 < simID2) {
-          return simID0 * numMSCRegions * numMSCRegions +
-          simID1 * numMSCRegions + simID2;
+          return simID0 * numIds * numIds + simID1 * numIds + simID2;
         } else {
           if(simID0 < simID2) {
-            return simID0 * numMSCRegions * numMSCRegions +
-            simID2 * numMSCRegions + simID1;
+            return simID0 * numIds * numIds + simID2 * numIds + simID1;
           } else {
-            return simID2 * numMSCRegions * numMSCRegions +
-            simID0 * numMSCRegions + simID1;
+            return simID2 * numIds * numIds + simID0 * numIds + simID1;
           }
         }
       } else {
         if(simID0 < simID2) {
-          return simID1 * numMSCRegions * numMSCRegions +
-          simID0 * numMSCRegions + simID2;
+          return simID1 * numIds * numIds + simID0 * numIds + simID2;
         } else {
           if(simID1 < simID2) {
-            return simID1 * numMSCRegions * numMSCRegions +
-            simID2 * numMSCRegions + simID0;
+            return simID1 * numIds * numIds + simID2 * numIds + simID0;
           } else {
-            return simID2 * numMSCRegions * numMSCRegions +
-            simID1 * numMSCRegions + simID0;
+            return simID2 * numIds * numIds + simID1 * numIds + simID0;
           }
         }
       }
     }
 
+    /**
+     * Execute the package.
+     * @param[in] sepManifoldType Type of segmentation
+     * @param[in] sep1Mode Type of 1-separatrices
+     * @param[in] sep2Mode Type of 2-separatrices
+     * @param[in] computeSaddles Should Saddles be calculated?
+     * @param[in] triangulation Triangulation
+     * @return Returns 0 upon success, negative values otherwise.
+     *
+     * @pre For this function to behave correctly setInputOrderField
+     * needs to be called to fill the inputOrderField_ buffer prior to any
+     * computation. MorseSmaleSegmentationPL::preconditionTriangulation must be 
+     * called before execution to enable Vertex based operations. 
+     * setOutputMorseComplexes, setOutputCriticalPoints, setOutputSeparatrices1,
+     * and setOutputSeparatrices2 need to be called to set all necessary ouput
+     * buffers.
+     * @see examples/c++/main.cpp for an example use.
+     */
     template <typename triangulationType>
     int execute(
       const SEPARATRICES_MANIFOLD sepManifoldType,
@@ -768,6 +767,19 @@ namespace ttk {
       const bool computeSaddles,
       const triangulationType &triangulation);
 
+    /**
+     * @brief Compute the ascending or descending segmentation.
+     * 
+     * @param[out] criticalPoints List of critical Points with Id and Type
+     * @param[out] manifold Scalar field to save segementation to
+     * @param[out] neighbor Scalar field saving the largest/smallest neighbor Id
+     * @param[out] critMap Map from critical point index to vertex index.
+     * @param[out] numberOfExtrema number of extrema after computation
+     * @param[in] orderArr Input order array
+     * @param[in] triangulation Triangulation
+     * @param[in] ascending Should the Ascending segmentation be computed
+     * @return int 0 on success.
+     */
     template <typename triangulationType>
     int computeManifold(
       std::vector<std::pair<SimplexId, char>> *criticalPoints,
@@ -779,6 +791,22 @@ namespace ttk {
       const triangulationType &triangulation,
       const bool ascending) const;
 
+    /**
+     * @brief Compute the ascending and descending segmentation.
+     * 
+     * @param[out] criticalPoints List of critical Points with Id and Type
+     * @param[out] ascManifold Scalar field to write the ascending segementation to
+     * @param[out] dscManifold Scalar field to write the descending segementation to
+     * @param[out] ascNeighbor Scalar field to write the smallest neighbor to
+     * @param[out] dscNeighbor Scalar field to write the largest neighbor to
+     * @param[out] ascCritMap Map from critical point index to vertex index
+     * @param[out] dscCritMap Map from critical point index to vertex index
+     * @param[out] numberOfMinima number of minima after computation
+     * @param[out] numberOfMaxima number of maxima after computation
+     * @param[in] orderArr Input order array
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success. 
+     */
     template <typename triangulationType>
     int computeManifolds(
       std::vector<std::pair<SimplexId, char>> *criticalPoints,
@@ -793,15 +821,46 @@ namespace ttk {
       const SimplexId *const orderArr,
       const triangulationType &triangulation) const;
 
+    /**
+     * @brief Intersect ascending and descending Segmentation
+     * 
+     * @param[out] numManifolds 
+     * @param[out] morseSmaleManifold 
+     * @param[in] numMaxima maxima count
+     * @param[in] ascendingManifold Ascending segmentation scalar field
+     * @param[in] descendingManifold Descending segmentation scalar field
+     * @param[in] triangulation 
+     * @return int 0 on success.
+     */
     template <typename triangulationType>
     int computeFinalSegmentation(
+      SimplexId &numManifolds,
+      SimplexId *const morseSmaleManifold,
       const SimplexId numMaxima,
       const SimplexId *const ascendingManifold,
       const SimplexId *const descendingManifold,
-      SimplexId &numManifolds,
-      SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
+    template <typename triangulationType>
+    int computeSeparatrices1Pieces_2D(
+      std::vector<SimplexId> &sep2VertSet,
+      const SimplexId &numMSCRegions,
+      const SimplexId *const morseSmaleManifold,
+      const bool computeSaddles,
+      const triangulationType &triangulation) const;
+
+    /**
+     * @brief Retrieve 1-separatrices in 2D domains
+     * 
+     * @param[out] edgePos Positions of all edge endpoints given as XYZXYZ
+     * @param[out] msLabels Label for each of the edges
+     * @param[out] sep2VertSet Set of all vertices belonging to 3-label tris
+     * @param[in] numMSCRegions Count of regions given by the segmentation
+     * @param[in] morseSmaleManifold segmentation of the domain
+     * @param[in] computeSaddles Should saddles be computed
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success.
+     */
     template <typename triangulationType>
     int computeSeparatrices1Pieces_2D(
       std::vector<std::array<float, 6>> &edgePos,
@@ -812,28 +871,71 @@ namespace ttk {
       const bool computeSaddles,
       const triangulationType &triangulation) const;
 
+    /**
+     * @brief Check the Saddle criterion on a list of vertices
+     * 
+     * @param[out] criticalPoints List of critical points
+     * @param[in] sep2VertSet List of Vertex Ids
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success.
+     */
     template <typename triangulationType>
     int findSaddlesFromCadidates(
       std::vector<std::pair<SimplexId, char>> &criticalPoints,
       const std::vector<SimplexId> &sep2VertSet,
       const triangulationType &triangulation) const;
 
+    /**
+     * @brief Write the 2-separatrix edges to memory
+     * 
+     * @param[in] edgePos Edge positions in XYZXYZ format
+     * @param[in] msLabels Sparse MS Labels
+     * @param[in] msLabelMap Map from sparse MS id to dense MSid
+     * @return int 0 on success
+     */
     int setSeparatrices2_2D(
       const std::vector<std::array<float, 6>> &edgePos,
       const std::vector<long long> &msLabels,
       std::map<long long, SimplexId> &msLabelMap) const;
 
-    int getSaddles(
-      const SimplexId * const offsets,
+
+    /**
+     * @brief Compute all critical points
+     * 
+     * @param[out] criticalPoints Critical points list
+     * @param[in] orderArr orderArray
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success
+     */
+    int getCriticalPoints(
       std::vector<std::pair<SimplexId, char>> &criticalPoints,
+      const SimplexId * const offsets,
       const AbstractTriangulation &triangulation) const;
 
+    /**
+     * @brief Compute Separating Walls [Wall Mode]
+     * 
+     * @param[in] numMSCRegions MS regions count
+     * @param[in] morseSmaleManifold MS segmentation
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success
+     */
     template <typename triangulationType>
     int computeSeparatrices2_3D(
       const SimplexId &numMSCRegions,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
+    /**
+     * @brief Compute Separating Walls for Asc and Desc separately [Wall Mode]
+     * 
+     * @param[in] numAscRegions Ascending regions count
+     * @param[in] numDscRegions Descending regions count
+     * @param[in] ascManifold Ascending segmentation
+     * @param[in] dscManifold Descending segmentation
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success
+     */
     template <typename triangulationType>
     int computeSeparatrices2_3D_split(
       const SimplexId &numAscRegions,
@@ -842,23 +944,57 @@ namespace ttk {
       const SimplexId *const dscManifold,
       const triangulationType &triangulation) const;
 
+    /**
+     * @brief Compute Separating Walls [Basin Separation Mode]
+     * 
+     * @param[in] morseSmaleManifold MS segmentation
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success
+     */
     template <typename triangulationType>
     int computeBasinSeparation_3D_fine(
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
+    /**
+     * @brief Compute Separating Walls [Fast Basin Separation Mode]
+     * 
+     * @param[in] morseSmaleManifold MS Segmentation
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success
+     */
     template <typename triangulationType>
     int computeBasinSeparation_3D_fast(
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
 
+    /**
+     * @brief Generate a map to map sparse MS Labels to dense MS Labels
+     * 
+     * @param[out] msLabelMap Resulting dens MS Label map
+     * @param[in] msLabels All sparse MS ids
+     * @return int 0 on success
+     */
     int computeMSLabelMap(
-      const std::vector<long long> &msLabels,
-      std::map<long long, SimplexId> &msLabelMap) const;
+      std::map<long long, SimplexId> &msLabelMap,
+      const std::vector<long long> &msLabels) const;
 
+    /**
+     * @brief Computes Extrema saddle connectors as PL integral lines
+     * 
+     * @param[out] sadExtrConns Resulting Saddle Extrema connectors
+     * @param[in] ascendingNeighbor Scalar field representing smallest neighbors
+     * @param[in] descendingNeighbor Scalar field representing largest neighbors
+     * @param[in] ascendingManifold Ascending segmentation
+     * @param[in] descendingManifold Descensing sementation
+     * @param[in] orderArr Order Array
+     * @param[in] criticalPoints Critical points list
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success
+     */
     template <typename triangulationType>
     int computeSaddleExtremaConnectors_3D(
-      std::vector<mscq::Separatrix> &sadExtrConns,
+      std::vector<mscq::IntegralLine> &sadExtrConns,
       const SimplexId *const ascendingNeighbor,
       const SimplexId *const descendingNeighbor,
       const SimplexId *const ascendingManifold,
@@ -867,9 +1003,21 @@ namespace ttk {
       const std::vector<std::pair<SimplexId, char>> &criticalPoints,
       const triangulationType &triangulation) const;
 
+    /**
+     * @brief Computes Extrema saddle connectors as straight lines
+     * 
+     * @param[out] sadExtrConns Resulting Saddle Extrema connectors
+     * @param[in] ascendingManifold Ascending sementation
+     * @param[in] descendingManifold Descending segmentation
+     * @param[in] ascCritMap Map: Minima index to its vertex Id
+     * @param[in] dscCritMap Map: Maximum index to its vertex Id
+     * @param[in] criticalPoints Critical points list
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success
+     */
     template <typename triangulationType>
     int computeSaddleExtremaConnectors_3D_fast(
-      std::vector<mscq::Separatrix> &sadExtrConns,
+      std::vector<mscq::IntegralLine> &sadExtrConns,
       const SimplexId *const ascendingManifold,
       const SimplexId *const descendingManifold,
       const std::map<SimplexId, SimplexId> &ascCritMap,
@@ -877,19 +1025,37 @@ namespace ttk {
       const std::vector<std::pair<SimplexId, char>> &criticalPoints,
       const triangulationType &triangulation) const;
 
+    /**
+     * @brief Write the 1-separatrices to memory
+     * 
+     * @param[in] separatrices 1-separatrix list
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success
+     */
     template <typename triangulationType>
-    int setSeparatrices1_3D(const std::vector<mscq::Separatrix> &separatrices,
+    int setSeparatrices1_3D(const std::vector<mscq::IntegralLine> &separatrices,
                             const triangulationType &triangulation) const;
 
-    int setSeparatrices2_3D(
-      const std::vector<std::array<float, 9>> &trianglePos,
-      const std::vector<long long> &msLabels,
-      std::map<long long, SimplexId> &msLabelMap) const;
-
+    /**
+     * @brief Write the critical points to memory
+     * 
+     * @param[in] criticalPoints Critical points list
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success
+     */
     template <typename triangulationType>
     int setCriticalPoints(std::vector<std::pair<SimplexId, char>> &criticalPoints,
                           const triangulationType &triangulation) const;
 
+    /**
+     * @brief Get the Point in the middle of two vertices given by id
+     * 
+     * @param[in] vertexId0 Vertex Id 0
+     * @param[in] vertexId1 Vertex Id 1
+     * @param[out] incenter Resulting center position
+     * @param[in] triangulation Triangulation
+     * @return int 0 on success
+     */
     template <typename triangulationType>
     inline int getEdgeIncenter(SimplexId vertexId0,
                                SimplexId vertexId1,
@@ -906,6 +1072,14 @@ namespace ttk {
       return 0;
     }
 
+    /**
+     * @brief Get the center of two points
+     * 
+     * @param[in] pos0 Position 0
+     * @param[in] pos1 Position 1
+     * @param[out] incenter Resulting position
+     * @return int 0 on success
+     */
     inline int getCenter(
       float pos0[3], float pos1[3], float incenter[3]) const {
       incenter[0] = 0.5 * (pos0[0] + pos1[0]);
@@ -915,6 +1089,15 @@ namespace ttk {
       return 0;
     }
 
+    /**
+     * @brief Get the center of three points
+     * 
+     * @param[in] pos0 Position 0
+     * @param[in] pos1 Position 1
+     * @param[in] pos2 Position 2
+     * @param[out] incenter Resulting position
+     * @return int 0 on success
+     */
     inline int getCenter(
       float pos0[3], float pos1[3], float pos2[3], float incenter[3]) const {
       incenter[0] = 0.3333 * (pos0[0] + pos1[0] + pos2[0]);
@@ -924,6 +1107,16 @@ namespace ttk {
       return 0;
     }
 
+    /**
+     * @brief Get the center of four points
+     * 
+     * @param[in] pos0 Position 0
+     * @param[in] pos1 Position 1
+     * @param[in] pos2 Position 2
+     * @param[in] pos3 Position 3
+     * @param[out] incenter Resulting position
+     * @return int 0 on success
+     */
     inline int getCenter(
       float pos0[3], float pos1[3], float pos2[3], float pos3[3],
       float incenter[3]) const {
@@ -934,6 +1127,15 @@ namespace ttk {
       return 0;
     }
 
+    /**
+     * @brief Interpolate between two points (lambda = 0 -> pos1 / 1 -> pos0)
+     * 
+     * @param[in] pos0 Position 0
+     * @param[in] pos1 Position 1
+     * @param[in] lambda Interpolation parameter
+     * @param[out] result Resulting position
+     * @return int 0 on success
+     */
     inline int interpolatePoints(
       float pos0[3], float pos1[3], float lambda, float result[3]) const {
 
@@ -1031,7 +1233,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
 
   if(computeSaddles && dim == 3) {
     critPointPtr = nullptr;
-    getSaddles(orderArr, criticalPoints, triangulation);
+    getCriticalPoints(criticalPoints, orderArr, triangulation);
   } else {
     critPointPtr = &criticalPoints;
   }
@@ -1051,9 +1253,8 @@ int ttk::MorseSmaleSegmentationPL::execute(
           ascendingNeighbor, descendingNeighbor, ascCritMap, dscCritMap,
           numberOfMinima, numberOfMaxima, orderArr, triangulation);
 
-        computeFinalSegmentation(numberOfMinima, ascendingManifold,
-          descendingManifold, numberOfMSCRegions, morseSmaleManifold,
-          triangulation);
+        computeFinalSegmentation(numberOfMSCRegions, morseSmaleManifold,
+          numberOfMinima, ascendingManifold, descendingManifold, triangulation);
 
         sepManifold = static_cast<SimplexId *>(outputMorseSmaleManifold_);
         SepManifoldIsValid = true;
@@ -1089,7 +1290,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
     std::vector<std::array<float, 9>> trianglePos;
     std::vector<long long> msLabels;
     std::map<long long, SimplexId> msLabelMap;
-    std::vector<mscq::Separatrix> sadExtrConns;
+    std::vector<mscq::IntegralLine> sadExtrConns;
     
     if(SepManifoldIsValid) {
       if(sep2Mode == SEPARATRICES2_MODE::WALLS) {
@@ -1097,10 +1298,10 @@ int ttk::MorseSmaleSegmentationPL::execute(
           numberOfMSCRegions, sepManifold, triangulation);
       } else if(sep2Mode == SEPARATRICES2_MODE::SEPARATEBASINSFINE) {
         computeBasinSeparation_3D_fine<triangulationType>(
-                                  sepManifold, triangulation);
+          sepManifold, triangulation);
       } else if(sep2Mode == SEPARATRICES2_MODE::SEPARATEBASINSFAST) {
         computeBasinSeparation_3D_fast<triangulationType>(
-                                  sepManifold, triangulation);
+          sepManifold, triangulation);
       } else if(sep2Mode == SEPARATRICES2_MODE::EXPERIMENT) {
         computeSeparatrices2_3D_split<triangulationType>(
           numberOfMinima, numberOfMinima,
@@ -1111,14 +1312,14 @@ int ttk::MorseSmaleSegmentationPL::execute(
     if(ascendingManifold && descendingManifold && computeSaddles) {
       if(sep1Mode == SEPARATRICES1_MODE::SIMPLE) {
         computeSaddleExtremaConnectors_3D_fast<triangulationType>(
-        sadExtrConns, ascendingManifold, descendingManifold,
-        ascCritMap, dscCritMap, criticalPoints, triangulation);
+          sadExtrConns, ascendingManifold, descendingManifold,
+          ascCritMap, dscCritMap, criticalPoints, triangulation);
 
       } else if(sep1Mode == SEPARATRICES1_MODE::DETAILED) {
         computeSaddleExtremaConnectors_3D<triangulationType>(
-        sadExtrConns, ascendingNeighbor, descendingNeighbor,
-        ascendingManifold, descendingManifold,
-        orderArr, criticalPoints, triangulation);
+          sadExtrConns, ascendingNeighbor, descendingNeighbor,
+          ascendingManifold, descendingManifold,
+          orderArr, criticalPoints, triangulation);
       }
 
       if(computeSaddles && sep1Mode == SEPARATRICES1_MODE::DETAILED) {
@@ -1135,16 +1336,16 @@ int ttk::MorseSmaleSegmentationPL::execute(
     std::map<long long, SimplexId> msLabelMap;
 
     computeSeparatrices1Pieces_2D(
-      edgePos, msLabels, sep2VertSet, numberOfMSCRegions, 
+      sep2VertSet, numberOfMSCRegions, 
       sepManifold, computeSaddles, triangulation);
 
     if(computeSaddles) {
       findSaddlesFromCadidates(criticalPoints, sep2VertSet, triangulation);
     }
 
-    computeMSLabelMap(msLabels, msLabelMap);
+    //computeMSLabelMap(msLabelMap, msLabels);
 
-    setSeparatrices2_2D(edgePos, msLabels, msLabelMap);
+    //setSeparatrices2_2D(edgePos, msLabels, msLabelMap);
   }
 
   setCriticalPoints<triangulationType>(criticalPoints, triangulation);
@@ -1428,9 +1629,6 @@ int ttk::MorseSmaleSegmentationPL::computeManifolds(
    * the biggest neighbor and compressing its path to its maximum */
   const SimplexId nVertices = triangulation.getNumberOfVertices();
 
-  // vertices that may still be compressed
-  
-  
   std::map<SimplexId, int> minMap, maxMap;
 
 if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
@@ -1663,11 +1861,11 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeFinalSegmentation(
+  SimplexId &numManifolds,
+  SimplexId *const morseSmaleManifold,
   const SimplexId numberOfMinima,
   const SimplexId *const ascendingManifold,
   const SimplexId *const descendingManifold,
-  SimplexId &numManifolds,
-  SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
   ttk::Timer localTimer;
 
@@ -1790,6 +1988,499 @@ if(threadNumber_ == 1) {
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
+}
+
+template <typename triangulationType>
+int ttk::MorseSmaleSegmentationPL::computeSeparatrices1Pieces_2D(
+  std::vector<SimplexId> &sep2VertSet,
+  const SimplexId &numMSCRegions,
+  const SimplexId *const morseSmaleManifold,
+  const bool computeSaddles,
+  const triangulationType &triangulation) const {
+  // start a local timer for this subprocedure
+  ttk::Timer localTimer;
+
+  this->printMsg("Computing 2-separatrices",
+                 0, // progress form 0-1
+                 0, // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+  const SimplexId numTriangles = triangulation.getNumberOfTriangles();
+  size_t numSparseIDs = 0;
+  std::vector<long long> sparseIdVect;
+  std::map<long long, SimplexId> msLabelMap;
+
+if(threadNumber_ == 1) {
+  std::vector<std::pair<SimplexId, unsigned char>> validCases;
+  std::unordered_set<long long> msLabelSet;
+  std::unordered_set<SimplexId> vertexSet;
+  SimplexId numEdges = 0;
+
+  for(SimplexId tri = 0; tri < numTriangles; tri++) {
+    SimplexId vertices[3];
+    triangulation.getTriangleVertex(tri, 0, vertices[0]);
+    triangulation.getTriangleVertex(tri, 1, vertices[1]);
+    triangulation.getTriangleVertex(tri, 2, vertices[2]);
+
+    const SimplexId msm[3] = {
+      morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+      morseSmaleManifold[vertices[2]]};
+
+    const unsigned char index0 = (msm[0] == msm[1]) ? 0x00 : 0x04; // 0 : 1
+    const unsigned char index1 = (msm[0] == msm[2]) ? 0x00 :       // 0
+                                 (msm[1] == msm[2]) ? 0x01 : 0x02; // 1 : 2
+
+    const unsigned char lookupIndex = index0 | index1;
+
+    if(triangleLookupIsMultiLabel[lookupIndex]) {
+      validCases.push_back(std::make_pair(tri, lookupIndex));
+      numEdges += triangleLookupEdgeCount[lookupIndex];
+
+      if(triangleLookupIs2Label[lookupIndex]) {
+
+        msLabelSet.insert(getSparseId(
+          msm[triangleLookupEdgeVerts[lookupIndex][0]],
+          msm[triangleLookupEdgeVerts[lookupIndex][1]], numMSCRegions));
+
+        if(computeSaddles) {
+          if(triangulation.isVertexOnBoundary(vertices[0]))
+            vertexSet.insert(vertices[0]);
+          if(triangulation.isVertexOnBoundary(vertices[1]))
+            vertexSet.insert(vertices[1]);
+          if(triangulation.isVertexOnBoundary(vertices[2]))
+            vertexSet.insert(vertices[2]);
+        }
+      } else {
+        long long sparseMSIds[3] = {
+          getSparseId(msm[0], msm[1], numMSCRegions),
+          getSparseId(msm[0], msm[2], numMSCRegions),
+          getSparseId(msm[1], msm[2], numMSCRegions)
+        };
+
+        msLabelSet.insert({sparseMSIds[0], sparseMSIds[1], sparseMSIds[2]});
+
+        if(computeSaddles) {
+          vertexSet.insert({vertices[0], vertices[1], vertices[2]});
+        }
+      }
+    }
+  }
+
+  numSparseIDs = msLabelSet.size();
+  sparseIdVect.reserve(numSparseIDs);
+  std::copy(msLabelSet.begin(), msLabelSet.end(),
+    std::back_inserter(sparseIdVect));
+  std::copy(vertexSet.begin(), vertexSet.end(),
+    std::back_inserter(sep2VertSet));
+  TTK_PSORT(this->threadNumber_, sparseIdVect.begin(), sparseIdVect.end());
+
+  // "sparse id" -> "dense id"
+  for(size_t i = 0; i < numSparseIDs; ++i) {
+    msLabelMap[sparseIdVect[i]] = i;
+  }
+
+  outputSeparatrices2_points_->resize(6 * numEdges);
+  outputSeparatrices2_cells_connectivity_->resize(2 * numEdges);
+  outputSeparatrices2_cells_mscIds_->resize(numEdges);
+  *outputSeparatrices2_numberOfPoints_ = 2 * numEdges;
+  *outputSeparatrices2_numberOfCells_ = numEdges;
+
+  auto &points = *outputSeparatrices2_points_;
+  auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+  auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
+
+  float* p = points.data();
+  SimplexId* c = cellsConn.data();
+  SimplexId* m = cellsMSCIds.data();
+  SimplexId cellIndex = 0;
+
+  for (const auto& vCase : validCases)
+  {
+    const SimplexId& tri = vCase.first;
+    const unsigned char& lookupIndex = vCase.second;
+
+    const int * edgeVerts = triangleLookupEdgeVerts[lookupIndex];
+
+    SimplexId vertices[3];
+    triangulation.getCellVertex(tri, 0, vertices[0]);
+    triangulation.getCellVertex(tri, 1, vertices[1]);
+    triangulation.getCellVertex(tri, 2, vertices[2]);
+
+    float vertPos[3][3];
+    triangulation.getVertexPoint(
+      vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+    triangulation.getVertexPoint(
+      vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+    triangulation.getVertexPoint(
+      vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+
+    const SimplexId msm[3] = {
+      morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+      morseSmaleManifold[vertices[2]]};
+
+    if(triangleLookupIs2Label[lookupIndex]) {
+      float eC[2][3];
+      getCenter(vertPos[edgeVerts[0]], vertPos[edgeVerts[1]], eC[0]);
+      getCenter(vertPos[edgeVerts[2]], vertPos[edgeVerts[3]], eC[1]);
+      
+      const long long sparseID = msLabelMap[getSparseId(
+        msm[edgeVerts[0]], msm[edgeVerts[1]], numMSCRegions)];
+
+      p[0] = eC[0][0]; p[1] = eC[0][1]; p[2] = eC[0][2]; 
+      p[3] = eC[1][0]; p[4] = eC[1][1]; p[5] = eC[1][2];
+      p += 6;
+
+      c[0] = cellIndex; c[1] = cellIndex + 1;
+      c += 2;
+      cellIndex += 2;
+
+      m[0] = sparseID;
+      m += 1;
+
+      if(computeSaddles) {
+        if(triangulation.isVertexOnBoundary(vertices[0]))
+          sep2VertSet.push_back(vertices[0]);
+        if(triangulation.isVertexOnBoundary(vertices[1]))
+          sep2VertSet.push_back(vertices[1]);
+        if(triangulation.isVertexOnBoundary(vertices[2]))
+          sep2VertSet.push_back(vertices[2]);
+      }
+    } else {
+      float eC[4][3];
+      getCenter(vertPos[0], vertPos[1], eC[0]);
+      getCenter(vertPos[0], vertPos[2], eC[1]);
+      getCenter(vertPos[1], vertPos[2], eC[2]);
+      getCenter(vertPos[0], vertPos[1], vertPos[2], eC[3]);
+
+      const long long sparseID[3] = {
+          msLabelMap[getSparseId(msm[0], msm[1], numMSCRegions)],
+          msLabelMap[getSparseId(msm[0], msm[2], numMSCRegions)],
+          msLabelMap[getSparseId(msm[1], msm[2], numMSCRegions)]};
+
+      p[0] = eC[0][0]; p[1] = eC[0][1]; p[2] = eC[0][2]; 
+      p[3] = eC[3][0]; p[4] = eC[3][1]; p[5] = eC[3][2];
+      p[6] = eC[1][0]; p[7] = eC[1][1]; p[8] = eC[1][2]; 
+      p[9] = eC[3][0]; p[10] = eC[3][1]; p[11] = eC[3][2];
+      p[12] = eC[2][0]; p[13] = eC[2][1]; p[14] = eC[2][2]; 
+      p[15] = eC[3][0]; p[16] = eC[3][1]; p[17] = eC[3][2];
+      p += 18;
+
+      c[0] = cellIndex + 0; c[1] = cellIndex + 1;
+      c[2] = cellIndex + 2; c[3] = cellIndex + 3;
+      c[4] = cellIndex + 4; c[5] = cellIndex + 5;
+      c += 6;
+      cellIndex += 6;
+
+      m[0] = sparseID[0];
+      m[1] = sparseID[1];
+      m[2] = sparseID[2];
+      m += 3;
+    }
+  }
+} else {
+
+  size_t edgeStartIndex[threadNumber_ + 1];
+
+  // parallel conquer unordered_sets variables
+  std::unordered_set<long long>* msSets[threadNumber_];
+  std::unordered_set<SimplexId>* vertSets[threadNumber_];
+  int numConquer = threadNumber_ / 2;
+  int conquerStep = 1;
+  int cS2pow = 1;
+  int unmergedSet = -1;
+  bool isConquerEven = !(bool)(threadNumber_ % 2);
+
+  #pragma omp parallel num_threads(threadNumber_)
+  {
+    const int tid = omp_get_thread_num();
+    std::vector<std::pair<SimplexId, unsigned char>> validCases;
+    size_t numThreadEdges = 0;
+    size_t numThreadIndexEdges = 0;
+
+    msSets[tid] = new std::unordered_set<long long>;
+    std::unordered_set<long long>* localMSSet = msSets[tid];
+
+    vertSets[tid] = new std::unordered_set<SimplexId>;
+    std::unordered_set<SimplexId>* localVertSet = vertSets[tid];
+
+    #pragma omp single nowait
+    this->printMsg("Computing 2-separatrices",
+                 0.1, // progress form 0-1
+                 0, // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+    #pragma omp for schedule(static) nowait
+    for(SimplexId tri = 0; tri < numTriangles; tri++) {
+      SimplexId vertices[3];
+      triangulation.getTriangleVertex(tri, 0, vertices[0]);
+      triangulation.getTriangleVertex(tri, 1, vertices[1]);
+      triangulation.getTriangleVertex(tri, 2, vertices[2]);
+
+      const SimplexId msm[3] = {
+        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+        morseSmaleManifold[vertices[2]]};
+
+      const unsigned char index0 = (msm[0] == msm[1]) ? 0x00 : 0x04; // 0 : 1
+      const unsigned char index1 = (msm[0] == msm[2]) ? 0x00 :       // 0
+                                   (msm[1] == msm[2]) ? 0x01 : 0x02; // 1 : 2
+
+      const unsigned char lookupIndex = index0 | index1;
+
+      if(triangleLookupIsMultiLabel[lookupIndex]) {
+
+        validCases.push_back(std::make_pair(tri, lookupIndex));
+        numThreadEdges += triangleLookupEdgeCount[lookupIndex];
+
+        if(triangleLookupIs2Label[lookupIndex]) {
+          localMSSet->insert(getSparseId(
+          msm[triangleLookupEdgeVerts[lookupIndex][0]],
+          msm[triangleLookupEdgeVerts[lookupIndex][1]], numMSCRegions));
+
+          if(computeSaddles) {
+            if(triangulation.isVertexOnBoundary(vertices[0]))
+              localVertSet->insert(vertices[0]);
+            if(triangulation.isVertexOnBoundary(vertices[1]))
+              localVertSet->insert(vertices[1]);
+            if(triangulation.isVertexOnBoundary(vertices[2]))
+              localVertSet->insert(vertices[2]);
+          }
+        } else {
+          long long sparseMSIds[3] = {
+            getSparseId(msm[0], msm[1], numMSCRegions),
+            getSparseId(msm[0], msm[2], numMSCRegions),
+            getSparseId(msm[1], msm[2], numMSCRegions)
+          };
+
+          localMSSet->insert({sparseMSIds[0], sparseMSIds[1], sparseMSIds[2]});
+
+          if(computeSaddles) {
+            localVertSet->insert({vertices[0], vertices[1], vertices[2]});
+          }
+        }
+      }
+    }
+
+    #pragma omp single nowait
+    this->printMsg("Computing 2-separatrices",
+                 0.2, // progress form 0-1
+                 0, // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+    /************ CONQUER SETS ************/
+
+    while(numConquer > 0) {
+      #pragma omp for schedule(static) nowait
+      for(int i = 0; i < numConquer * 2; i += 2) {
+        msSets[i * cS2pow]->insert(
+          msSets[i * cS2pow + cS2pow]->begin(),
+          msSets[i * cS2pow + cS2pow]->end());
+        vertSets[i * cS2pow]->insert(
+          vertSets[i * cS2pow + cS2pow]->begin(),
+          vertSets[i * cS2pow + cS2pow]->end());
+      }
+
+      #pragma omp single
+      { // Fix border problems
+        if(!isConquerEven) {
+          if(unmergedSet == -1) {
+            unmergedSet = 2 * numConquer * cS2pow;
+          } else {
+            int unmergedSet2 = 2 * numConquer * cS2pow;
+            msSets[unmergedSet2]->insert(
+              msSets[unmergedSet]->begin(), msSets[unmergedSet]->end());
+            vertSets[unmergedSet2]->insert(
+              vertSets[unmergedSet]->begin(), vertSets[unmergedSet]->end());
+            unmergedSet = unmergedSet2;
+          }
+        }
+      }
+
+      #pragma omp single
+      {
+        conquerStep += 1;
+        cS2pow = std::pow(2, conquerStep - 1);
+        isConquerEven = !(bool)(numConquer % 2);
+        numConquer = numConquer / 2;
+      }
+    }
+
+    // Merge unmerged set with set 0, sort ids and create map
+    #pragma omp single
+    {
+      if(unmergedSet != -1) {
+        msSets[0]->insert(
+          msSets[unmergedSet]->begin(), msSets[unmergedSet]->end());
+        vertSets[0]->insert(
+          vertSets[unmergedSet]->begin(), vertSets[unmergedSet]->end());
+      }
+
+      numSparseIDs = msSets[0]->size();
+      sparseIdVect.reserve(numSparseIDs);
+      std::copy(msSets[0]->begin(), msSets[0]->end(),
+        std::back_inserter(sparseIdVect));
+      std::copy(vertSets[0]->begin(), vertSets[0]->end(),
+        std::back_inserter(sep2VertSet));
+      TTK_PSORT(this->threadNumber_, sparseIdVect.begin(), sparseIdVect.end());
+
+      // "sparse id" -> "dense id"
+      for(size_t i = 0; i < numSparseIDs; ++i) {
+        msLabelMap[sparseIdVect[i]] = i;
+      }
+    }
+
+    delete(localMSSet);
+
+    /************ END CONQUER SETS ************/
+
+    #pragma omp single nowait
+    this->printMsg("Computing 2-separatrices",
+                 0.4, // progress form 0-1
+                 0, // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+    edgeStartIndex[tid + 1] = numThreadEdges;
+
+    #pragma omp barrier
+
+    #pragma omp single
+    {
+      edgeStartIndex[0] = 0;
+
+      // Count triangle number and create iterator start indices
+      for(int t = 1; t < threadNumber_ + 1; ++t) {
+        edgeStartIndex[t] += edgeStartIndex[t-1];
+      }
+    }
+
+    const size_t numEdges = edgeStartIndex[threadNumber_];
+    numThreadIndexEdges = edgeStartIndex[tid];
+
+    #pragma omp single nowait
+    outputSeparatrices2_points_->resize(6 * numEdges);
+
+    #pragma omp single nowait
+    outputSeparatrices2_cells_connectivity_->resize(2 * numEdges);
+
+    #pragma omp single nowait
+    outputSeparatrices2_cells_mscIds_->resize(numEdges);
+
+    #pragma omp single
+    {
+      *outputSeparatrices2_numberOfPoints_ = 2 * numEdges;
+      *outputSeparatrices2_numberOfCells_ = numEdges;
+    }
+  
+    auto &points = *outputSeparatrices2_points_;
+    auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
+    auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
+
+    float* p = points.data();
+    SimplexId* c = cellsConn.data();
+    SimplexId* m = cellsMSCIds.data();
+
+    p += (numThreadIndexEdges * 6);
+    c += (numThreadIndexEdges * 2);
+    m += numThreadIndexEdges;
+
+    numThreadIndexEdges = 2 * numThreadIndexEdges;
+
+    #pragma omp single nowait
+    this->printMsg("Computing 2-separatrices",
+                 0.5, // progress form 0-1
+                 0, // elapsed time so far
+                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
+
+    
+    for (const auto& vCase : validCases)
+    {
+      const SimplexId& tri = vCase.first;
+      const unsigned char& lookupIndex = vCase.second;
+
+      const int * edgeVerts = triangleLookupEdgeVerts[lookupIndex];
+
+      SimplexId vertices[3];
+      triangulation.getCellVertex(tri, 0, vertices[0]);
+      triangulation.getCellVertex(tri, 1, vertices[1]);
+      triangulation.getCellVertex(tri, 2, vertices[2]);
+
+      float vertPos[3][3];
+      triangulation.getVertexPoint(
+        vertices[0], vertPos[0][0], vertPos[0][1], vertPos[0][2]);
+      triangulation.getVertexPoint(
+        vertices[1], vertPos[1][0], vertPos[1][1], vertPos[1][2]);
+      triangulation.getVertexPoint(
+        vertices[2], vertPos[2][0], vertPos[2][1], vertPos[2][2]);
+
+      const SimplexId msm[3] = {
+        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
+        morseSmaleManifold[vertices[2]]};
+
+      if(triangleLookupIs2Label[lookupIndex]) {
+        float eC[2][3];
+        getCenter(vertPos[edgeVerts[0]], vertPos[edgeVerts[1]], eC[0]);
+        getCenter(vertPos[edgeVerts[2]], vertPos[edgeVerts[3]], eC[1]);
+        
+        const long long sparseID = msLabelMap[getSparseId(
+          msm[edgeVerts[0]], msm[edgeVerts[1]], numMSCRegions)];
+
+        p[0] = eC[0][0]; p[1] = eC[0][1]; p[2] = eC[0][2]; 
+        p[3] = eC[1][0]; p[4] = eC[1][1]; p[5] = eC[1][2];
+        p += 6;
+
+        c[0] = numThreadIndexEdges; c[1] = numThreadIndexEdges + 1;
+        c += 2;
+        numThreadIndexEdges += 2;
+
+        m[0] = sparseID;
+        m += 1;
+
+        if(computeSaddles) {
+          if(triangulation.isVertexOnBoundary(vertices[0]))
+            sep2VertSet.push_back(vertices[0]);
+          if(triangulation.isVertexOnBoundary(vertices[1]))
+            sep2VertSet.push_back(vertices[1]);
+          if(triangulation.isVertexOnBoundary(vertices[2]))
+            sep2VertSet.push_back(vertices[2]);
+        }
+      } else {
+        float eC[4][3];
+        getCenter(vertPos[0], vertPos[1], eC[0]);
+        getCenter(vertPos[0], vertPos[2], eC[1]);
+        getCenter(vertPos[1], vertPos[2], eC[2]);
+        getCenter(vertPos[0], vertPos[1], vertPos[2], eC[3]);
+
+        const long long sparseID[3] = {
+          msLabelMap[getSparseId(msm[0], msm[1], numMSCRegions)],
+          msLabelMap[getSparseId(msm[0], msm[2], numMSCRegions)],
+          msLabelMap[getSparseId(msm[1], msm[2], numMSCRegions)]};
+
+        p[0] = eC[0][0]; p[1] = eC[0][1]; p[2] = eC[0][2]; 
+        p[3] = eC[3][0]; p[4] = eC[3][1]; p[5] = eC[3][2];
+        p[6] = eC[1][0]; p[7] = eC[1][1]; p[8] = eC[1][2]; 
+        p[9] = eC[3][0]; p[10] = eC[3][1]; p[11] = eC[3][2];
+        p[12] = eC[2][0]; p[13] = eC[2][1]; p[14] = eC[2][2]; 
+        p[15] = eC[3][0]; p[16] = eC[3][1]; p[17] = eC[3][2];
+        p += 18;
+
+        c[0] = numThreadIndexEdges + 0; c[1] = numThreadIndexEdges + 1;
+        c[2] = numThreadIndexEdges + 2; c[3] = numThreadIndexEdges + 3;
+        c[4] = numThreadIndexEdges + 4; c[5] = numThreadIndexEdges + 5;
+        c += 6;
+        numThreadIndexEdges += 6;
+
+        m[0] = sparseID[0];
+        m[1] = sparseID[1];
+        m[2] = sparseID[2];
+        m += 3;
+      }
+    }
+  }
+}
+
+  this->printMsg("Computed 1-separatrix pieces", 1, localTimer.getElapsedTime(),
+                 this->threadNumber_);
+
+  return 1;
 }
 
 template <typename triangulationType>
@@ -2088,6 +2779,8 @@ if(threadNumber_ == 1) {
   return 1;
 }
 
+
+
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::findSaddlesFromCadidates(
   std::vector<std::pair<SimplexId, char>> &criticalPoints,
@@ -2202,9 +2895,9 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices2_2D(
   return 1;
 }
 
-int ttk::MorseSmaleSegmentationPL::getSaddles(
-  const SimplexId * const orderArr,
+int ttk::MorseSmaleSegmentationPL::getCriticalPoints(
   std::vector<std::pair<SimplexId, char>> &criticalPoints,
+  const SimplexId * const orderArr,
   const AbstractTriangulation &triangulation) const {
 
   ttk::Timer localTimer;
@@ -2288,11 +2981,11 @@ if(threadNumber_ == 1) {
                                  (msm[2] == msm[3]) ? 0x02 : 0x03; // 2 : 3
 
     const unsigned char lookupIndex = index1 | index2 | index3;
-    if(tetraederLookupIsMultiLabel[lookupIndex]) {
+    if(tetLookupIsMultiLabel[lookupIndex]) {
       validCases.push_back(std::make_pair(tet, lookupIndex));
-      numTriangles += tetraederNumTrianglesWalls[lookupIndex];
+      numTriangles += tetLookupNumWallTriangles[lookupIndex];
 
-      const int *tetEdgeIndices = tetraederLookup[lookupIndex];
+      const int *tetEdgeIndices = tetLookupWall[lookupIndex];
       if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
         long long sparseMSIds[6] = {
           getSparseId(msm[0], msm[1], numMSCRegions),
@@ -2309,7 +3002,7 @@ if(threadNumber_ == 1) {
       } else {
         const int * const unqLabels = tetraederUniqueLabels[lookupIndex];
 
-        if(tetraederLookupIs2Label[lookupIndex]) {            
+        if(tetLookupIs2Label[lookupIndex]) {          
           msLabelSet.insert(getSparseId(
             msm[0], msm[unqLabels[0]], numMSCRegions));
 
@@ -2357,8 +3050,8 @@ if(threadNumber_ == 1) {
     const SimplexId& tet = vCase.first;
     const unsigned char& lookupIndex = vCase.second;
 
-    const int *tetEdgeIndices = tetraederLookup[lookupIndex];
-    const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
+    const int *tetEdgeIndices = tetLookupWall[lookupIndex];
+    const int *tetVertLabel = tetLookupWallLabel[lookupIndex];
 
     SimplexId vertices[4];
     triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -2475,7 +3168,7 @@ if(threadNumber_ == 1) {
       m[10] = sparseMSIds[5]; m[11] = sparseMSIds[5];
       m += 12;
     } else { // 2 or 3 labels on tetraeder
-      const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
+      const size_t numTris = tetLookupNumWallTriangles[lookupIndex];
       long long sparseIds[numTris];
       for(size_t t = 0; t < numTris; ++t) {
         sparseIds[t] = msLabelMap[getSparseId(msm[tetVertLabel[t * 2]],
@@ -2547,11 +3240,11 @@ if(threadNumber_ == 1) {
 
       const unsigned char lookupIndex = index1 | index2 | index3;
 
-      if(tetraederLookupIsMultiLabel[lookupIndex]) {
+      if(tetLookupIsMultiLabel[lookupIndex]) {
         validCases.push_back(std::make_pair(tet, lookupIndex));
-        numThreadTriangles += tetraederNumTrianglesWalls[lookupIndex];
+        numThreadTriangles += tetLookupNumWallTriangles[lookupIndex];
 
-        const int *tetEdgeIndices = tetraederLookup[lookupIndex];
+        const int *tetEdgeIndices = tetLookupWall[lookupIndex];
         if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
           long long sparseMSIds[6] = {
             getSparseId(msm[0], msm[1], numMSCRegions),
@@ -2568,7 +3261,7 @@ if(threadNumber_ == 1) {
         } else {
           const int * const unqLabels = tetraederUniqueLabels[lookupIndex];
 
-          if(tetraederLookupIs2Label[lookupIndex]) {            
+          if(tetLookupIs2Label[lookupIndex]) {            
             localMSSet->insert(getSparseId(
               msm[0], msm[unqLabels[0]], numMSCRegions));
 
@@ -2693,8 +3386,8 @@ if(threadNumber_ == 1) {
       const SimplexId& tet = vCase.first;
       const unsigned char& lookupIndex = vCase.second;
       
-      const int *tetEdgeIndices = tetraederLookup[lookupIndex];
-      const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
+      const int *tetEdgeIndices = tetLookupWall[lookupIndex];
+      const int *tetVertLabel = tetLookupWallLabel[lookupIndex];
 
       SimplexId vertices[4];
       triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -2812,7 +3505,7 @@ if(threadNumber_ == 1) {
         m += 12;
         
       } else { // 2 or 3 labels on tetraeder
-        const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
+        const size_t numTris = tetLookupNumWallTriangles[lookupIndex];
         long long sparseIds[numTris];
         for(size_t t = 0; t < numTris; ++t) {
           sparseIds[t] = msLabelMap[getSparseId(msm[tetVertLabel[t * 2]],
@@ -2927,11 +3620,11 @@ if(threadNumber_ == 1) {
     const unsigned char lookupIndexA = index1A | index2A | index3A;
     const unsigned char lookupIndexD = index1D | index2D | index3D;
 
-    if(tetraederLookupIsMultiLabel[lookupIndexA]) {
+    if(tetLookupIsMultiLabel[lookupIndexA]) {
       validCasesA.push_back(std::make_pair(tet, lookupIndexA));
-      numTriangles += tetraederNumTrianglesWalls[lookupIndexA];
+      numTriangles += tetLookupNumWallTriangles[lookupIndexA];
 
-      const int *tetEdgeIndices = tetraederLookup[lookupIndexA];
+      const int *tetEdgeIndices = tetLookupWall[lookupIndexA];
       if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
         long long sparseMSIds[6] = {
           getSparseId(asc[0], asc[1], numAscRegions),
@@ -2948,7 +3641,7 @@ if(threadNumber_ == 1) {
       } else {
         const int * const unqLabels = tetraederUniqueLabels[lookupIndexA];
 
-        if(tetraederLookupIs2Label[lookupIndexA]) {            
+        if(tetLookupIs2Label[lookupIndexA]) {            
           msLabelSet.insert(getSparseId(
             asc[0], asc[unqLabels[0]], numAscRegions));
 
@@ -2964,11 +3657,11 @@ if(threadNumber_ == 1) {
       }
     }
 
-    if(tetraederLookupIsMultiLabel[lookupIndexD]) {
+    if(tetLookupIsMultiLabel[lookupIndexD]) {
       validCasesD.push_back(std::make_pair(tet, lookupIndexD));
-      numTriangles += tetraederNumTrianglesWalls[lookupIndexD];
+      numTriangles += tetLookupNumWallTriangles[lookupIndexD];
 
-      const int *tetEdgeIndices = tetraederLookup[lookupIndexD];
+      const int *tetEdgeIndices = tetLookupWall[lookupIndexD];
       if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
         long long sparseMSIds[6] = {
           getSparseId(dsc[0], dsc[1], numDscRegions) + ascSparseIDOffset,
@@ -2985,7 +3678,7 @@ if(threadNumber_ == 1) {
       } else {
         const int * const unqLabels = tetraederUniqueLabels[lookupIndexD];
 
-        if(tetraederLookupIs2Label[lookupIndexD]) {            
+        if(tetLookupIs2Label[lookupIndexD]) {            
           msLabelSet.insert(getSparseId(
             dsc[0], dsc[unqLabels[0]], numDscRegions) + ascSparseIDOffset);
 
@@ -3036,8 +3729,8 @@ if(threadNumber_ == 1) {
     const SimplexId& tet = vCase.first;
     const unsigned char& lookupIndex = vCase.second;
 
-    const int *tetEdgeIndices = tetraederLookup[lookupIndex];
-    const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
+    const int *tetEdgeIndices = tetLookupWall[lookupIndex];
+    const int *tetVertLabel = tetLookupWallLabel[lookupIndex];
 
     SimplexId vertices[4];
     triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -3154,7 +3847,7 @@ if(threadNumber_ == 1) {
       m[10] = sparseMSIds[5]; m[11] = sparseMSIds[5];
       m += 12;
     } else { // 2 or 3 labels on tetraeder
-      const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
+      const size_t numTris = tetLookupNumWallTriangles[lookupIndex];
       long long sparseIds[numTris];
       for(size_t t = 0; t < numTris; ++t) {
         sparseIds[t] = msLabelMap[getSparseId(msm[tetVertLabel[t * 2]],
@@ -3189,8 +3882,8 @@ if(threadNumber_ == 1) {
     const SimplexId& tet = vCase.first;
     const unsigned char& lookupIndex = vCase.second;
 
-    const int *tetEdgeIndices = tetraederLookup[lookupIndex];
-    const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
+    const int *tetEdgeIndices = tetLookupWall[lookupIndex];
+    const int *tetVertLabel = tetLookupWallLabel[lookupIndex];
 
     SimplexId vertices[4];
     triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -3313,7 +4006,7 @@ if(threadNumber_ == 1) {
       m[10] = sparseMSIds[5]; m[11] = sparseMSIds[5];
       m += 12;
     } else { // 2 or 3 labels on tetraeder
-      const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
+      const size_t numTris = tetLookupNumWallTriangles[lookupIndex];
       long long sparseIds[numTris];
       for(size_t t = 0; t < numTris; ++t) {
         sparseIds[t] = msLabelMap[getSparseId(msm[tetVertLabel[t * 2]],
@@ -3398,11 +4091,11 @@ if(threadNumber_ == 1) {
       const unsigned char lookupIndexA = index1A | index2A | index3A;
       const unsigned char lookupIndexD = index1D | index2D | index3D;
 
-      if(tetraederLookupIsMultiLabel[lookupIndexA]) {
+      if(tetLookupIsMultiLabel[lookupIndexA]) {
         validCasesA.push_back(std::make_pair(tet, lookupIndexA));
-        numThreadTriangles += tetraederFineNumTriangles[lookupIndexA];
+        numThreadTriangles += tetLookupNumFineTriangles[lookupIndexA];
 
-        const int *tetEdgeIndices = tetraederLookup[lookupIndexA];
+        const int *tetEdgeIndices = tetLookupWall[lookupIndexA];
         if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
           long long sparseMSIds[6] = {
             getSparseId(asc[0], asc[1], numAscRegions),
@@ -3419,7 +4112,7 @@ if(threadNumber_ == 1) {
         } else {
           const int * const unqLabels = tetraederUniqueLabels[lookupIndexA];
 
-          if(tetraederLookupIs2Label[lookupIndexA]) {            
+          if(tetLookupIs2Label[lookupIndexA]) {            
             localMSSet->insert(getSparseId(
               asc[0], asc[unqLabels[0]], numAscRegions));
 
@@ -3435,11 +4128,11 @@ if(threadNumber_ == 1) {
         }
       }
 
-      if(tetraederLookupIsMultiLabel[lookupIndexD]) {
+      if(tetLookupIsMultiLabel[lookupIndexD]) {
         validCasesD.push_back(std::make_pair(tet, lookupIndexD));
-        numThreadTriangles += tetraederFineNumTriangles[lookupIndexD];
+        numThreadTriangles += tetLookupNumFineTriangles[lookupIndexD];
 
-        const int *tetEdgeIndices = tetraederLookup[lookupIndexD];
+        const int *tetEdgeIndices = tetLookupWall[lookupIndexD];
         if(tetEdgeIndices[0] == 10) { // 4 labels on tetraeder
           long long sparseMSIds[6] = {
             getSparseId(dsc[0], dsc[1], numDscRegions)
@@ -3462,7 +4155,7 @@ if(threadNumber_ == 1) {
         } else {
           const int * const unqLabels = tetraederUniqueLabels[lookupIndexD];
 
-          if(tetraederLookupIs2Label[lookupIndexD]) {            
+          if(tetLookupIs2Label[lookupIndexD]) {            
             localMSSet->insert(getSparseId(
               dsc[0], dsc[unqLabels[0]], numDscRegions) + ascSparseIDOffset);
 
@@ -3590,8 +4283,8 @@ if(threadNumber_ == 1) {
       const SimplexId& tet = vCase.first;
       const unsigned char& lookupIndex = vCase.second;
       
-      const int *tetEdgeIndices = tetraederLookup[lookupIndex];
-      const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
+      const int *tetEdgeIndices = tetLookupWall[lookupIndex];
+      const int *tetVertLabel = tetLookupWallLabel[lookupIndex];
 
       SimplexId vertices[4];
       triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -3708,7 +4401,7 @@ if(threadNumber_ == 1) {
         m[10] = sparseMSIds[5]; m[11] = sparseMSIds[5];
         m += 12;
       } else { // 2 or 3 labels on tetraeder
-        const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
+        const size_t numTris = tetLookupNumWallTriangles[lookupIndex];
         long long sparseIds[numTris];
         for(size_t t = 0; t < numTris; ++t) {
           sparseIds[t] = msLabelMap[getSparseId(asc[tetVertLabel[t * 2]],
@@ -3743,8 +4436,8 @@ if(threadNumber_ == 1) {
       const SimplexId& tet = vCase.first;
       const unsigned char& lookupIndex = vCase.second;
       
-      const int *tetEdgeIndices = tetraederLookup[lookupIndex];
-      const int *tetVertLabel = tetraederLabelLookup[lookupIndex];
+      const int *tetEdgeIndices = tetLookupWall[lookupIndex];
+      const int *tetVertLabel = tetLookupWallLabel[lookupIndex];
 
       SimplexId vertices[4];
       triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -3868,7 +4561,7 @@ if(threadNumber_ == 1) {
         m += 12;
         
       } else { // 2 or 3 labels on tetraeder
-        const size_t numTris = tetraederNumTrianglesWalls[lookupIndex];
+        const size_t numTris = tetLookupNumWallTriangles[lookupIndex];
         long long sparseIds[numTris];
         for(size_t t = 0; t < numTris; ++t) {
           sparseIds[t] = msLabelMap[getSparseId(dsc[tetVertLabel[t * 2]],
@@ -3906,8 +4599,8 @@ if(threadNumber_ == 1) {
 }
 
 int ttk::MorseSmaleSegmentationPL::computeMSLabelMap(
-  const std::vector<long long> &msLabels,
-  std::map<long long, SimplexId> &msLabelMap) const {
+  std::map<long long, SimplexId> &msLabelMap,
+  const std::vector<long long> &msLabels) const {
 
   std::vector<long long> msLabelCopy(msLabels);
 
@@ -3984,9 +4677,9 @@ if(threadNumber_ == 1) {
 
     const unsigned char lookupIndex = index1 | index2 | index3;
 
-    if(tetraederLookupIsMultiLabel[lookupIndex]) {
+    if(tetLookupIsMultiLabel[lookupIndex]) {
       validCases.push_back(std::make_pair(tet, lookupIndex));
-      numTriangles += tetraederNumTrianglesFine[lookupIndex];
+      numTriangles += tetLookupNumFineTriangles[lookupIndex];
     }
   }
 
@@ -4030,8 +4723,8 @@ if(threadNumber_ == 1) {
     triangulation.getVertexPoint(
       vertices[3], vPos[3][0], vPos[3][1], vPos[3][2]);
 
-    if(tetraederLookupIs2Label[lookupIndex]) { // 2 labels (eg. AAAB / AABB)
-      const int *vIds = tetraederLookupSplitBasisns2Label[lookupIndex];
+    if(tetLookupIs2Label[lookupIndex]) { // 2 labels (eg. AAAB / AABB)
+      const int *vIds = tetLookupSplitBasins2Label[lookupIndex];
 
       float vert00[3], vert01[3], vert02[3],
             vert10[3], vert11[3], vert12[3];
@@ -4084,8 +4777,8 @@ if(threadNumber_ == 1) {
         m[0] = msm[vIds[0]]; m[1] = msm[vIds[1]];
         m += 2;
       }
-    } else if(tetraederLookupIs3Label[lookupIndex]) {
-      const int *vIds = tetraederLookupSplitBasisns3Label[lookupIndex];
+    } else if(tetLookupIs3Label[lookupIndex]) {
+      const int *vIds = tetLookupSplitBasisns3Label[lookupIndex];
 
       float triCenter[4][3];
       getCenter(vPos[0], vPos[1], vPos[2], triCenter[0]);
@@ -4407,9 +5100,9 @@ if(threadNumber_ == 1) {
 
       const unsigned char lookupIndex = index1 | index2 | index3;
 
-      if(tetraederLookupIsMultiLabel[lookupIndex]) {
+      if(tetLookupIsMultiLabel[lookupIndex]) {
         validCases.push_back(std::make_pair(tet, lookupIndex));
-        numThreadTriangles += tetraederFineNumTriangles[lookupIndex];
+        numThreadTriangles += tetLookupNumFineTriangles[lookupIndex];
       }
     }
 
@@ -4484,8 +5177,8 @@ if(threadNumber_ == 1) {
       triangulation.getVertexPoint(
         vertices[3], vPos[3][0], vPos[3][1], vPos[3][2]);
 
-      if(tetraederLookupIs2Label[lookupIndex]) { // 2 labels (eg. AAAB / AABB)
-        const int *vIds = tetraederLookupSplitBasisns2Label[lookupIndex];
+      if(tetLookupIs2Label[lookupIndex]) { // 2 labels (eg. AAAB / AABB)
+        const int *vIds = tetLookupSplitBasins2Label[lookupIndex];
 
         float vert00[3], vert01[3], vert02[3],
               vert10[3], vert11[3], vert12[3];
@@ -4538,8 +5231,8 @@ if(threadNumber_ == 1) {
           m[0] = msm[vIds[0]]; m[1] = msm[vIds[1]];
           m += 2;
         }
-      } else if(tetraederLookupIs3Label[lookupIndex]) {
-        const int *vIds = tetraederLookupSplitBasisns3Label[lookupIndex];
+      } else if(tetLookupIs3Label[lookupIndex]) {
+        const int *vIds = tetLookupSplitBasisns3Label[lookupIndex];
 
         float triCenter[4][3];
         getCenter(vPos[0], vPos[1], vPos[2], triCenter[0]);
@@ -4893,9 +5586,9 @@ if(threadNumber_ == 1) {
 
     const unsigned char lookupIndex = index1 | index2 | index3;
 
-    if(tetraederLookupFast[lookupIndex]) {
+    if(tetLookupFast[lookupIndex]) {
       validCases.push_back(std::make_pair(tet, lookupIndex));
-      numTriangles += tetraederNumTrianglesWalls[lookupIndex];
+      numTriangles += tetLookupNumWallTriangles[lookupIndex];
     }
   }
 
@@ -4929,11 +5622,11 @@ if(threadNumber_ == 1) {
       morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
 
     const int id0 =
-      tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][0];
+      tetLookupFastTri[tetLookupFastCase[lookupIndex]][0];
     const int id1 =
-      tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][1];
+      tetLookupFastTri[tetLookupFastCase[lookupIndex]][1];
     const int id2 =
-      tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][2];
+      tetLookupFastTri[tetLookupFastCase[lookupIndex]][2];
     
     float vertPos[4][3];
     triangulation.getVertexPoint(
@@ -4990,7 +5683,7 @@ if(threadNumber_ == 1) {
 
       const unsigned char lookupIndex = index1 | index2 | index3;
 
-      if(tetraederLookupFast[lookupIndex]) {
+      if(tetLookupFast[lookupIndex]) {
         validCases.push_back(std::make_pair(tet, lookupIndex));
         numThreadTriangles += 1;
       }  
@@ -5058,11 +5751,11 @@ if(threadNumber_ == 1) {
         morseSmaleManifold[vertices[2]], morseSmaleManifold[vertices[3]]};
 
       const int id0 =
-        tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][0];
+        tetLookupFastTri[tetLookupFastCase[lookupIndex]][0];
       const int id1 =
-        tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][1];
+        tetLookupFastTri[tetLookupFastCase[lookupIndex]][1];
       const int id2 =
-        tetraederLookupFastTri[tetraederLookupFastCase[lookupIndex]][2];
+        tetLookupFastTri[tetLookupFastCase[lookupIndex]][2];
       
       float vertPos[4][3];
       triangulation.getVertexPoint(
@@ -5098,7 +5791,7 @@ if(threadNumber_ == 1) {
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
-  std::vector<mscq::Separatrix> &sadExtrConns,
+  std::vector<mscq::IntegralLine> &sadExtrConns,
   const SimplexId *const ascNeighbor,
   const SimplexId *const dscNeighbor,
   const SimplexId *const ascManifold,
@@ -5164,7 +5857,7 @@ if(threadNumber_ == 1) {
 
   std::map<long long, size_t> s1ToMin;
   for(const auto& c : reachableExtrema[0]) { // 1-saddle -> minimum
-    mscq::Separatrix sadExtrConn(c.first);
+    mscq::IntegralLine sadExtrConn(c.first);
     sadExtrConn.type_ = 0;
 
     SimplexId currentVert = c.second;
@@ -5181,7 +5874,7 @@ if(threadNumber_ == 1) {
 
   std::map<long long, size_t> s2ToMax;
   for(const auto& c : reachableExtrema[1]) { // 2-saddle maximum
-    mscq::Separatrix sadExtrConn(c.first);
+    mscq::IntegralLine sadExtrConn(c.first);
     sadExtrConn.type_ = 1;
 
     SimplexId currentVert = c.second;
@@ -5200,7 +5893,7 @@ if(threadNumber_ == 1) {
   #pragma omp parallel num_threads(threadNumber_)
   {
     const int tid = omp_get_thread_num();
-    std::vector<mscq::Separatrix> sadExtrConnsLocal;
+    std::vector<mscq::IntegralLine> sadExtrConnsLocal;
 
     std::vector<std::pair<SimplexId, SimplexId>> reachableExtrema[2];
 
@@ -5254,7 +5947,7 @@ if(threadNumber_ == 1) {
 
     std::map<long long, size_t> s1ToMin;
     for(const auto& c : reachableExtrema[0]) { // 1-saddle -> minimum
-      mscq::Separatrix sadExtrConn(c.first);
+      mscq::IntegralLine sadExtrConn(c.first);
       sadExtrConn.type_ = 0;
 
       SimplexId currentVert = c.second;
@@ -5271,7 +5964,7 @@ if(threadNumber_ == 1) {
 
     std::map<long long, size_t> s2ToMax;
     for(const auto& c : reachableExtrema[1]) { // 2-saddle maximum
-      mscq::Separatrix sadExtrConn(c.first);
+      mscq::IntegralLine sadExtrConn(c.first);
       sadExtrConn.type_ = 1;
 
       SimplexId currentVert = c.second;
@@ -5315,7 +6008,7 @@ if(threadNumber_ == 1) {
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D_fast(
-  std::vector<mscq::Separatrix> &sadExtrConns,
+  std::vector<mscq::IntegralLine> &sadExtrConns,
   const SimplexId *const ascendingManifold,
   const SimplexId *const descendingManifold,
   const std::map<SimplexId, SimplexId> &ascCritMap,
@@ -5353,7 +6046,7 @@ if(threadNumber_ == 1) {
         }
 
         if(neigborSet.find(neighbor) == neigborSet.end()) {
-          mscq::Separatrix sadExtrConn(crit.first);
+          mscq::IntegralLine sadExtrConn(crit.first);
           if(isSaddle1) {
             sadExtrConn.type_ = 0;
           } else {
@@ -5373,7 +6066,7 @@ if(threadNumber_ == 1) {
   #pragma omp parallel num_threads(threadNumber_)
   {
     const int tid = omp_get_thread_num();
-    std::vector<mscq::Separatrix> sadExtrConnsLocal;
+    std::vector<mscq::IntegralLine> sadExtrConnsLocal;
 
     #pragma omp for schedule(static) nowait
     for(size_t c = 0; c < criticalPoints.size(); ++c) {
@@ -5397,7 +6090,7 @@ if(threadNumber_ == 1) {
           }
 
           if(neigborSet.find(neighbor) == neigborSet.end()) {
-            mscq::Separatrix sadExtrConn(crit.first);
+            mscq::IntegralLine sadExtrConn(crit.first);
             if(isSaddle1) {
               sadExtrConn.type_ = 0;
             } else {
@@ -5513,7 +6206,7 @@ if(threadNumber_ == 1) {
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::setSeparatrices1_3D(
-  const std::vector<mscq::Separatrix> &separatrices,
+  const std::vector<mscq::IntegralLine> &separatrices,
   const triangulationType &triangulation) const {
 
   ttk::Timer localTimer;
@@ -5706,103 +6399,4 @@ if(threadNumber_ == 1) {
     1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
-}
-
-int ttk::MorseSmaleSegmentationPL::setSeparatrices2_3D(
-  const std::vector<std::array<float, 9>> &trianglePos,
-  const std::vector<long long> &msLabels,
-  std::map<long long, SimplexId> &msLabelMap) const {
-
-  ttk::Timer localTimer;
-
-  this->printMsg("Writing 2-separatrices",
-                  0,
-                  localTimer.getElapsedTime(),
-                  this->threadNumber_,
-                  ttk::debug::LineMode::REPLACE);
-
-  const size_t numTriangles = trianglePos.size();
-  size_t npoints = numTriangles * 3;
-  size_t numCells = numTriangles;
-
-if(threadNumber_ == 1) {
-  outputSeparatrices2_points_->resize(3 * npoints);
-    outputSeparatrices2_cells_connectivity_->resize(3 * numCells);
-    outputSeparatrices2_cells_mscIds_->resize(numTriangles);
-  
-    auto &points = *outputSeparatrices2_points_;
-    auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
-    auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
-  
-    for(size_t tri = 0; tri < numTriangles; ++tri) {
-      const size_t ninetri = 9 * tri;
-      const size_t threetri = 3 * tri;
-      auto &triPos = trianglePos[tri];
-      points[ninetri    ] = triPos[0];
-      points[ninetri + 1] = triPos[1];
-      points[ninetri + 2] = triPos[2];
-  
-      points[ninetri + 3] = triPos[3];
-      points[ninetri + 4] = triPos[4];
-      points[ninetri + 5] = triPos[5];
-  
-      points[ninetri + 6] = triPos[6];
-      points[ninetri + 7] = triPos[7];
-      points[ninetri + 8] = triPos[8];
-  
-      cellsConn[threetri    ] = threetri;
-      cellsConn[threetri + 1] = threetri + 1;
-      cellsConn[threetri + 2] = threetri + 2;
-  
-      cellsMSCIds[tri] = msLabelMap[msLabels[tri]];
-    }
-} else {
-  #pragma omp parallel num_threads(threadNumber_)
-  {
-    // resize arrays
-  #pragma omp single nowait
-    outputSeparatrices2_points_->resize(3 * npoints);
-  #pragma omp single nowait
-    outputSeparatrices2_cells_connectivity_->resize(3 * numCells);
-  #pragma omp single
-    outputSeparatrices2_cells_mscIds_->resize(numTriangles);
-
-    auto &points = *outputSeparatrices2_points_;
-    auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
-    auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
-
-    #pragma omp for schedule(static)
-    for(size_t tri = 0; tri < numTriangles; ++tri) {
-      const size_t ninetri = 9 * tri;
-      const size_t threetri = 3 * tri;
-      auto &triPos = trianglePos[tri];
-      points[ninetri    ] = triPos[0];
-      points[ninetri + 1] = triPos[1];
-      points[ninetri + 2] = triPos[2];
-
-      points[ninetri + 3] = triPos[3];
-      points[ninetri + 4] = triPos[4];
-      points[ninetri + 5] = triPos[5];
-
-      points[ninetri + 6] = triPos[6];
-      points[ninetri + 7] = triPos[7];
-      points[ninetri + 8] = triPos[8];
-
-      cellsConn[threetri    ] = threetri;
-      cellsConn[threetri + 1] = threetri + 1;
-      cellsConn[threetri + 2] = threetri + 2;
-
-      cellsMSCIds[tri] = msLabelMap[msLabels[tri]];
-    }
-  }
-}
-
-  // update pointers
-  *outputSeparatrices2_numberOfPoints_ = npoints;
-  *outputSeparatrices2_numberOfCells_ = numCells;
-
-  this->printMsg("Wrote " + std::to_string(numTriangles) + " 2-separatrices",
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
-
-  return 1;
 }
