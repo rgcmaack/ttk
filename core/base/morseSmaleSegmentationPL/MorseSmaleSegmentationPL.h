@@ -517,6 +517,7 @@ const int triangleLookupEdgeCount[7] = {
   3  // (3) 1,2 - 6
 };
 
+
 namespace ttk {
 
   namespace mscq {
@@ -683,65 +684,6 @@ namespace ttk {
     }
 
     /**
-     * Get a consistent Sparse Id of three indicies. Used to retrieve a
-     * unique Id for a combination of three IDs in the same range [0, numIds-1]
-     * that is as small as possible and consistent by considering the smallest
-     * ID first, and the largest second.
-     * 
-     * @param simID0 First Id
-     * @param simID1 Second Id
-     * @param numIds Number of available Ids
-     * @return consistent sparse ID
-     */
-    inline long long getSparseId(
-      const long long simID0, const long long simID1,
-      const SimplexId &numMSCRegions) const {
-      if(simID0 < simID1) {
-        return simID0 * numMSCRegions + simID1;
-      }
-      return simID1 * numMSCRegions + simID0;
-    }
-
-    /**
-     * Get a consistent Sparse Id of three indicies. Used to retrieve a
-     * unique Id for a combination of three IDs in the same range [0, numIds-1]
-     * that is as small as possible and consistent by considering the smallest
-     * ID first, the second smallest second and the largest third.
-     * 
-     * @param simID0 First Id
-     * @param simID1 Second Id
-     * @param simID2 Third Id
-     * @param numIds Number of available Ids
-     * @return consistent sparse ID
-     */
-    inline long long getSparseId(const long long simID0,
-                                 const long long simID1,
-                                 const long long simID2,
-                                 const SimplexId &numIds) const {
-      if(simID0 < simID1) {
-        if(simID1 < simID2) {
-          return simID0 * numIds * numIds + simID1 * numIds + simID2;
-        } else {
-          if(simID0 < simID2) {
-            return simID0 * numIds * numIds + simID2 * numIds + simID1;
-          } else {
-            return simID2 * numIds * numIds + simID0 * numIds + simID1;
-          }
-        }
-      } else {
-        if(simID0 < simID2) {
-          return simID1 * numIds * numIds + simID0 * numIds + simID2;
-        } else {
-          if(simID1 < simID2) {
-            return simID1 * numIds * numIds + simID2 * numIds + simID0;
-          } else {
-            return simID2 * numIds * numIds + simID1 * numIds + simID0;
-          }
-        }
-      }
-    }
-
-    /**
      * Execute the package.
      * @param[in] sepManifoldType Type of segmentation
      * @param[in] sep1Mode Type of 1-separatrices
@@ -781,7 +723,7 @@ namespace ttk {
      * @return int 0 on success.
      */
     template <typename triangulationType>
-    int computeManifold(
+    int computeSingleSegmentation(
       std::vector<std::pair<SimplexId, char>> *criticalPoints,
       SimplexId *const manifold,
       SimplexId *const neighbor,
@@ -808,7 +750,7 @@ namespace ttk {
      * @return int 0 on success. 
      */
     template <typename triangulationType>
-    int computeManifolds(
+    int computeAscDscSegmentations(
       std::vector<std::pair<SimplexId, char>> *criticalPoints,
       SimplexId *const ascManifold,
       SimplexId *const dscManifold,
@@ -841,19 +783,9 @@ namespace ttk {
       const SimplexId *const descendingManifold,
       const triangulationType &triangulation) const;
 
-    template <typename triangulationType>
-    int computeSeparatrices1Pieces_2D(
-      std::vector<SimplexId> &sep2VertSet,
-      const SimplexId &numMSCRegions,
-      const SimplexId *const morseSmaleManifold,
-      const bool computeSaddles,
-      const triangulationType &triangulation) const;
-
     /**
      * @brief Retrieve 1-separatrices in 2D domains
      * 
-     * @param[out] edgePos Positions of all edge endpoints given as XYZXYZ
-     * @param[out] msLabels Label for each of the edges
      * @param[out] sep2VertSet Set of all vertices belonging to 3-label tris
      * @param[in] numMSCRegions Count of regions given by the segmentation
      * @param[in] morseSmaleManifold segmentation of the domain
@@ -863,8 +795,6 @@ namespace ttk {
      */
     template <typename triangulationType>
     int computeSeparatrices1Pieces_2D(
-      std::vector<std::array<float, 6>> &edgePos,
-      std::vector<long long> &msLabels,
       std::vector<SimplexId> &sep2VertSet,
       const SimplexId &numMSCRegions,
       const SimplexId *const morseSmaleManifold,
@@ -884,20 +814,6 @@ namespace ttk {
       std::vector<std::pair<SimplexId, char>> &criticalPoints,
       const std::vector<SimplexId> &sep2VertSet,
       const triangulationType &triangulation) const;
-
-    /**
-     * @brief Write the 2-separatrix edges to memory
-     * 
-     * @param[in] edgePos Edge positions in XYZXYZ format
-     * @param[in] msLabels Sparse MS Labels
-     * @param[in] msLabelMap Map from sparse MS id to dense MSid
-     * @return int 0 on success
-     */
-    int setSeparatrices2_2D(
-      const std::vector<std::array<float, 6>> &edgePos,
-      const std::vector<long long> &msLabels,
-      std::map<long long, SimplexId> &msLabelMap) const;
-
 
     /**
      * @brief Compute all critical points
@@ -921,7 +837,7 @@ namespace ttk {
      * @return int 0 on success
      */
     template <typename triangulationType>
-    int computeSeparatrices2_3D(
+    int computeSeparatrices2_3D_wall(
       const SimplexId &numMSCRegions,
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
@@ -967,17 +883,6 @@ namespace ttk {
     int computeBasinSeparation_3D_fast(
       const SimplexId *const morseSmaleManifold,
       const triangulationType &triangulation) const;
-
-    /**
-     * @brief Generate a map to map sparse MS Labels to dense MS Labels
-     * 
-     * @param[out] msLabelMap Resulting dens MS Label map
-     * @param[in] msLabels All sparse MS ids
-     * @return int 0 on success
-     */
-    int computeMSLabelMap(
-      std::map<long long, SimplexId> &msLabelMap,
-      const std::vector<long long> &msLabels) const;
 
     /**
      * @brief Computes Extrema saddle connectors as PL integral lines
@@ -1048,28 +953,62 @@ namespace ttk {
                           const triangulationType &triangulation) const;
 
     /**
-     * @brief Get the Point in the middle of two vertices given by id
+     * Get a consistent Sparse Id of three indicies. Used to retrieve a
+     * unique Id for a combination of three IDs in the same range [0, numIds-1]
+     * that is as small as possible and consistent by considering the smallest
+     * ID first, and the largest second.
      * 
-     * @param[in] vertexId0 Vertex Id 0
-     * @param[in] vertexId1 Vertex Id 1
-     * @param[out] incenter Resulting center position
-     * @param[in] triangulation Triangulation
-     * @return int 0 on success
+     * @param simID0 First Id
+     * @param simID1 Second Id
+     * @param numIds Number of available Ids
+     * @return consistent sparse ID
      */
-    template <typename triangulationType>
-    inline int getEdgeIncenter(SimplexId vertexId0,
-                               SimplexId vertexId1,
-                               float incenter[3],
-                               const triangulationType &triangulation) const {
-      float p[6];
-      triangulation.getVertexPoint(vertexId0, p[0], p[1], p[2]);
-      triangulation.getVertexPoint(vertexId1, p[3], p[4], p[5]);
+    inline long long getSparseId(
+      const long long simID0, const long long simID1,
+      const SimplexId &numMSCRegions) const {
+      if(simID0 < simID1) {
+        return simID0 * numMSCRegions + simID1;
+      }
+      return simID1 * numMSCRegions + simID0;
+    }
 
-      incenter[0] = 0.5 * (p[0] + p[3]);
-      incenter[1] = 0.5 * (p[1] + p[4]);
-      incenter[2] = 0.5 * (p[2] + p[5]);
-
-      return 0;
+    /**
+     * Get a consistent Sparse Id of three indicies. Used to retrieve a
+     * unique Id for a combination of three IDs in the same range [0, numIds-1]
+     * that is as small as possible and consistent by considering the smallest
+     * ID first, the second smallest second and the largest third.
+     * 
+     * @param simID0 First Id
+     * @param simID1 Second Id
+     * @param simID2 Third Id
+     * @param numIds Number of available Ids
+     * @return consistent sparse ID
+     */
+    inline long long getSparseId(const long long simID0,
+                                 const long long simID1,
+                                 const long long simID2,
+                                 const SimplexId &numIds) const {
+      if(simID0 < simID1) {
+        if(simID1 < simID2) {
+          return simID0 * numIds * numIds + simID1 * numIds + simID2;
+        } else {
+          if(simID0 < simID2) {
+            return simID0 * numIds * numIds + simID2 * numIds + simID1;
+          } else {
+            return simID2 * numIds * numIds + simID0 * numIds + simID1;
+          }
+        }
+      } else {
+        if(simID0 < simID2) {
+          return simID1 * numIds * numIds + simID0 * numIds + simID2;
+        } else {
+          if(simID1 < simID2) {
+            return simID1 * numIds * numIds + simID2 * numIds + simID0;
+          } else {
+            return simID2 * numIds * numIds + simID1 * numIds + simID0;
+          }
+        }
+      }
     }
 
     /**
@@ -1192,7 +1131,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
     this->printErr("Input scalar field pointer is null.");
     return -1;
   }
-#endif
+#endif // TTK_ENABLE_OPENMP
 
   Timer t;
 
@@ -1248,7 +1187,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
   switch(sepManifoldType) {
     case SEPARATRICES_MANIFOLD::MORSESMALE :
       if(ascendingManifold && descendingManifold && morseSmaleManifold) {
-        computeManifolds(
+        computeAscDscSegmentations(
           critPointPtr, ascendingManifold, descendingManifold,
           ascendingNeighbor, descendingNeighbor, ascCritMap, dscCritMap,
           numberOfMinima, numberOfMaxima, orderArr, triangulation);
@@ -1262,7 +1201,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
       break;
     case SEPARATRICES_MANIFOLD::ASCENDING :
       if(ascendingManifold) {
-        computeManifold<triangulationType>(
+        computeSingleSegmentation<triangulationType>(
           critPointPtr, ascendingManifold, ascendingNeighbor, ascCritMap,
           numberOfMinima, orderArr, triangulation, true);
         
@@ -1273,7 +1212,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
       break;
     case SEPARATRICES_MANIFOLD::DESCENDING :
       if(descendingManifold) {
-        computeManifold<triangulationType>(
+        computeSingleSegmentation<triangulationType>(
           critPointPtr, descendingManifold, descendingNeighbor, dscCritMap,
           numberOfMaxima, orderArr, triangulation, false);
 
@@ -1294,7 +1233,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
     
     if(SepManifoldIsValid) {
       if(sep2Mode == SEPARATRICES2_MODE::WALLS) {
-        computeSeparatrices2_3D<triangulationType>(
+        computeSeparatrices2_3D_wall<triangulationType>(
           numberOfMSCRegions, sepManifold, triangulation);
       } else if(sep2Mode == SEPARATRICES2_MODE::SEPARATEBASINSFINE) {
         computeBasinSeparation_3D_fine<triangulationType>(
@@ -1342,10 +1281,6 @@ int ttk::MorseSmaleSegmentationPL::execute(
     if(computeSaddles) {
       findSaddlesFromCadidates(criticalPoints, sep2VertSet, triangulation);
     }
-
-    //computeMSLabelMap(msLabelMap, msLabels);
-
-    //setSeparatrices2_2D(edgePos, msLabels, msLabelMap);
   }
 
   setCriticalPoints<triangulationType>(criticalPoints, triangulation);
@@ -1361,7 +1296,7 @@ int ttk::MorseSmaleSegmentationPL::execute(
 
 
 template <typename triangulationType>
-int ttk::MorseSmaleSegmentationPL::computeManifold(
+int ttk::MorseSmaleSegmentationPL::computeSingleSegmentation(
   std::vector<std::pair<SimplexId, char>> *criticalPoints,
   SimplexId *const manifold,
   SimplexId *const neighbor,
@@ -1397,7 +1332,10 @@ int ttk::MorseSmaleSegmentationPL::computeManifold(
     const SimplexId nVertices = triangulation.getNumberOfVertices();
     std::map<SimplexId, SimplexId> extremas;
 
-if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
+#ifdef TTK_ENABLE_OPENMP
+if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
     // vertices that may still be compressed
     std::vector<SimplexId>* activeVertices = new std::vector<SimplexId>();
     SimplexId nActiveVertices;
@@ -1483,7 +1421,9 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
     }
 
     delete activeVertices;
-} else { //#else // TTK_ENABLE_OPENMP
+
+#ifdef TTK_ENABLE_OPENMP
+} else {
 
     #pragma omp parallel num_threads(threadNumber_)
     {
@@ -1575,7 +1515,8 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
         manifold[i] = extremas.at(manifold[i]);
       }
     }
-} //#endif // TTK_ENABLE_OPENMP
+}
+#endif // TTK_ENABLE_OPENMP
 
     const int index =
       ascending ? 0 : triangulation.getDimensionality();
@@ -1596,7 +1537,7 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
 }
 
 template <typename triangulationType>
-int ttk::MorseSmaleSegmentationPL::computeManifolds(
+int ttk::MorseSmaleSegmentationPL::computeAscDscSegmentations(
   std::vector<std::pair<SimplexId, char>> *criticalPoints,
   SimplexId *const ascManifold,
   SimplexId *const dscManifold,
@@ -1631,7 +1572,10 @@ int ttk::MorseSmaleSegmentationPL::computeManifolds(
 
   std::map<SimplexId, int> minMap, maxMap;
 
-if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
+#ifdef TTK_ENABLE_OPENMP
+if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   SimplexId nActiveVertices;
   std::vector<SimplexId>* activeVertices = new std::vector<SimplexId>();
   // find maxima and intialize vector of not fully compressed vertices
@@ -1728,7 +1672,8 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
 
   delete activeVertices;
 
-} else { //#else // TTK_ENABLE_OPENMP
+#ifdef TTK_ENABLE_OPENMP
+} else {
 
   #pragma omp parallel num_threads(threadNumber_)
   {
@@ -1851,7 +1796,8 @@ if(threadNumber_ == 1) { //#ifndef TTK_ENABLE_OPENMP
     }
   }
 
-} //#endif // TTK_ENABLE_OPENMP
+}
+#endif // TTK_ENABLE_OPENMP
 
   this->printMsg("Computed Manifolds", 1.0,
                  localTimer.getElapsedTime(), this->threadNumber_);
@@ -1879,8 +1825,10 @@ int ttk::MorseSmaleSegmentationPL::computeFinalSegmentation(
   std::map<SimplexId, size_t> sparseToDenseRegionId{};
   
 
-//#ifndef TTK_ENABLE_OPENMP
+#ifdef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   std::unordered_set<SimplexId> idSet;
   for(size_t i = 0; i < nVerts; ++i) {
     morseSmaleManifold[i] = ascendingManifold[i] * numberOfMinima +
@@ -1901,7 +1849,8 @@ if(threadNumber_ == 1) {
   for(size_t i = 0; i < nVerts; ++i) {
     morseSmaleManifold[i] = sparseToDenseRegionId[morseSmaleManifold[i]];
   }
-//#else // TTK_ENABLE_OPENMP
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
   std::unordered_set<SimplexId>* lIdSet[threadNumber_];
 
@@ -1981,6 +1930,7 @@ if(threadNumber_ == 1) {
     }
   }
 }
+#endif // TTK_ENABLE_OPENMP
 
   numManifolds = numSparseIDs;
 
@@ -2010,7 +1960,10 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices1Pieces_2D(
   std::vector<long long> sparseIdVect;
   std::map<long long, SimplexId> msLabelMap;
 
+#ifdef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   std::vector<std::pair<SimplexId, unsigned char>> validCases;
   std::unordered_set<long long> msLabelSet;
   std::unordered_set<SimplexId> vertexSet;
@@ -2177,6 +2130,8 @@ if(threadNumber_ == 1) {
       m += 3;
     }
   }
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
 
   size_t edgeStartIndex[threadNumber_ + 1];
@@ -2476,310 +2431,13 @@ if(threadNumber_ == 1) {
     }
   }
 }
+#endif // TTK_ENABLE_OPENMP
 
   this->printMsg("Computed 1-separatrix pieces", 1, localTimer.getElapsedTime(),
                  this->threadNumber_);
 
   return 1;
 }
-
-template <typename triangulationType>
-int ttk::MorseSmaleSegmentationPL::computeSeparatrices1Pieces_2D(
-  std::vector<std::array<float, 6>> &edgePos,
-  std::vector<long long> &msLabels,
-  std::vector<SimplexId> &sep2VertSet,
-  const SimplexId &numMSCRegions,
-  const SimplexId *const morseSmaleManifold,
-  const bool computeSaddles,
-  const triangulationType &triangulation) const {
-  // start a local timer for this subprocedure
-  ttk::Timer localTimer;
-
-  this->printMsg("Computing 1-separatrix pieces",
-                 0, // progress form 0-1
-                 0, // elapsed time so far
-                 this->threadNumber_, ttk::debug::LineMode::REPLACE);
-
-  const SimplexId numTriangles = triangulation.getNumberOfTriangles();
-
-if(threadNumber_ == 1) {
-  for(SimplexId tri = 0; tri < numTriangles; tri++) {
-    SimplexId vertices[3];
-    triangulation.getTriangleVertex(tri, 0, vertices[0]);
-    triangulation.getTriangleVertex(tri, 1, vertices[1]);
-    triangulation.getTriangleVertex(tri, 2, vertices[2]);
-
-    const SimplexId msm[3] = {
-      morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
-      morseSmaleManifold[vertices[2]]};
-
-    const unsigned char index0 = (msm[0] == msm[1]) ? 0x00 : 0x04; // 0 : 1
-    const unsigned char index1 = (msm[0] == msm[2]) ? 0x00 :       // 0
-                                 (msm[1] == msm[2]) ? 0x01 : 0x02; // 1 : 2
-
-    const unsigned char lookupIndex = index0 | index1;
-
-    if(triangleLookupIsMultiLabel[lookupIndex]) {
-      if(triangleLookupIs2Label[lookupIndex]) {
-
-        const int * edgeVerts = triangleLookupEdgeVerts[lookupIndex];
-
-        float edgeCenters[2][3];
-        getEdgeIncenter(vertices[edgeVerts[0]], vertices[edgeVerts[1]],
-          edgeCenters[0], triangulation);
-        getEdgeIncenter(vertices[edgeVerts[2]], vertices[edgeVerts[3]],
-          edgeCenters[1], triangulation);
-
-        edgePos.push_back({
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2],
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2]});
-
-        const long long sparseID = getSparseId(
-          msm[edgeVerts[0]], msm[edgeVerts[1]], numMSCRegions);
-
-        msLabels.push_back(sparseID);
-
-        if(computeSaddles) {
-          if(triangulation.isVertexOnBoundary(vertices[0]))
-            sep2VertSet.push_back(vertices[0]);
-          if(triangulation.isVertexOnBoundary(vertices[1]))
-            sep2VertSet.push_back(vertices[1]);
-          if(triangulation.isVertexOnBoundary(vertices[2]))
-            sep2VertSet.push_back(vertices[2]);
-        }
-      } else {
-        float edgeCenters[4][3];
-        getEdgeIncenter(
-          vertices[0], vertices[1], edgeCenters[0], triangulation);
-        getEdgeIncenter(
-          vertices[1], vertices[2], edgeCenters[1], triangulation);
-        getEdgeIncenter(
-          vertices[2], vertices[0], edgeCenters[2], triangulation);
-        triangulation.getTriangleIncenter(tri, edgeCenters[3]);
-
-        edgePos.push_back({
-          edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2],
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2]});
-
-        edgePos.push_back({
-          edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2]});
-
-        edgePos.push_back({
-          edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2],
-          edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2]});
-
-        const long long sparseID[3] = {
-        getSparseId(msm[0], msm[1], numMSCRegions),
-        getSparseId(msm[1], msm[2], numMSCRegions),
-        getSparseId(msm[2], msm[0], numMSCRegions)};
-
-        msLabels.push_back(sparseID[0]);
-        msLabels.push_back(sparseID[1]);
-        msLabels.push_back(sparseID[2]);
-
-        if(computeSaddles) {
-          sep2VertSet.insert(sep2VertSet.end(), {
-            vertices[0], vertices[1], vertices[2]});
-        }
-      }
-    }
-  }
-} else {
-
-  size_t edgeStartIndex[threadNumber_ + 1];
-  size_t vertexStartIndex[threadNumber_ + 1];
-
-  #pragma omp parallel num_threads(threadNumber_)
-  {
-    const int tid = omp_get_thread_num();
-    std::vector<std::pair<SimplexId, unsigned char>> validCases2;
-    std::vector<SimplexId> validCases3;
-
-    size_t numThreadEdges = 0;
-    size_t numThreadIndexEdges = 0;
-    size_t numThreadVertices = 0;
-    size_t numThreadIndexVertices = 0;
-
-    #pragma omp for schedule(static) nowait
-    for(SimplexId tri = 0; tri < numTriangles; tri++) {
-      SimplexId vertices[3];
-      triangulation.getTriangleVertex(tri, 0, vertices[0]);
-      triangulation.getTriangleVertex(tri, 1, vertices[1]);
-      triangulation.getTriangleVertex(tri, 2, vertices[2]);
-
-      const SimplexId msm[3] = {
-        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
-        morseSmaleManifold[vertices[2]]};
-
-      const unsigned char index0 = (msm[0] == msm[1]) ? 0x00 : 0x04; // 0 : 1
-      const unsigned char index1 = (msm[0] == msm[2]) ? 0x00 :       // 0
-                                   (msm[1] == msm[2]) ? 0x01 : 0x02; // 1 : 2
-
-      const unsigned char lookupIndex = index0 | index1;
-
-      if(triangleLookupIsMultiLabel[lookupIndex]) {
-        if(triangleLookupIs2Label[lookupIndex]) {
-          validCases2.push_back(std::make_pair(tri, lookupIndex));
-          numThreadEdges += 1;
-
-          if(computeSaddles) {
-            if(triangulation.isVertexOnBoundary(vertices[0]))
-              numThreadVertices += 1;
-            if(triangulation.isVertexOnBoundary(vertices[1]))
-              numThreadVertices += 1;
-            if(triangulation.isVertexOnBoundary(vertices[2]))
-              numThreadVertices += 1;
-          }
-        } else {
-          validCases3.push_back(tri);
-          numThreadEdges += 3;
-
-          if(computeSaddles) {
-            numThreadVertices += 3;
-          }
-        }
-      }
-    }
-
-    edgeStartIndex[tid + 1] = numThreadEdges;
-    vertexStartIndex[tid + 1] = numThreadVertices;
-
-    #pragma omp barrier
-
-    #pragma omp single
-    {
-      edgeStartIndex[0] = 0;
-      vertexStartIndex[0] = 0;
-
-      // Count triangle number and create iterator start indices
-      for(int t = 1; t < threadNumber_ + 1; ++t) {
-        edgeStartIndex[t] += edgeStartIndex[t-1];
-        vertexStartIndex[t] += vertexStartIndex[t-1];
-      }
-    }
-
-    #pragma omp single nowait
-    edgePos.resize(edgeStartIndex[threadNumber_]);
-
-    #pragma omp single nowait
-    msLabels.resize(edgeStartIndex[threadNumber_]);
-
-    #pragma omp single
-    {
-      if(computeSaddles) {
-        sep2VertSet.resize(vertexStartIndex[threadNumber_]);
-      }
-    }
-
-    numThreadIndexEdges = edgeStartIndex[tid];
-    numThreadIndexVertices = vertexStartIndex[tid];
-    
-    for (const auto& vCase : validCases2)
-    {
-      const SimplexId& tri = vCase.first;
-      const unsigned char& lookupIndex = vCase.second;
-
-      SimplexId vertices[3];
-      triangulation.getTriangleVertex(tri, 0, vertices[0]);
-      triangulation.getTriangleVertex(tri, 1, vertices[1]);
-      triangulation.getTriangleVertex(tri, 2, vertices[2]);
-
-      const SimplexId msm[3] = {
-        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
-        morseSmaleManifold[vertices[2]]};
-
-      const int * edgeVerts = triangleLookupEdgeVerts[lookupIndex];
-
-      float edgeCenters[2][3];
-      getEdgeIncenter(vertices[edgeVerts[0]], vertices[edgeVerts[1]],
-        edgeCenters[0], triangulation);
-      getEdgeIncenter(vertices[edgeVerts[2]], vertices[edgeVerts[3]],
-        edgeCenters[1], triangulation);
-
-      edgePos[numThreadIndexEdges] = {
-        edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2],
-        edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2]};
-
-      const long long sparseID = getSparseId(
-        msm[edgeVerts[0]], msm[edgeVerts[1]], numMSCRegions);
-
-      msLabels[numThreadIndexEdges] = sparseID;
-
-      numThreadIndexEdges += 1;
-
-      if(computeSaddles) {
-        if(triangulation.isVertexOnBoundary(vertices[0]))
-          sep2VertSet[numThreadIndexVertices++] = vertices[0];
-        if(triangulation.isVertexOnBoundary(vertices[1]))
-          sep2VertSet[numThreadIndexVertices++] = vertices[1];
-        if(triangulation.isVertexOnBoundary(vertices[2]))
-          sep2VertSet[numThreadIndexVertices++] = vertices[2];
-      }
-    }
-    
-    for (const auto& tri : validCases3)
-    {
-      SimplexId vertices[3];
-      triangulation.getTriangleVertex(tri, 0, vertices[0]);
-      triangulation.getTriangleVertex(tri, 1, vertices[1]);
-      triangulation.getTriangleVertex(tri, 2, vertices[2]);
-
-      const SimplexId msm[3] = {
-        morseSmaleManifold[vertices[0]], morseSmaleManifold[vertices[1]],
-        morseSmaleManifold[vertices[2]]};
-
-      float edgeCenters[4][3];
-      getEdgeIncenter(
-        vertices[0], vertices[1], edgeCenters[0], triangulation);
-      getEdgeIncenter(
-        vertices[1], vertices[2], edgeCenters[1], triangulation);
-      getEdgeIncenter(
-        vertices[2], vertices[0], edgeCenters[2], triangulation);
-
-      triangulation.getTriangleIncenter(tri, edgeCenters[3]);
-
-      edgePos[numThreadIndexEdges] = {
-        edgeCenters[0][0], edgeCenters[0][1], edgeCenters[0][2],
-        edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2]};
-
-      edgePos[numThreadIndexEdges+1] = {
-        edgeCenters[1][0], edgeCenters[1][1], edgeCenters[1][2],
-        edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2]};
-
-      edgePos[numThreadIndexEdges+2] = {
-        edgeCenters[2][0], edgeCenters[2][1], edgeCenters[2][2],
-        edgeCenters[3][0], edgeCenters[3][1], edgeCenters[3][2]};
-
-      const long long sparseID[3] = {
-      getSparseId(msm[0], msm[1], numMSCRegions),
-      getSparseId(msm[1], msm[2], numMSCRegions),
-      getSparseId(msm[2], msm[0], numMSCRegions)};
-
-      msLabels[numThreadIndexEdges] = sparseID[0];
-      msLabels[numThreadIndexEdges+1] = sparseID[1];
-      msLabels[numThreadIndexEdges+2] = sparseID[2];
-
-      numThreadIndexEdges += 3;
-
-      if(computeSaddles) {
-        sep2VertSet[numThreadIndexVertices] = vertices[0];
-        sep2VertSet[numThreadIndexVertices+1] = vertices[1];
-        sep2VertSet[numThreadIndexVertices+2] = vertices[2];
-
-        numThreadIndexVertices += 3;
-      }
-    }
-  }
-}
-
-  this->printMsg("Computed 1-separatrix pieces", 1, localTimer.getElapsedTime(),
-                 this->threadNumber_);
-
-  return 1;
-}
-
-
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::findSaddlesFromCadidates(
@@ -2802,8 +2460,11 @@ int ttk::MorseSmaleSegmentationPL::findSaddlesFromCadidates(
 
   ScalarFieldCriticalPoints sfcp;
   sfcp.setDomainDimension(dim);
-  
+
+#ifdef TTK_ENABLE_OPENMP  
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   for(const SimplexId& candidate: sep2VertSet) {
     const CriticalType critC = (CriticalType)sfcp.getCriticalType(
       candidate, orderArr, (AbstractTriangulation*)&triangulation);
@@ -2814,6 +2475,8 @@ if(threadNumber_ == 1) {
       criticalPoints.push_back(std::make_pair(candidate, 2));
     }
   }
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
   #pragma omp parallel num_threads(threadNumber_)
   {
@@ -2836,61 +2499,10 @@ if(threadNumber_ == 1) {
     }
   }
 }
+#endif // TTK_ENABLE_OPENMP
 
   this->printMsg("Computed saddles", 1, localTimer.getElapsedTime(),
     this->threadNumber_);
-
-  return 1;
-}
-
-int ttk::MorseSmaleSegmentationPL::setSeparatrices2_2D(
-  const std::vector<std::array<float, 6>> &edgePos,
-  const std::vector<long long> &msLabels,
-  std::map<long long, SimplexId> &msLabelMap) const {
-
-  ttk::Timer localTimer;
-
-  this->printMsg("Writing 2-separatrices", 0, localTimer.getElapsedTime(),
-                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
-
-  const int numEdges = edgePos.size();
-
-  size_t npoints = numEdges * 2;
-  size_t numCells = numEdges;
-
-  // resize arrays
-  outputSeparatrices2_points_->resize(3 * npoints);
-  auto &points = *outputSeparatrices2_points_;
-  outputSeparatrices2_cells_connectivity_->resize(2 * numCells);
-  auto &cellsConn = *outputSeparatrices2_cells_connectivity_;
-  outputSeparatrices2_cells_mscIds_->resize(numEdges);
-  auto &cellsMSCIds = *outputSeparatrices2_cells_mscIds_;
-
-#ifdef TTK_ENABLE_OPENMP
-#pragma omp parallel for num_threads(threadNumber_) schedule(static)
-#endif
-  for(int edge = 0; edge < numEdges; ++edge) {
-    auto &edgeP = edgePos[edge];
-    points[6 * edge    ] = edgeP[0];
-    points[6 * edge + 1] = edgeP[1];
-    points[6 * edge + 2] = edgeP[2];
-
-    points[6 * edge + 3] = edgeP[3];
-    points[6 * edge + 4] = edgeP[4];
-    points[6 * edge + 5] = edgeP[5];
-
-    cellsConn[2 * edge    ] = 2 * edge;
-    cellsConn[2 * edge + 1] = 2 * edge + 1;
-
-    cellsMSCIds[edge] = msLabelMap[msLabels[edge]];
-  }
-
-  // update pointers
-  *outputSeparatrices2_numberOfPoints_ = npoints;
-  *outputSeparatrices2_numberOfCells_ = numCells;
-
-  this->printMsg("WroteX " + std::to_string(numEdges) + " 2-separatrices",
-                 1, localTimer.getElapsedTime(), this->threadNumber_);
 
   return 1;
 }
@@ -2921,7 +2533,7 @@ int ttk::MorseSmaleSegmentationPL::getCriticalPoints(
 }
 
 template <typename triangulationType>
-int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D(
+int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D_wall(
   const SimplexId &numMSCRegions,
   const SimplexId *const morseSmaleManifold,
   const triangulationType &triangulation) const {
@@ -2956,8 +2568,10 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D(
   std::vector<long long> sparseIdVect;
   std::map<long long, SimplexId> msLabelMap;
 
-//#ifndef TTK_ENABLE_OPENMP
+#ifdef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   std::vector<std::pair<SimplexId, unsigned char>> validCases;
   std::unordered_set<long long> msLabelSet;
   SimplexId numTriangles = 0;
@@ -3197,7 +2811,8 @@ if(threadNumber_ == 1) {
       }
     }
   }
-//#else // TTK_ENABLE_OPENMP
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
   size_t triangleStartIndex[threadNumber_ + 1];
 
@@ -3535,7 +3150,9 @@ if(threadNumber_ == 1) {
       }
     }
   }
-} // #if TTK_OMPENMP
+}
+#endif // TTK_ENABLE_OPENMP
+
   this->printMsg("Computed 2-Separatrices 3D[Walls]",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
@@ -3581,8 +3198,10 @@ int ttk::MorseSmaleSegmentationPL::computeSeparatrices2_3D_split(
   std::vector<long long> sparseIdVect;
   std::map<long long, SimplexId> msLabelMap;
 
-//#ifndef TTK_ENABLE_OPENMP
+#ifdef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   std::vector<std::pair<SimplexId, unsigned char>> validCasesA;
   std::vector<std::pair<SimplexId, unsigned char>> validCasesD;
   std::unordered_set<long long> msLabelSet;
@@ -4035,7 +3654,8 @@ if(threadNumber_ == 1) {
       }
     }
   }
-//#else // TTK_ENABLE_OPENMP
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
   size_t triangleStartIndex[threadNumber_ + 1];
 
@@ -4591,31 +4211,14 @@ if(threadNumber_ == 1) {
       }
     }
   }
-} // #if TTK_OMPENMP
+}
+#endif // TTK_ENABLE_OPENMP
+
   this->printMsg("Computed 2-Separatrices 3D[Split]", 1,
     localTimer.getElapsedTime(), this->threadNumber_);
 
   return 0;
 }
-
-int ttk::MorseSmaleSegmentationPL::computeMSLabelMap(
-  std::map<long long, SimplexId> &msLabelMap,
-  const std::vector<long long> &msLabels) const {
-
-  std::vector<long long> msLabelCopy(msLabels);
-
-  // get unique "sparse region ids"
-  TTK_PSORT(this->threadNumber_, msLabelCopy.begin(), msLabelCopy.end());
-  const auto last = std::unique(msLabelCopy.begin(), msLabelCopy.end());
-  msLabelCopy.erase(last, msLabelCopy.end());
-
-  for(size_t i = 0; i < msLabelCopy.size(); ++i) {
-    msLabelMap.insert({msLabelCopy[i], i});
-  }
-
-  return 0;
-}
-
 
 template <typename triangulationType>
 int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fine(
@@ -4652,8 +4255,10 @@ int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fine(
   const float d1 = 0.5 - diff;
   const float dc = diff * 2 ;
 
-//#ifndef TTK_ENABLE_OPENMP
+#ifdef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   std::vector<std::pair<SimplexId, unsigned char>> validCases;
   SimplexId numTriangles = 0;
 
@@ -5068,7 +4673,8 @@ if(threadNumber_ == 1) {
       m += 24;
     }
   }
-//#else // TTK_ENABLE_OPENMP
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
   size_t triangleStartIndex[threadNumber_ + 1];
 
@@ -5524,7 +5130,9 @@ if(threadNumber_ == 1) {
       }
     }
   }
-} // TTK_ENABLE_OPENMP
+}
+#endif // TTK_ENABLE_OPENMP
+
   this->printMsg("Computed 2-Separatrices 3D[Fine]",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
@@ -5561,8 +5169,10 @@ int ttk::MorseSmaleSegmentationPL::computeBasinSeparation_3D_fast(
 
   const SimplexId numTetra = triangulation.getNumberOfCells();
 
-//#ifndef TTK_ENABLE_OPENMP
+#ifdef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   std::vector<std::pair<SimplexId, unsigned char>> validCases;
   SimplexId numTriangles = 0;
 
@@ -5652,7 +5262,8 @@ if(threadNumber_ == 1) {
     m[0] = msm[id0];
     m += 1;
   }
-//#else // TTK_ENABLE_OPENMP
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
   size_t triangleStartIndex[threadNumber_ + 1];
   #pragma omp parallel num_threads(threadNumber_)
@@ -5782,7 +5393,9 @@ if(threadNumber_ == 1) {
       m += 1;
     }
   }
-} // TTK_ENABLE_OPENMP
+}
+#endif // TTK_ENABLE_OPENMP
+
   this->printMsg("Computed 2-Separatrices 3D[Fast]",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
 
@@ -5805,7 +5418,10 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D(
                  0, localTimer.getElapsedTime(), 
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
+#ifdef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   std::vector<std::pair<SimplexId, SimplexId>> reachableExtrema[2];
   
   for(size_t c = 0; c < criticalPoints.size(); ++c) {
@@ -5888,6 +5504,8 @@ if(threadNumber_ == 1) {
 
     sadExtrConns.push_back(sadExtrConn);
   }
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
   size_t sadExtrStartIndex[threadNumber_ + 1];
   #pragma omp parallel num_threads(threadNumber_)
@@ -5999,6 +5617,7 @@ if(threadNumber_ == 1) {
       sadExtrConns.begin() + sadExtrStartIndex[tid]);
   }
 }
+#endif // TTK_ENABLE_OPENMP
 
   this->printMsg("Computed crit point connectors",
                  1, localTimer.getElapsedTime(), this->threadNumber_);
@@ -6024,7 +5643,10 @@ int ttk::MorseSmaleSegmentationPL::computeSaddleExtremaConnectors_3D_fast(
                  localTimer.getElapsedTime(), // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
+#ifdef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   for(size_t c = 0; c < criticalPoints.size(); ++c) {
     const std::pair<SimplexId, char> &crit = criticalPoints[c];
     const bool isSaddle1 = crit.second == (char)CriticalType::Saddle1;
@@ -6061,6 +5683,8 @@ if(threadNumber_ == 1) {
       }
     }
   }
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
   size_t sadExtrStartIndex[threadNumber_ + 1];
   #pragma omp parallel num_threads(threadNumber_)
@@ -6126,6 +5750,7 @@ if(threadNumber_ == 1) {
       sadExtrConns.begin() + sadExtrStartIndex[tid]);
   }
 }
+#endif // TTK_ENABLE_OPENMP
 
   this->printMsg("Computed crit point connectors[F]",
                  1, // progress form 0-1
@@ -6148,7 +5773,10 @@ int ttk::MorseSmaleSegmentationPL::setCriticalPoints(
 
 size_t numcritPoints = criticalPoints.size();
 
+#ifdef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   outputCriticalPoints_points_->resize(numcritPoints);
   outputCriticalPoints_points_cellDimensions_->resize(numcritPoints);
   outputCriticalPoints_points_cellIds_->resize(numcritPoints);
@@ -6168,6 +5796,8 @@ if(threadNumber_ == 1) {
     cellsDim[i] = crit.second;
     cellsIds[i] = crit.first;
   }
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
   #pragma omp parallel num_threads(threadNumber_)
   {
@@ -6196,6 +5826,7 @@ if(threadNumber_ == 1) {
     }
   }
 }
+#endif // TTK_ENABLE_OPENMP
 
   this->printMsg("Wrote " + std::to_string(criticalPoints.size()) +
                  " critical points",
@@ -6233,7 +5864,7 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices1_3D(
       " 1-separatrices pointer to the input scalar field is null.");
     return -1;
   }
-#endif
+#endif // TTK_ENABLE_KAMIKAZE
 
   this->printMsg("Writing 1-separatrices", 1, localTimer.getElapsedTime(),
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
@@ -6243,7 +5874,10 @@ int ttk::MorseSmaleSegmentationPL::setSeparatrices1_3D(
   size_t npoints = 0;
   size_t numCells = 0;
 
+#ifdef TTK_ENABLE_OPENMP
 if(threadNumber_ == 1) {
+#endif // TTK_ENABLE_OPENMP
+
   // count total number of points and cells
   for(size_t i = 0; i < numSep; ++i) {
     const auto &sep = separatrices[i];
@@ -6302,6 +5936,8 @@ if(threadNumber_ == 1) {
       currCId += 1;
     }
   }
+
+#ifdef TTK_ENABLE_OPENMP
 } else {
   SimplexId StartPId[numSep];
   SimplexId StartCId[numSep];
@@ -6390,6 +6026,7 @@ if(threadNumber_ == 1) {
     }
   }
 }
+#endif // TTK_ENABLE_OPENMP
 
   // update pointers
   *outputSeparatrices1_numberOfPoints_ = npoints;
