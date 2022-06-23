@@ -151,34 +151,34 @@ const size_t tetLookupNumWallTriangles[28] = {
  * shifted triangles. This gives each basin its own geometry.
  */
 const size_t tetLookupNumFineTriangles[28] = {
-  {0},  // (1) 0,0,0 - 0
-  {0},  // (-) 0,0,1 - 1
-  {0},  // (-) 0,0,2 - 2 
-  {2},  // (2) 0,0,3 - 3
-  {0},  // (-) 0,1,0 - 4
-  {0},  // (-) 0,1,1 - 5 
-  {0},  // (-) 0,1,2 - 6
-  {0},  // (-) 0,1,3 - 7
-  {2},  // (2) 0,2,0 - 8
-  {0},  // (-) 0,2,1 - 9
-  {4},  // (2) 0,2,2 -10
-  {10}, // (3) 0,2,3 -11
-  {0},  // (-) 0,3,0 -12
-  {0},  // (-) 0,3,1 -13
-  {0},  // (-) 0,3,2 -14
-  {0},  // (-) 0,3,3 -15
-  {2},  // (2) 1,0,0 -16
-  {4},  // (2) 1,0,1 -17
-  {0},  // (-) 1,0,2 -18
-  {10}, // (3) 1,0,3 -19
-  {4},  // (2) 1,1,0 -20
-  {2},  // (2) 1,1,1 -21
-  {0},  // (-) 1,1,2 -22
-  {10}, // (3) 1,1,3 -23
-  {10}, // (3) 1,2,0 -24
-  {10}, // (3) 1,2,1 -25
-  {10}, // (3) 1,2,2 -26
-  {24}  // (4) 1,2,3 -27
+  0,  // (1) 0,0,0 - 0
+  0,  // (-) 0,0,1 - 1
+  0,  // (-) 0,0,2 - 2 
+  2,  // (2) 0,0,3 - 3
+  0,  // (-) 0,1,0 - 4
+  0,  // (-) 0,1,1 - 5 
+  0,  // (-) 0,1,2 - 6
+  0,  // (-) 0,1,3 - 7
+  2,  // (2) 0,2,0 - 8
+  0,  // (-) 0,2,1 - 9
+  4,  // (2) 0,2,2 -10
+  10, // (3) 0,2,3 -11
+  0,  // (-) 0,3,0 -12
+  0,  // (-) 0,3,1 -13
+  0,  // (-) 0,3,2 -14
+  0,  // (-) 0,3,3 -15
+  2,  // (2) 1,0,0 -16
+  4,  // (2) 1,0,1 -17
+  0,  // (-) 1,0,2 -18
+  10, // (3) 1,0,3 -19
+  4,  // (2) 1,1,0 -20
+  2,  // (2) 1,1,1 -21
+  0,  // (-) 1,1,2 -22
+  10, // (3) 1,1,3 -23
+  10, // (3) 1,2,0 -24
+  10, // (3) 1,2,1 -25
+  10, // (3) 1,2,2 -26
+  24  // (4) 1,2,3 -27
 };
 
 /**
@@ -318,66 +318,66 @@ const bool tetLookupIs3Label[28] = {
  * the label for the triangles using the "Fast" Mode.
  */
 const int tetLookupFastCase[28] = {
-  {-1}, // (1) 0,0,0 - 0
-  {-1}, // (-) 0,0,1 - 1
-  {-1}, // (-) 0,0,2 - 2 
-  { 0}, // (2) 0,0,3 - 3
-  {-1}, // (-) 0,1,0 - 4
-  {-1}, // (-) 0,1,1 - 5 
-  {-1}, // (-) 0,1,2 - 6
-  {-1}, // (-) 0,1,3 - 7
-  { 1}, // (2) 0,2,0 - 8
-  {-1}, // (-) 0,2,1 - 9
-  {-1}, // (2) 0,2,2 -10
-  {-1}, // (3) 0,2,3 -11
-  {-1}, // (-) 0,3,0 -12
-  {-1}, // (-) 0,3,1 -13
-  {-1}, // (-) 0,3,2 -14
-  {-1}, // (-) 0,3,3 -15
-  { 2}, // (2) 1,0,0 -16
-  {-1}, // (2) 1,0,1 -17
-  {-1}, // (-) 1,0,2 -18
-  {-1}, // (3) 1,0,3 -19
-  {-1}, // (2) 1,1,0 -20
-  { 3}, // (2) 1,1,1 -21
-  {-1}, // (-) 1,1,2 -22
-  {-1}, // (3) 1,1,3 -23
-  {-1}, // (3) 1,2,0 -24
-  {-1}, // (3) 1,2,1 -25
-  {-1}, // (3) 1,2,2 -26
-  {-1}  // (4) 1,2,3 -27
+  -1, // (1) 0,0,0 - 0
+  -1, // (-) 0,0,1 - 1
+  -1, // (-) 0,0,2 - 2 
+   0, // (2) 0,0,3 - 3
+  -1, // (-) 0,1,0 - 4
+  -1, // (-) 0,1,1 - 5 
+  -1, // (-) 0,1,2 - 6
+  -1, // (-) 0,1,3 - 7
+   1, // (2) 0,2,0 - 8
+  -1, // (-) 0,2,1 - 9
+  -1, // (2) 0,2,2 -10
+  -1, // (3) 0,2,3 -11
+  -1, // (-) 0,3,0 -12
+  -1, // (-) 0,3,1 -13
+  -1, // (-) 0,3,2 -14
+  -1, // (-) 0,3,3 -15
+   2, // (2) 1,0,0 -16
+  -1, // (2) 1,0,1 -17
+  -1, // (-) 1,0,2 -18
+  -1, // (3) 1,0,3 -19
+  -1, // (2) 1,1,0 -20
+   3, // (2) 1,1,1 -21
+  -1, // (-) 1,1,2 -22
+  -1, // (3) 1,1,3 -23
+  -1, // (3) 1,2,0 -24
+  -1, // (3) 1,2,1 -25
+  -1, // (3) 1,2,2 -26
+  -1  // (4) 1,2,3 -27
 };
 
 /** Does this tetrahedron have 3 vertices with the same label? */
 const bool tetLookupFast[28] = {
-  {false}, // (1) 0,0,0 - 0
-  {false}, // (-) 0,0,1 - 1
-  {false}, // (-) 0,0,2 - 2 
-  {true}, // (2) 0,0,3 - 3
-  {false}, // (-) 0,1,0 - 4
-  {false}, // (-) 0,1,1 - 5 
-  {false}, // (-) 0,1,2 - 6
-  {false}, // (-) 0,1,3 - 7
-  {true}, // (2) 0,2,0 - 8
-  {false}, // (-) 0,2,1 - 9
-  {false}, // (2) 0,2,2 -10
-  {false}, // (3) 0,2,3 -11
-  {false}, // (-) 0,3,0 -12
-  {false}, // (-) 0,3,1 -13
-  {false}, // (-) 0,3,2 -14
-  {false}, // (-) 0,3,3 -15
-  {true}, // (2) 1,0,0 -16
-  {false}, // (2) 1,0,1 -17
-  {false}, // (-) 1,0,2 -18
-  {false}, // (3) 1,0,3 -19
-  {false}, // (2) 1,1,0 -20
-  {true}, // (2) 1,1,1 -21
-  {false}, // (-) 1,1,2 -22
-  {false}, // (3) 1,1,3 -23
-  {false}, // (3) 1,2,0 -24
-  {false}, // (3) 1,2,1 -25
-  {false}, // (3) 1,2,2 -26
-  {false}  // (4) 1,2,3 -27
+  false, // (1) 0,0,0 - 0
+  false, // (-) 0,0,1 - 1
+  false, // (-) 0,0,2 - 2 
+  true , // (2) 0,0,3 - 3
+  false, // (-) 0,1,0 - 4
+  false, // (-) 0,1,1 - 5 
+  false, // (-) 0,1,2 - 6
+  false, // (-) 0,1,3 - 7
+  true , // (2) 0,2,0 - 8
+  false, // (-) 0,2,1 - 9
+  false, // (2) 0,2,2 -10
+  false, // (3) 0,2,3 -11
+  false, // (-) 0,3,0 -12
+  false, // (-) 0,3,1 -13
+  false, // (-) 0,3,2 -14
+  false, // (-) 0,3,3 -15
+  true , // (2) 1,0,0 -16
+  false, // (2) 1,0,1 -17
+  false, // (-) 1,0,2 -18
+  false, // (3) 1,0,3 -19
+  false, // (2) 1,1,0 -20
+  true , // (2) 1,1,1 -21
+  false, // (-) 1,1,2 -22
+  false, // (3) 1,1,3 -23
+  false, // (3) 1,2,0 -24
+  false, // (3) 1,2,1 -25
+  false, // (3) 1,2,2 -26
+  false  // (4) 1,2,3 -27
 };
 
 /** 
@@ -526,8 +526,6 @@ namespace ttk {
      * Utility class representing Piecewise Linear Integral Lines.
      */
     struct IntegralLine {
-
-
       explicit IntegralLine()
         : geometry_{}, type_{-1} {
       }
@@ -555,7 +553,7 @@ namespace ttk {
 
   /**
    * The MorseSmaleSegmentationPL class provides methods to compute a
-   * MSC variant that only uses the input field and its order field.
+   * MSC variant that only uses an order field.
    */
   class MorseSmaleSegmentationPL : virtual public Debug {
 
@@ -2164,7 +2162,7 @@ if(threadNumber_ == 1) {
                  0, // elapsed time so far
                  this->threadNumber_, ttk::debug::LineMode::REPLACE);
 
-    #pragma omp for schedule(static) nowait
+    #pragma omp for schedule(static)
     for(SimplexId tri = 0; tri < numTriangles; tri++) {
       SimplexId vertices[3];
       triangulation.getTriangleVertex(tri, 0, vertices[0]);
@@ -2834,7 +2832,7 @@ if(threadNumber_ == 1) {
     msSets[tid] = new std::unordered_set<long long>;
     std::unordered_set<long long>* localMSSet = msSets[tid];
 
-    #pragma omp for schedule(static) nowait
+    #pragma omp for schedule(static)
     for(SimplexId tet = 0; tet < numTetra; tet++) {
       SimplexId vertices[4];
       triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -3678,7 +3676,7 @@ if(threadNumber_ == 1) {
     msSets[tid] = new std::unordered_set<long long>;
     std::unordered_set<long long>* localMSSet = msSets[tid];
 
-    #pragma omp for schedule(static) nowait
+    #pragma omp for schedule(static)
     for(SimplexId tet = 0; tet < numTetra; tet++) {
       SimplexId vertices[4];
       triangulation.getCellVertex(tet, 0, vertices[0]);
@@ -4576,7 +4574,6 @@ if(threadNumber_ == 1) {
       p[99] = vert12[0];   p[100] = vert12[1];   p[101] = vert12[2]; 
       p[102] = vert1t1[0];  p[103] = vert1t1[1];  p[104] = vert1t1[2]; 
       p[105] = vert1tet[0]; p[106] = vert1tet[1]; p[107] = vert1tet[2];
-
 
       // Label Vert 2     
       p[108] = vert20[0];   p[109] = vert20[1];   p[110] = vert20[2]; 
