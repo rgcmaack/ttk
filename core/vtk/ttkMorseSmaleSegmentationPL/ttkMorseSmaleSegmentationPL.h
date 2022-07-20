@@ -107,7 +107,6 @@ private:
   SEPARATRICES_MANIFOLD SeparatricesManifold{SEPARATRICES_MANIFOLD::MORSESMALE};
   SEPARATRICES1_MODE Separaticies1Mode{SEPARATRICES1_MODE::DETAILED};
   SEPARATRICES2_MODE Separaticies2Mode{SEPARATRICES2_MODE::WALLS};
-  
 
   // critical points
   std::vector<std::array<float, 3>> criticalPoints_points{};
