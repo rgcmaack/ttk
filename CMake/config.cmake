@@ -1,6 +1,6 @@
 # --- Prerequisites
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 # --- Global Options
 
@@ -120,7 +120,7 @@ if(TTK_TIME_TARGETS)
   set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
 endif()
 
-set(TTK_SCRIPTS_PATH ${CMAKE_INSTALL_PREFIX}/scripts/ttk
+set(TTK_SCRIPTS_PATH scripts/ttk
   CACHE PATH "Install path for TTK scripts"
   )
 mark_as_advanced(TTK_SCRIPTS_PATH)

@@ -29,82 +29,84 @@ RUN apt-get install --no-install-recommends -yqq \
 
 FROM build-base as builder
 
-COPY scripts/docker/install-helper /usr/bin
+COPY install-helper /usr/bin
 
 # install OSPRay + dependencies
-COPY scripts/docker/pkg/ispc.sh /tmp
+COPY pkg/ispc.sh /tmp
 RUN  install-helper /tmp/ispc.sh
 
-COPY scripts/docker/pkg/tbb.sh /tmp
+COPY pkg/tbb.sh /tmp
 RUN  install-helper /tmp/tbb.sh
 
-COPY scripts/docker/pkg/embree.sh /tmp
+COPY pkg/embree.sh /tmp
 RUN  install-helper /tmp/embree.sh
 
-COPY scripts/docker/pkg/rkcommon.sh /tmp
+COPY pkg/rkcommon.sh /tmp
 RUN  install-helper /tmp/rkcommon.sh
 
-COPY scripts/docker/pkg/openimagedenoise.sh /tmp
+COPY pkg/openimagedenoise.sh /tmp
 RUN  install-helper /tmp/openimagedenoise.sh
 
-COPY scripts/docker/pkg/openvkl.sh /tmp
+COPY pkg/openvkl.sh /tmp
 RUN  install-helper /tmp/openvkl.sh
 
-COPY scripts/docker/pkg/ospray.sh /tmp
+COPY pkg/ospray.sh /tmp
 RUN  install-helper /tmp/ospray.sh
 
 # install OSMesa
-COPY scripts/docker/pkg/mesa.sh /tmp
+COPY pkg/mesa.sh /tmp
 RUN  install-helper /tmp/mesa.sh
 
 # install ZFP
-COPY scripts/docker/pkg/zfp.sh /tmp
+COPY pkg/zfp.sh /tmp
 RUN  install-helper /tmp/zfp.sh
 
 # install Spectra
-COPY scripts/docker/pkg/spectra.sh /tmp
+COPY pkg/spectra.sh /tmp
 RUN  install-helper /tmp/spectra.sh
 
 # install ParaView
-ARG paraview=5.10.0
+ARG paraview=5.10.1
 ENV PARAVIEW_VERSION=${paraview}
 
-COPY scripts/docker/pkg/paraview.sh /tmp
+COPY pkg/paraview.sh /tmp
 RUN  install-helper /tmp/paraview.sh
 
 # --------------------------------------------------------------------------
 
 FROM builder as builder-ttk
 
-COPY scripts/docker/pkg/ttk-local.sh /tmp
-COPY . /build/ttk-local
-RUN  install-helper /tmp/ttk-local.sh
+# install TTK
+ARG ttk=dev
+ENV TTK_VERSION=${ttk}
 
+ENV DEV=""
+
+COPY pkg/ttk.sh /tmp
+RUN  install-helper /tmp/ttk.sh
+
+# --------------------------------------------------------------------------
+
+#FROM builder-ttk as ttk-dev
+FROM builder as ttk-dev
+
+#COPY --from=builder-ttk /usr/local /usr/local
+
+RUN apt-get update \
+ && apt-get -yqq --no-install-recommends install $(cat /usr/local/.pkgs) gdb \
+ && apt-get clean \
+ && rm -rf /var/cache/apt/lists
+
+ENV DEV="True"
+
+COPY pkg/ttk.sh /tmp
+RUN  install-helper /tmp/ttk.sh
+  
 # --------------------------------------------------------------------------
 
 FROM base as ttk
 
 COPY --from=builder-ttk /usr/local /usr/local
-
-RUN apt-get update \
- && apt-get -yqq --no-install-recommends install \
-        $(cat /usr/local/.pkgs) \
-        libgoogle-perftools-dev \
-        google-perftools \
-        binutils \
-        gdb \
- && apt-get clean \
- && rm -rf /var/cache/apt/lists
-
-# run pvserver by default
-CMD /usr/local/bin/pvserver
-EXPOSE 11111
-
-# --------------------------------------------------------------------------
-
-FROM build-base as ttk-dev
-
-COPY --from=builder /usr/local /usr/local
 
 RUN apt-get update \
  && apt-get -yqq --no-install-recommends install $(cat /usr/local/.pkgs) \

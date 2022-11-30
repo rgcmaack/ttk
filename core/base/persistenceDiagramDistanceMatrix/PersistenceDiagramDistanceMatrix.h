@@ -11,44 +11,21 @@
 /// IEEE Transactions on Visualization and Computer Graphics, 2019.
 ///
 /// \sa PersistenceDiagramClustering
+///
+/// \b Online \b examples: \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/clusteringKelvinHelmholtzInstabilities/">
+///   Clustering Kelvin Helmholtz Instabilities example</a> \n
 
 #pragma once
 
 #include <array>
 
 #include <Debug.h>
+#include <PersistenceDiagramAuction.h>
+#include <PersistenceDiagramUtils.h>
 
 namespace ttk {
-
-  using DiagramTuple = std::tuple<
-    /** Vertex Id of low pair element */
-    ttk::SimplexId,
-    /** Critical Type of low pair element */
-    ttk::CriticalType,
-    /** Vertex Id of high pair element */
-    ttk::SimplexId,
-    /** Critical Type of high pair element */
-    ttk::CriticalType,
-    /** Pair persistence value */
-    double,
-    /** Pair type */
-    ttk::SimplexId,
-    /** Pair birth */
-    double,
-    /** Low pair element 3D coordinates */
-    // TODO use std::array<float, 3>
-    float,
-    float,
-    float,
-    /** Pair death */
-    double,
-    /** High pair element 3D coordinates */
-    // TODO use std::array<float, 3>
-    float,
-    float,
-    float>;
-
-  using Diagram = std::vector<DiagramTuple>;
 
   class PersistenceDiagramDistanceMatrix : virtual public Debug {
 
@@ -58,7 +35,7 @@ namespace ttk {
     }
 
     std::vector<std::vector<double>>
-      execute(const std::vector<Diagram> &intermediateDiagrams,
+      execute(const std::vector<DiagramType> &intermediateDiagrams,
               const std::array<size_t, 2> &nInputs) const;
 
     inline void setWasserstein(const int data) {
@@ -99,24 +76,22 @@ namespace ttk {
     }
 
   protected:
-    template <typename T>
-    double getMostPersistent(const std::vector<T> &bidder_diags) const;
-    template <typename T>
-    double computePowerDistance(const T &D1, const T &D2) const;
-    template <typename T>
+    double
+      getMostPersistent(const std::vector<BidderDiagram> &bidder_diags) const;
+    double computePowerDistance(const BidderDiagram &D1,
+                                const BidderDiagram &D2) const;
     void getDiagramsDistMat(const std::array<size_t, 2> &nInputs,
                             std::vector<std::vector<double>> &distanceMatrix,
-                            const std::vector<T> &diags_min,
-                            const std::vector<T> &diags_sad,
-                            const std::vector<T> &diags_max) const;
-    template <typename T>
+                            const std::vector<BidderDiagram> &diags_min,
+                            const std::vector<BidderDiagram> &diags_sad,
+                            const std::vector<BidderDiagram> &diags_max) const;
     void setBidderDiagrams(const size_t nInputs,
-                           std::vector<Diagram> &inputDiagrams,
-                           std::vector<T> &bidder_diags) const;
-    template <typename T>
+                           std::vector<DiagramType> &inputDiagrams,
+                           std::vector<BidderDiagram> &bidder_diags) const;
+
     void enrichCurrentBidderDiagrams(
-      const std::vector<T> &bidder_diags,
-      std::vector<T> &current_bidder_diags,
+      const std::vector<BidderDiagram> &bidder_diags,
+      std::vector<BidderDiagram> &current_bidder_diags,
       const std::vector<double> &maxDiagPersistence) const;
 
     int Wasserstein{2};

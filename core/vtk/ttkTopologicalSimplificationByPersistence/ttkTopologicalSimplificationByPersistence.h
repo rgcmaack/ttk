@@ -46,6 +46,11 @@
 /// \sa ttkTopologicalSimplification
 /// \sa ttk::LocalizedTopologicalSimplification
 /// \sa ttkAlgorithm
+///
+/// \b Online \b examples: \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/contourTreeAlignment/">Contour
+///   Tree Alignment example</a> \n
 
 #pragma once
 #include <ttkTopologicalSimplificationByPersistenceModule.h>
@@ -63,7 +68,7 @@ class TTKTOPOLOGICALSIMPLIFICATIONBYPERSISTENCE_EXPORT
     protected ttk::lts::LocalizedTopologicalSimplification {
 private:
   double PersistenceThreshold{0.0};
-  bool ThresholdIsAbsolute{true};
+  bool ThresholdIsAbsolute{false};
   bool ComputePerturbation{false};
   PAIR_TYPE PairType{PAIR_TYPE::EXTREMUM_SADDLE};
 

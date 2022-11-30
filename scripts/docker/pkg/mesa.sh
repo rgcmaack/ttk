@@ -1,6 +1,4 @@
-MESA_VERSION=21.3.7
-
-apt-get update
+MESA_VERSION=20.3.5
 
 # install packges required for build
 require-pkgs \
@@ -34,16 +32,16 @@ esac
 # configure 
 meson build \
     -Dbuildtype=${buildtype}        \
-    -Dosmesa=true   			    \
+    -Dosmesa=gallium			    \
     -Dplatforms= 				    \
-    -Dgallium-drivers=swrast        \
+    -Dgallium-drivers=swrast	    \
     -Dglx=disabled				    \
     -Dgles2=false				    \
     -Dgles1=false				    \
     -Dllvm=enabled				    \
-    -Ddri-drivers=[]			    \
-    -Dvulkan-drivers=[] 		    \
-    -Dswr-arches=avx2			    \
+    -Ddri-drivers=				    \
+    -Dvulkan-drivers=			    \
+    -Dswr-arches=				    \
     -Dshared-glapi=true
 
 # build

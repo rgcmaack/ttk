@@ -45,17 +45,16 @@ else:
 reader = vtkXMLUnstructuredGridReader()
 reader.SetFileName(inputFilePath)
 
-# 2. computing the persistence curve
-curve = ttkPersistenceCurve()
-curve.SetInputConnection(reader.GetOutputPort())
-curve.SetInputArrayToProcess(0, 0, 0, 0, "data")
-curve.SetDebugLevel(3)
-
-# 3. computing the persitence diagram
+# 2. computing the persistence diagram
 diagram = ttkPersistenceDiagram()
 diagram.SetInputConnection(reader.GetOutputPort())
 diagram.SetInputArrayToProcess(0, 0, 0, 0, "data")
 diagram.SetDebugLevel(3)
+
+# 3. computing the persistence curve from the persistence diagram
+curve = ttkPersistenceCurve()
+curve.SetInputConnection(diagram.GetOutputPort())
+curve.SetDebugLevel(3)
 
 # 4. selecting the critical point pairs
 criticalPairs = vtkThreshold()
@@ -63,7 +62,9 @@ criticalPairs.SetInputConnection(diagram.GetOutputPort())
 criticalPairs.SetInputArrayToProcess(
     0, 0, 0, vtkDataObject.FIELD_ASSOCIATION_CELLS, "PairIdentifier"
 )
-criticalPairs.ThresholdBetween(-0.1, 999999)
+criticalPairs.SetThresholdFunction(vtkThreshold.THRESHOLD_BETWEEN)
+criticalPairs.SetLowerThreshold(-0.1)
+criticalPairs.SetUpperThreshold(999999)
 
 # 5. selecting the most persistent pairs
 persistentPairs = vtkThreshold()
@@ -71,7 +72,9 @@ persistentPairs.SetInputConnection(criticalPairs.GetOutputPort())
 persistentPairs.SetInputArrayToProcess(
     0, 0, 0, vtkDataObject.FIELD_ASSOCIATION_CELLS, "Persistence"
 )
-persistentPairs.ThresholdBetween(0.05, 999999)
+persistentPairs.SetThresholdFunction(vtkThreshold.THRESHOLD_BETWEEN)
+persistentPairs.SetLowerThreshold(0.05)
+persistentPairs.SetUpperThreshold(999999)
 
 # 6. simplifying the input data to remove non-persistent pairs
 topologicalSimplification = ttkTopologicalSimplification()

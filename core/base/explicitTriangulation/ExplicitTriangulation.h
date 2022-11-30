@@ -79,7 +79,7 @@ namespace ttk {
       const int &localNeighborId,
       SimplexId &neighborId) const override {
 
-      neighborId = cellNeighborData_.get(cellId, localNeighborId);
+      neighborId = cellNeighborData_[cellId][localNeighborId];
       return 0;
     }
 
@@ -163,7 +163,7 @@ namespace ttk {
       const int &localLinkId,
       SimplexId &linkId) const override {
 
-      linkId = edgeLinkData_.get(edgeId, localLinkId);
+      linkId = edgeLinkData_[edgeId][localLinkId];
       return 0;
     }
 
@@ -183,7 +183,7 @@ namespace ttk {
       const int &localStarId,
       SimplexId &starId) const override {
 
-      starId = edgeStarData_.get(edgeId, localStarId);
+      starId = edgeStarData_[edgeId][localStarId];
       return 0;
     }
 
@@ -201,7 +201,7 @@ namespace ttk {
     inline int getEdgeTriangleInternal(const SimplexId &edgeId,
                                        const int &localTriangleId,
                                        SimplexId &triangleId) const override {
-      triangleId = edgeTriangleData_.get(edgeId, localTriangleId);
+      triangleId = edgeTriangleData_[edgeId][localTriangleId];
       return 0;
     }
 
@@ -296,13 +296,13 @@ namespace ttk {
       const int &localLinkId,
       SimplexId &linkId) const override {
 
-      linkId = triangleLinkData_.get(triangleId, localLinkId);
+      linkId = triangleLinkData_[triangleId][localLinkId];
       return 0;
     }
 
     inline SimplexId TTK_TRIANGULATION_INTERNAL(getTriangleLinkNumber)(
       const SimplexId &triangleId) const override {
-      return triangleLinkData_.size(triangleId);
+      return triangleLinkData_[triangleId].size();
     }
 
     inline const std::vector<std::vector<SimplexId>> *
@@ -315,13 +315,13 @@ namespace ttk {
       const SimplexId &triangleId,
       const int &localStarId,
       SimplexId &starId) const override {
-      starId = triangleStarData_.get(triangleId, localStarId);
+      starId = triangleStarData_[triangleId][localStarId];
       return 0;
     }
 
     inline SimplexId TTK_TRIANGULATION_INTERNAL(getTriangleStarNumber)(
       const SimplexId &triangleId) const override {
-      return triangleStarData_.size(triangleId);
+      return triangleStarData_[triangleId].size();
     }
 
     inline const std::vector<std::vector<SimplexId>> *
@@ -347,13 +347,13 @@ namespace ttk {
     inline int getVertexEdgeInternal(const SimplexId &vertexId,
                                      const int &localEdgeId,
                                      SimplexId &edgeId) const override {
-      edgeId = vertexEdgeData_.get(vertexId, localEdgeId);
+      edgeId = vertexEdgeData_[vertexId][localEdgeId];
       return 0;
     }
 
     inline SimplexId
       getVertexEdgeNumberInternal(const SimplexId &vertexId) const override {
-      return vertexEdgeData_.size(vertexId);
+      return vertexEdgeData_[vertexId].size();
     }
 
     inline const std::vector<std::vector<SimplexId>> *
@@ -367,13 +367,13 @@ namespace ttk {
       const int &localLinkId,
       SimplexId &linkId) const override {
 
-      linkId = vertexLinkData_.get(vertexId, localLinkId);
+      linkId = vertexLinkData_[vertexId][localLinkId];
       return 0;
     }
 
     inline SimplexId TTK_TRIANGULATION_INTERNAL(getVertexLinkNumber)(
       const SimplexId &vertexId) const override {
-      return vertexLinkData_.size(vertexId);
+      return vertexLinkData_[vertexId].size();
     }
 
     inline const std::vector<std::vector<SimplexId>> *
@@ -387,13 +387,13 @@ namespace ttk {
       const int &localNeighborId,
       SimplexId &neighborId) const override {
 
-      neighborId = vertexNeighborData_.get(vertexId, localNeighborId);
+      neighborId = vertexNeighborData_[vertexId][localNeighborId];
       return 0;
     }
 
     inline SimplexId TTK_TRIANGULATION_INTERNAL(getVertexNeighborNumber)(
       const SimplexId &vertexId) const override {
-      return vertexNeighborData_.size(vertexId);
+      return vertexNeighborData_[vertexId].size();
     }
 
     inline const std::vector<std::vector<SimplexId>> *
@@ -426,13 +426,13 @@ namespace ttk {
       const SimplexId &vertexId,
       const int &localStarId,
       SimplexId &starId) const override {
-      starId = vertexStarData_.get(vertexId, localStarId);
+      starId = vertexStarData_[vertexId][localStarId];
       return 0;
     }
 
     inline SimplexId TTK_TRIANGULATION_INTERNAL(getVertexStarNumber)(
       const SimplexId &vertexId) const override {
-      return vertexStarData_.size(vertexId);
+      return vertexStarData_[vertexId].size();
     }
 
     inline const std::vector<std::vector<SimplexId>> *
@@ -444,13 +444,13 @@ namespace ttk {
     inline int getVertexTriangleInternal(const SimplexId &vertexId,
                                          const int &localTriangleId,
                                          SimplexId &triangleId) const override {
-      triangleId = vertexTriangleData_.get(vertexId, localTriangleId);
+      triangleId = vertexTriangleData_[vertexId][localTriangleId];
       return 0;
     }
 
     inline SimplexId getVertexTriangleNumberInternal(
       const SimplexId &vertexId) const override {
-      return vertexTriangleData_.size(vertexId);
+      return vertexTriangleData_[vertexId].size();
     }
 
     inline const std::vector<std::vector<SimplexId>> *
@@ -608,11 +608,100 @@ namespace ttk {
      */
     int writeToFile(std::ofstream &stream) const;
     /**
+     * @brief Write internal state to disk using an ASCII format
+     */
+    int writeToFileASCII(std::ofstream &stream) const;
+    /**
      * @brief Read from disk into internal state
      *
      * Use a custom binary format for fast loading
      */
     int readFromFile(std::ifstream &stream);
+
+#ifdef TTK_ENABLE_MPI
+
+    inline SimplexId
+      getEdgeGlobalIdInternal(const SimplexId leid) const override {
+      return this->edgeLidToGid_[leid];
+    }
+
+    inline SimplexId
+      getEdgeLocalIdInternal(const SimplexId geid) const override {
+      const auto it = this->edgeGidToLid_.find(geid);
+#ifndef TTK_ENABLE_KAMIKAZE
+      if(it == this->edgeGidToLid_.end()) {
+        return -1;
+      }
+#endif // TTK_ENABLE_KAMIKAZE
+      return it->second;
+    }
+
+    inline SimplexId
+      getTriangleGlobalIdInternal(const SimplexId ltid) const override {
+      return this->triangleLidToGid_[ltid];
+    }
+
+    inline SimplexId
+      getTriangleLocalIdInternal(const SimplexId gtid) const override {
+      const auto it = this->triangleGidToLid_.find(gtid);
+#ifndef TTK_ENABLE_KAMIKAZE
+      if(it == this->triangleGidToLid_.end()) {
+        return -1;
+      }
+#endif // TTK_ENABLE_KAMIKAZE
+      return it->second;
+    }
+
+  protected:
+    template <typename Func0, typename Func1, typename Func2>
+    int exchangeDistributedInternal(const Func0 &getGlobalSimplexId,
+                                    const Func1 &storeGlobalSimplexId,
+                                    const Func2 &iterCond,
+                                    const int nSimplicesPerCell);
+
+    int preconditionDistributedCellRanges();
+    size_t
+      computeCellRangeOffsets(std::vector<size_t> &nSimplicesPerRange) const;
+
+    int preconditionDistributedCells() override;
+    int preconditionDistributedEdges() override;
+    int preconditionDistributedVertices() override;
+    int preconditionDistributedTriangles() override;
+    int preconditionEdgeRankArray() override;
+    int preconditionTriangleRankArray() override;
+
+    // range of (local) cells owned by the current rank that have
+    // contiguous global ids (to label edges & triangles)
+    struct CellRange {
+      // rank-local range id
+      size_t id;
+      // range beginning (global cell id)
+      size_t begin;
+      // range end (inclusive, global cell id)
+      size_t end;
+      // owner rank
+      size_t rank;
+
+      static inline MPI_Datatype getMPIType() {
+        MPI_Datatype res{};
+        const auto cellRangeSize = sizeof(CellRange) / sizeof(size_t);
+        MPI_Type_contiguous(cellRangeSize, ttk::getMPIType(size_t{}), &res);
+        return res;
+      }
+    };
+    // cell ranges per rank
+    std::vector<CellRange> localCellRanges_{};
+    // cell ranges from all ranks (gathered on rank 0)
+    std::vector<CellRange> gatheredCellRanges_{};
+    // number of CellRanges per rank
+    std::vector<int> nRangesPerRank_{};
+
+    std::vector<SimplexId> edgeLidToGid_{};
+    std::unordered_map<SimplexId, SimplexId> edgeGidToLid_{};
+    std::vector<SimplexId> triangleLidToGid_{};
+    std::unordered_map<SimplexId, SimplexId> triangleGidToLid_{};
+
+#endif // TTK_ENABLE_MPI
 
   private:
     bool doublePrecision_;

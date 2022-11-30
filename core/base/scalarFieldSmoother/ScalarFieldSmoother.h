@@ -13,6 +13,27 @@
 /// etc.).
 ///
 /// \sa ttkScalarFieldSmoother.cpp %for a usage example.
+///
+/// \b Online \b examples: \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/1manifoldLearning/">1-Manifold
+///   Learning example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/2manifoldLearning/">
+///   2-Manifold Learning example</a> \n
+///   - <a href="https://topology-tool-kit.github.io/examples/dragon/">Dragon
+/// example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/harmonicSkeleton/">
+///   Harmonic Skeleton example</a> \n
+///   - <a href="https://topology-tool-kit.github.io/examples/morseMolecule/">
+/// Morse molecule example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/interactionSites/">
+///   Interaction sites example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/morseMolecule/">
+///   Morse Molecule example</a> \n
 
 #pragma once
 
@@ -48,7 +69,6 @@ namespace ttk {
       if(triangulation) {
         triangulation->preconditionVertexNeighbors();
       }
-
       return 0;
     }
 
@@ -82,13 +102,18 @@ int ttk::ScalarFieldSmoother::smooth(const triangulationType *triangulation,
     return -4;
 #endif
 
+#if TTK_ENABLE_MPI
+  bool useMPI{false};
+  if(ttk::isRunningWithMPI() && triangulation->getVertRankArray() != nullptr
+     && triangulation->getVertsGlobalIds() != nullptr)
+    useMPI = true;
+#endif
   SimplexId vertexNumber = triangulation->getNumberOfVertices();
 
   std::vector<dataType> tmpData(vertexNumber * dimensionNumber_, 0);
 
   dataType *outputData = (dataType *)outputData_;
   dataType *inputData = (dataType *)inputData_;
-
   // init the output
   for(SimplexId i = 0; i < vertexNumber; i++) {
     for(int j = 0; j < dimensionNumber_; j++) {
@@ -115,16 +140,16 @@ int ttk::ScalarFieldSmoother::smooth(const triangulationType *triangulation,
         continue;
 
       for(int j = 0; j < dimensionNumber_; j++) {
-        tmpData[dimensionNumber_ * i + j] = 0;
+        const auto curr{dimensionNumber_ * i + j};
+        tmpData[curr] = outputData[curr];
 
-        SimplexId neighborNumber = triangulation->getVertexNeighborNumber(i);
+        const auto neighborNumber = triangulation->getVertexNeighborNumber(i);
         for(SimplexId k = 0; k < neighborNumber; k++) {
           SimplexId neighborId = -1;
           triangulation->getVertexNeighbor(i, k, neighborId);
-          tmpData[dimensionNumber_ * i + j]
-            += outputData[dimensionNumber_ * (neighborId) + j];
+          tmpData[curr] += outputData[dimensionNumber_ * (neighborId) + j];
         }
-        tmpData[dimensionNumber_ * i + j] /= ((double)neighborNumber);
+        tmpData[curr] /= static_cast<double>(neighborNumber + 1);
       }
     }
 
@@ -140,6 +165,14 @@ int ttk::ScalarFieldSmoother::smooth(const triangulationType *triangulation,
         }
       }
     }
+#if TTK_ENABLE_MPI
+    if(useMPI) {
+      // after each iteration we need to exchange the ghostcell values with our
+      // neighbors
+      exchangeGhostVertices<dataType, triangulationType>(
+        outputData, triangulation, ttk::MPIcomm_, dimensionNumber_);
+    }
+#endif
 
     if(debugLevel_ >= (int)(debug::Priority::INFO)) {
       if(!(it % ((numberOfIterations) / timeBuckets))) {

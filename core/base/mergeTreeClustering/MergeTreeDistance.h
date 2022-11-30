@@ -121,7 +121,7 @@ namespace ttk {
     template <class dataType>
     void
       runAssignmentProblemSolver(std::vector<std::vector<dataType>> &costMatrix,
-                                 std::vector<asgnMatchingTuple> &matchings) {
+                                 std::vector<MatchingType> &matchings) {
       AssignmentSolver<dataType> *assignmentSolver;
       AssignmentExhaustive<dataType> solverExhaustive;
       AssignmentMunkres<dataType> solverMunkres;
@@ -177,12 +177,12 @@ namespace ttk {
 
     template <class dataType>
     dataType postprocessAssignment(
-      std::vector<asgnMatchingTuple> &matchings,
+      std::vector<MatchingType> &matchings,
       std::vector<ftm::idNode> &children1,
       std::vector<ftm::idNode> &children2,
       std::vector<std::tuple<int, int>> &forestAssignment) {
       dataType cost = 0;
-      for(asgnMatchingTuple mTuple : matchings) {
+      for(const auto &mTuple : matchings) {
         cost += std::get<2>(mTuple);
         if(std::get<0>(mTuple) >= (int)children1.size()
            || std::get<1>(mTuple) >= (int)children2.size())
@@ -211,7 +211,7 @@ namespace ttk {
       // assignmentProblemSize[costMatrix.size()*costMatrix[0].size()]++;
 
       // --- Solve assignment problem
-      std::vector<asgnMatchingTuple> matchings;
+      std::vector<MatchingType> matchings;
       runAssignmentProblemSolver(costMatrix, matchings);
 
       // --- Postprocess matching to create output assignment
@@ -568,7 +568,7 @@ namespace ttk {
         verifyMergeTreeStructure<dataType>(tree2);
       }
       if(preprocess_) {
-        treesNodeCorr_ = std::vector<std::vector<int>>(2);
+        treesNodeCorr_.resize(2);
         preprocessingPipeline<dataType>(
           mTree1Int, epsilonTree1_, epsilon2Tree1_, epsilon3Tree1_,
           branchDecomposition_, useMinMaxPair_, cleanTree_, treesNodeCorr_[0]);
@@ -1212,7 +1212,7 @@ namespace ttk {
       for(unsigned int j = 0; j < costMatrix[0].size() - 1; ++j)
         costMatrix[costMatrix.size() - 1][j]
           = 2 * std::pow(std::get<2>(pairs2[j]), 2) / (std::pow(2, 2));
-      std::vector<asgnMatchingTuple> matchings;
+      std::vector<MatchingType> matchings;
       forestAssignmentProblemMunkres(costMatrix, matchings);
       dataType cost = 0;
       for(auto tuple : matchings)

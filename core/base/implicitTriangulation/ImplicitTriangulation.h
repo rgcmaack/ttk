@@ -15,6 +15,10 @@
 // base code includes
 #include <AbstractTriangulation.h>
 
+#ifdef TTK_ENABLE_MPI
+#include <memory>
+#endif // TTK_ENABLE_MPI
+
 namespace ttk {
 
   class ImplicitTriangulation : public AbstractTriangulation {
@@ -237,7 +241,63 @@ namespace ttk {
       return 0;
     }
 
+    inline int getCellVTKIDInternal(const int &ttkId,
+                                    int &vtkId) const override {
+#ifndef TTK_ENABLE_KAMIKAZE
+      if(ttkId < 0) {
+        return -1;
+      }
+#endif // TTK_ENABLE_KAMIKAZE
+      const SimplexId nSimplexPerCell{this->getDimensionality() == 3 ? 6 : 2};
+      vtkId = ttkId / nSimplexPerCell;
+      return 0;
+    }
+
+#ifdef TTK_ENABLE_MPI
+
   protected:
+    int preconditionDistributedCells() override;
+    int preconditionDistributedVertices() override;
+    int preconditionBoundaryVerticesInternal() override;
+    int preconditionBoundaryEdgesInternal() override;
+    int preconditionBoundaryTrianglesInternal() override;
+    int preconditionGlobalBoundaryInternal() override;
+
+  public:
+    inline SimplexId
+      getCellGlobalIdInternal(const SimplexId lcid) const override {
+#ifndef TTK_ENABLE_KAMIKAZE
+      if(lcid < 0 || lcid >= this->getNumberOfCellsInternal()) {
+        return -1;
+      }
+#endif // TTK_ENABLE_KAMIKAZE
+      return this->cellLidToGid_[lcid];
+    }
+
+    void createMetaGrid(const double *const bounds);
+
+    SimplexId getEdgeGlobalIdInternal(const SimplexId leid) const override;
+    SimplexId getEdgeLocalIdInternal(const SimplexId geid) const override;
+
+    SimplexId getTriangleGlobalIdInternal(const SimplexId ltid) const override;
+    SimplexId getTriangleLocalIdInternal(const SimplexId gtid) const override;
+
+  private:
+    SimplexId findEdgeFromVertices(const SimplexId v0,
+                                   const SimplexId v1) const;
+    SimplexId findTriangleFromVertices(std::array<SimplexId, 3> &verts) const;
+
+#endif // TTK_ENABLE_MPI
+
+  protected:
+#ifdef TTK_ENABLE_MPI
+    // the cellGid_ array only applies on cubic cells, not on
+    // simplicial ones...
+    std::vector<SimplexId> cellLidToGid_{};
+    std::array<bool, 6> isOnGlobalBoundary_;
+    std::shared_ptr<ImplicitTriangulation> metaGrid_{};
+#endif // TTK_ENABLE_MPI
+
     enum class VertexPosition : char {
       // a--------b
 
@@ -884,6 +944,10 @@ namespace ttk {
 
     bool TTK_TRIANGULATION_INTERNAL(isVertexOnBoundary)(
       const SimplexId &vertexId) const override;
+
+#if TTK_ENABLE_MPI
+    bool isVertexOnGlobalBoundary(const SimplexId &) const;
+#endif
 
     bool TTK_TRIANGULATION_INTERNAL(isEdgeOnBoundary)(
       const SimplexId &edgeId) const override;

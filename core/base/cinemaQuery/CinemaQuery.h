@@ -7,6 +7,19 @@
 ///
 /// %CinemaQuery is a TTK processing package that generates a temporary SQLite3
 /// Database to perform a SQL query which is returned as a CSV String
+///
+/// \b Online \b examples: \n
+///   - <a href="https://topology-tool-kit.github.io/examples/cinemaIO/">Cinema
+///   IO example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/clusteringKelvinHelmholtzInstabilities/">
+///   Clustering Kelvin Helmholtz Instabilities example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/contourTreeAlignment/">Contour
+///   Tree Alignment example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/nestedTrackingFromOverlap/">Nested
+///   Tracking from Overlap example</a> \n
 
 #pragma once
 

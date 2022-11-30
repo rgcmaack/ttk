@@ -5,8 +5,6 @@ require-pkgs \
     build-essential         \
     cmake                   \
     curl                    \
-    git			    \
-    openssh-client	    \
     libboost-system-dev     \
     libcgns-dev             \
     libeigen3-dev           \
@@ -33,17 +31,15 @@ require-pkgs \
     python3-dev             \
     python3-numpy-dev       \
     zlib1g-dev
+    
+if [ -n "${DEV}" ]; then
+        #echo "DEVELOPER MODE"
+        exit
+fi
 
 # get source code
-#(curl -kL "https://github.com/topology-tool-kit/ttk/archive/${TTK_VERSION}.tar.gz" | tar zx --strip-components 1) ||
-#(curl -kL "https://github.com/topology-tool-kit/ttk/archive/v${TTK_VERSION}.tar.gz" | tar zx --strip-components 1)
-shift
-ttk_remote="$1"
-ttk_branch="$2"
-
-export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
-git clone --branch "${ttk_branch}" --depth 1 "${ttk_remote}" . 
-
+(curl -kL "https://github.com/topology-tool-kit/ttk/archive/${TTK_VERSION}.tar.gz" | tar zx --strip-components 1) ||
+(curl -kL "https://github.com/topology-tool-kit/ttk/archive/v${TTK_VERSION}.tar.gz" | tar zx --strip-components 1)
 
 # actually compile
 cmake-default \
@@ -55,7 +51,6 @@ cmake-default \
     -DTTK_ENABLE_DOUBLE_TEMPLATING=OFF \
     -DTTK_ENABLE_CPU_OPTIMIZATION=OFF \
     -DTTK_ENABLE_OPENMP=ON \
-    -DTTK_ENABLE_64BIT_IDS=ON \
     -DTTK_ENABLE_KAMIKAZE=ON \
     ..
 

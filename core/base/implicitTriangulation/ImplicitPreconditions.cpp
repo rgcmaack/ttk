@@ -132,6 +132,7 @@ int ttk::ImplicitWithPreconditions::preconditionVerticesInternal() {
       }
     }
   }
+
   return 0;
 }
 
@@ -295,6 +296,7 @@ int ttk::ImplicitWithPreconditions::preconditionEdgesInternal() {
     }
     edgePositions_[this->edgeNumber_ - 1] = EdgePosition::LAST_EDGE_1D;
   }
+
   return 0;
 }
 
@@ -341,6 +343,7 @@ int ttk::ImplicitWithPreconditions::preconditionTrianglesInternal() {
       }
     }
   }
+
   return 0;
 }
 
@@ -357,6 +360,7 @@ int ttk::ImplicitWithPreconditions::preconditionTetrahedronsInternal() {
   for(SimplexId i = 0; i < this->tetrahedronNumber_; ++i) {
     this->tetrahedronToPosition(i, tetrahedronCoords_[i].data());
   }
+
   return 0;
 }
 

@@ -95,10 +95,10 @@ int ttkScalarFieldSmoother::RequestData(vtkInformation *ttkNotUsed(request),
   this->setMaskDataPointer(inputMaskPtr);
 
   // calling the smoothing package
-  ttkVtkTemplateMacro(
+  ttkTypeMacroAT(
     inputScalarField->GetDataType(), triangulation->getType(),
-    (this->smooth<VTK_TT, TTK_TT>(
-      (TTK_TT *)triangulation->getData(), NumberOfIterations)));
+    (smooth<T0, T1>(
+      static_cast<const T1 *>(triangulation->getData()), NumberOfIterations)));
 
   return 1;
 }

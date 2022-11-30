@@ -27,6 +27,7 @@ int ttk::PeriodicWithPreconditions::preconditionVerticesInternal() {
       vertexToPosition(i, p.data());
     }
   }
+
   return 0;
 }
 
