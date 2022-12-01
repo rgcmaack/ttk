@@ -1,4 +1,0 @@
-[32;1m[MorseSmaleSegmentationPL] [0m[33;1m[WARNING][0m No pre-existing order for array:
-[32;1m[MorseSmaleSegmentationPL] [0m[33;1m[WARNING][0m   `ImageFile`.
-[32;1m[MorseSmaleSegmentationPL] [0m[33;1m[WARNING][0m TIP: run `ttkArrayPreconditioning` first
-[32;1m[MorseSmaleSegmentationPL] [0m[33;1m[WARNING][0m for improved performances :)
