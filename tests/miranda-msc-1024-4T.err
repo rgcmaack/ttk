@@ -1,0 +1,72 @@
+[32;1m[MorseSmaleComplex] [0m[33;1m[WARNING][0m No pre-existing order for array:
+[32;1m[MorseSmaleComplex] [0m[33;1m[WARNING][0m   `ImageFile`.
+[32;1m[MorseSmaleComplex] [0m[33;1m[WARNING][0m TIP: run `ttkArrayPreconditioning` first
+[32;1m[MorseSmaleComplex] [0m[33;1m[WARNING][0m for improved performances :)
+terminate called after throwing an instance of 'std::bad_alloc'
+  what():  std::bad_alloc
+[0m[1m[91m
+Loguru caught a signal: SIGABRT
+[0m[0m[31mStack trace:
+60      0x5578a44f991e /usr/local/bin/pvpython(+0x291e) [0x5578a44f991e]
+59      0x2b9b759d60b3 __libc_start_main + 243
+58      0x5578a44fa2fb /usr/local/bin/pvpython(+0x32fb) [0x5578a44fa2fb]
+57      0x2b9b7777dcfb vtkPythonInterpreter::PyMain(int, char**) + 491
+56      0x2b9b78617aa7 Py_Main + 71
+55      0x2b9b78617558 Py_RunMain + 2008
+54      0x2b9b78636a47 PyRun_SimpleFileExFlags + 359
+53      0x2b9b786350dc /lib/x86_64-linux-gnu/libpython3.8.so.1.0(+0x18c0dc) [0x2b9b786350dc]
+52      0x2b9b7867463f PyEval_EvalCode + 31
+51      0x2b9b78674252 PyEval_EvalCodeEx + 66
+50      0x2b9b78673ecb _PyEval_EvalCodeWithName + 2299
+49      0x2b9b7851f46d _PyEval_EvalFrameDefault + 4861
+48      0x2b9b7851dd6d /lib/x86_64-linux-gnu/libpython3.8.so.1.0(+0x74d6d) [0x2b9b7851dd6d]
+47      0x2b9b787510f4 _PyFunction_Vectorcall + 148
+46      0x2b9b78673ecb _PyEval_EvalCodeWithName + 2299
+45      0x2b9b78525ef6 _PyEval_EvalFrameDefault + 32134
+44      0x2b9b7851dd6d /lib/x86_64-linux-gnu/libpython3.8.so.1.0(+0x74d6d) [0x2b9b7851dd6d]
+43      0x2b9b78751d8a /lib/x86_64-linux-gnu/libpython3.8.so.1.0(+0x2a8d8a) [0x2b9b78751d8a]
+42      0x2b9b787510f4 _PyFunction_Vectorcall + 148
+41      0x2b9b78673ecb _PyEval_EvalCodeWithName + 2299
+40      0x2b9b78526f48 _PyEval_EvalFrameDefault + 36312
+39      0x2b9b78751667 /lib/x86_64-linux-gnu/libpython3.8.so.1.0(+0x2a8667) [0x2b9b78751667]
+38      0x2b9b938ea77c /usr/local/lib/python3.8/site-packages/paraview/modules/vtkRemotingViews.so(+0x1a477c) [0x2b9b938ea77c]
+37      0x2b9b798e2bc9 vtkSMParaViewPipelineControllerWithRendering::Show(vtkSMSourceProxy*, int, vtkSMViewProxy*, char const*) + 249
+36      0x2b9b798e2156 vtkSMParaViewPipelineControllerWithRendering::UpdatePipelineBeforeDisplay(vtkSMSourceProxy*, int, vtkSMViewProxy*) + 246
+35      0x2b9b772c7a30 vtkSMSourceProxy::UpdatePipeline(double) + 144
+34      0x2b9b7724cb3b vtkSMOutputPort::UpdatePipelineInternal(double, bool) + 203
+33      0x2b9b7719f648 vtkPVSessionBase::ExecuteStream(unsigned int, vtkClientServerStream const&, bool) + 56
+32      0x2b9b771a07b4 vtkPVSessionCore::ExecuteStream(unsigned int, vtkClientServerStream const&, bool) + 84
+31      0x2b9b771a0986 vtkPVSessionCore::ExecuteStreamInternal(vtkClientServerStream const&, bool) + 246
+30      0x2b9b777974c5 vtkClientServerInterpreter::ProcessStream(vtkClientServerStream const&) + 37
+29      0x2b9b77797002 vtkClientServerInterpreter::ProcessOneMessage(vtkClientServerStream const&, int) + 194
+28      0x2b9b77796ec5 vtkClientServerInterpreter::ProcessCommandInvoke(vtkClientServerStream const&, int) + 1173
+27      0x2b9b77796897 vtkClientServerInterpreter::CallCommandFunction(char const*, vtkObjectBase*, char const*, vtkClientServerStream const&, vtkClientServerStream&) + 503
+26      0x2b9b75fcb0e3 vtkSISourceProxyCommand(vtkClientServerInterpreter*, vtkObjectBase*, char const*, vtkClientServerStream const&, vtkClientServerStream&, void*) + 2243
+25      0x2b9b771d8232 vtkSISourceProxy::UpdatePipeline(int, double, bool) + 514
+24      0x2b9b77ae9587 vtkStreamingDemandDrivenPipeline::Update(int, vtkInformationVector*) + 279
+23      0x2b9b77a9e391 vtkDemandDrivenPipeline::UpdateData(int) + 161
+22      0x2b9b77ae81bd vtkStreamingDemandDrivenPipeline::ProcessRequest(vtkInformation*, vtkInformationVector**, vtkInformationVector*) + 893
+21      0x2b9b77a9f516 vtkDemandDrivenPipeline::ProcessRequest(vtkInformation*, vtkInformationVector**, vtkInformationVector*) + 310
+20      0x2b9b77a98512 vtkCompositeDataPipeline::ForwardUpstream(vtkInformation*) + 386
+19      0x2b9b77ae81bd vtkStreamingDemandDrivenPipeline::ProcessRequest(vtkInformation*, vtkInformationVector**, vtkInformationVector*) + 893
+18      0x2b9b77a9f91f vtkDemandDrivenPipeline::ProcessRequest(vtkInformation*, vtkInformationVector**, vtkInformationVector*) + 1343
+17      0x2b9b77a99721 vtkCompositeDataPipeline::ExecuteData(vtkInformation*, vtkInformationVector**, vtkInformationVector*) + 129
+16      0x2b9b77a9ccbd vtkDemandDrivenPipeline::ExecuteData(vtkInformation*, vtkInformationVector**, vtkInformationVector*) + 61
+15      0x2b9b77aa2c46 vtkExecutive::CallAlgorithm(vtkInformation*, int, vtkInformationVector**, vtkInformationVector*) + 86
+14      0x2b9b8fa17f28 ttkAlgorithm::ProcessRequest(vtkInformation*, vtkInformationVector**, vtkInformationVector*) + 1364
+13      0x2b9b8def0d98 ttkMorseSmaleComplex::RequestData(vtkInformation*, vtkInformationVector**, vtkInformationVector*) + 2260
+12      0x2b9b8e01b9ea int ttkMorseSmaleComplex::dispatch<float, ttk::ImplicitTriangulation>(vtkDataArray*, vtkPolyData*, vtkPolyData*, vtkPolyData*, long long const*, ttk::ImplicitTriangulation const&) + 160
+11      0x2b9b8e01aa0e int ttk::MorseSmaleComplex::execute<float, ttk::ImplicitTriangulation>(ttk::MorseSmaleComplex::OutputCriticalPoints&, ttk::MorseSmaleComplex::Output1Separatrices&, ttk::MorseSmaleComplex::Output2Separatrices&, ttk::MorseSmaleComplex::OutputManifold&, float const*, unsigned long, long long const*, ttk::ImplicitTriangulation const&) + 288
+10      0x2b9b8cdedb68 int ttk::dcg::DiscreteGradient::buildGradient<ttk::ImplicitTriangulation>(ttk::ImplicitTriangulation const&) + 364
+9       0x2b9b911a7143 ttk::dcg::DiscreteGradient::initMemory(ttk::AbstractTriangulation const&) + 429
+8       0x2b9b77d1c717 std::vector<long long >::_M_fill_insert(__gnu_cxx::__normal_iterator<long long*, std::vector<long long > >, unsigned long, long long const&) + 871
+7       0x2b9b792ff522 /lib/x86_64-linux-gnu/libstdc++.so.6(+0x9e522) [0x2b9b792ff522]
+6       0x2b9b7930b6a9 /lib/x86_64-linux-gnu/libstdc++.so.6(+0xaa6a9) [0x2b9b7930b6a9]
+5       0x2b9b7930b3f7 /lib/x86_64-linux-gnu/libstdc++.so.6(+0xaa3f7) [0x2b9b7930b3f7]
+4       0x2b9b7930b38c /lib/x86_64-linux-gnu/libstdc++.so.6(+0xaa38c) [0x2b9b7930b38c]
+3       0x2b9b792ff911 /lib/x86_64-linux-gnu/libstdc++.so.6(+0x9e911) [0x2b9b792ff911]
+2       0x2b9b759d4859 abort + 299
+1       0x2b9b759f503b gsignal + 203
+0       0x2b9b759f50c0 /lib/x86_64-linux-gnu/libc.so.6(+0x430c0) [0x2b9b759f50c0][0m
+[0m[31m(1360.582s) [paraview        ]                       :0     FATL| Signal: SIGABRT[0m
+/var/spool/slurmd/job5189256/slurm_script: line 4: 97770 Aborted                 singularity exec -B /groups/VIS/data2:/data ~/ttk-private.sif pvpython miranda.py msc 1024 4

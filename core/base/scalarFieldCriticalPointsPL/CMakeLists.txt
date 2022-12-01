@@ -1,9 +1,0 @@
-ttk_add_base_library(scalarFieldCriticalPointsPL
-  SOURCES
-    ScalarFieldCriticalPointsPL.cpp
-  HEADERS
-    ScalarFieldCriticalPointsPL.h
-  DEPENDS
-    triangulation
-    scalarFieldCriticalPoints
-    )

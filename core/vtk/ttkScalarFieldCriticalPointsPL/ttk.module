@@ -1,9 +1,0 @@
-NAME
-  ttkScalarFieldCriticalPointsPL
-SOURCES
-  ttkScalarFieldCriticalPointsPL.cpp
-HEADERS
-  ttkScalarFieldCriticalPointsPL.h
-DEPENDS
-  scalarFieldCriticalPointsPL
-  ttkAlgorithm
