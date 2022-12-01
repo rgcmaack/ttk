@@ -19,11 +19,6 @@
 
 #pragma once
 
-// for parallel sort
-#if(defined(__GNUC__) && !defined(__clang__))
-#include <parallel/algorithm>
-#endif
-
 // for numerical perturbation
 #include <boost/math/special_functions/next.hpp>
 
@@ -59,7 +54,7 @@ namespace ttk {
       LocalizedTopologicalSimplification() {
         this->setDebugMsgPrefix("LTS");
       }
-      ~LocalizedTopologicalSimplification() = default;
+      ~LocalizedTopologicalSimplification() override = default;
 
       int preconditionTriangulation(
         ttk::AbstractTriangulation *triangulation) const {
@@ -169,7 +164,7 @@ namespace ttk {
           const IT &vOrder = order[v];
           const IT nNeighbors = triangulation->getVertexNeighborNumber(v);
           for(IT n = 0; n < nNeighbors; n++) {
-            IT u;
+            IT u{-1};
             triangulation->getVertexNeighbor(v, n, u);
             if(vOrder < order[u]) {
               hasLargerNeighbor = true;
@@ -269,7 +264,7 @@ namespace ttk {
           IT numberOfLargerNeighbors = 0;
           IT numberOfLargerNeighborsThisThreadVisited = 0;
           for(IT n = 0; n < nNeighbors; n++) {
-            IT u;
+            IT u{-1};
             triangulation->getVertexNeighbor(v, n, u);
 
             const IT &orderU = order[u];
@@ -313,7 +308,7 @@ namespace ttk {
             std::vector<Propagation<IT> *> neighborPropagations(
               nNeighbors, nullptr);
             for(IT n = 0; n < nNeighbors; n++) {
-              IT u;
+              IT u{-1};
               triangulation->getVertexNeighbor(v, n, u);
               if(propagationMask[u] != nullptr) {
                 auto &neighborPropagation = neighborPropagations[n];
@@ -403,7 +398,7 @@ namespace ttk {
           IT numberOfLargerNeighbors = 0;
           IT numberOfLargerNeighborsThisThreadVisited = 0;
           for(IT n = 0; n < nNeighbors; n++) {
-            IT u;
+            IT u{-1};
             triangulation->getVertexNeighbor(v, n, u);
 
             const IT &orderU = order[u];
@@ -447,7 +442,7 @@ namespace ttk {
             std::vector<Propagation<IT> *> neighborPropagations(
               nNeighbors, nullptr);
             for(IT n = 0; n < nNeighbors; n++) {
-              IT u;
+              IT u{-1};
               triangulation->getVertexNeighbor(v, n, u);
               if(propagationMask[u] != nullptr) {
                 auto &neighborPropagation = neighborPropagations[n];
@@ -642,7 +637,7 @@ namespace ttk {
 
             IT nNeighbors = triangulation->getVertexNeighborNumber(v);
             for(IT n = 0; n < nNeighbors; n++) {
-              IT u;
+              IT u{-1};
               triangulation->getVertexNeighbor(v, n, u);
               auto &s = segmentation[u];
               if(s >= 0 && order[u] > saddleOrder) {
@@ -776,7 +771,7 @@ namespace ttk {
 
           IT nNeighbors = triangulation->getVertexNeighborNumber(v);
           for(IT n = 0; n < nNeighbors; n++) {
-            IT u;
+            IT u{-1};
             triangulation->getVertexNeighbor(v, n, u);
 
             // if u is in segment and has not already been added to the queue
@@ -863,7 +858,7 @@ namespace ttk {
 
             IT nNeighbors = triangulation->getVertexNeighborNumber(v);
             for(IT n = 0; n < nNeighbors; n++) {
-              IT u;
+              IT u{-1};
               triangulation->getVertexNeighbor(v, n, u);
 
               if(u == saddleIndex) {
@@ -1066,19 +1061,8 @@ namespace ttk {
         this->printMsg("Computing Global Order", 0.2, timer.getElapsedTime(),
                        this->threadNumber_, debug::LineMode::REPLACE);
 
-#ifdef TTK_ENABLE_OPENMP
-#ifdef __clang__
-        this->printWrn("Caution, outside GCC, sequential sort");
-        std::sort(sortedIndices.begin(), sortedIndices.end());
-#else
-        omp_set_num_threads(this->threadNumber_);
-        __gnu_parallel::sort(sortedIndices.begin(), sortedIndices.end());
-        omp_set_num_threads(1);
-#endif
-#else
-        this->printWrn("Caution, outside GCC, sequential sort");
-        std::sort(sortedIndices.begin(), sortedIndices.end());
-#endif
+        TTK_PSORT(
+          this->threadNumber_, sortedIndices.begin(), sortedIndices.end());
 
         this->printMsg("Computing Global Order", 0.8, timer.getElapsedTime(),
                        this->threadNumber_, debug::LineMode::REPLACE);

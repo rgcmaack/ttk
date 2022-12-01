@@ -25,6 +25,7 @@
 #include <BaseClass.h>
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <fstream>
 #include <iostream>
@@ -90,7 +91,7 @@ namespace ttk {
     // 1) constructors, destructors, operators, etc.
     Debug();
 
-    virtual ~Debug();
+    ~Debug() override;
 
     // 2) functions
     /// Set the debug level of a particular object. The global variable
@@ -105,7 +106,7 @@ namespace ttk {
     /// number of threads, etc.) from a wrapper to a base object.
     /// \param wrapper Pointer to the wrapping object.
     /// \return Returns 0 upon success, negative values otherwise.
-    virtual int setWrapper(const Wrapper *wrapper);
+    int setWrapper(const Wrapper *wrapper) override;
 
     // =========================================================================
     // New Debug Methods
@@ -180,7 +181,7 @@ namespace ttk {
          && (globalDebugLevel_ < (int)priority))
         return 0;
 
-      std::vector<std::string> chunks(4);
+      std::array<std::string, 4> chunks{};
       size_t q = 0;
 
       if(memory >= 0)
@@ -359,7 +360,14 @@ namespace ttk {
      * debug message.
      */
     inline void setDebugMsgPrefix(const std::string &prefix) {
+#if TTK_ENABLE_MPI
+      this->debugMsgPrefix_
+        = prefix.length() > 0
+            ? "[" + prefix + "-" + std::to_string(MPIrank_) + "] "
+            : "";
+#else
       this->debugMsgPrefix_ = prefix.length() > 0 ? "[" + prefix + "] " : "";
+#endif
     }
 
   protected:

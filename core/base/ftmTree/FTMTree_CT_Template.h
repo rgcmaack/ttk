@@ -1,5 +1,4 @@
-#ifndef FTMTree_CT_Template_h_INCLUDED
-#define FTMTree_CT_Template_h_INCLUDED
+#pragma once
 
 #include <FTMTree_CT.h>
 
@@ -128,7 +127,7 @@ int FTMTree_CT::leafSearch(const triangulationType *mesh) {
         valence downval = 0;
 
         for(valence n = 0; n < neighNumb; ++n) {
-          SimplexId neigh;
+          SimplexId neigh{-1};
           mesh->getVertexNeighbor(v, n, neigh);
           if(scalars_->isLower(neigh, v)) {
             ++downval;
@@ -159,4 +158,3 @@ int FTMTree_CT::leafSearch(const triangulationType *mesh) {
 
 } // namespace ftm
 } // namespace ttk
-#endif // FTMTree_CT_Template_h_INCLUDED

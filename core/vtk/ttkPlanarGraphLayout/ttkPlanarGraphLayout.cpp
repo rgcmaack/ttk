@@ -22,8 +22,7 @@ ttkPlanarGraphLayout::ttkPlanarGraphLayout() {
   this->SetNumberOfInputPorts(1);
   this->SetNumberOfOutputPorts(1);
 }
-ttkPlanarGraphLayout::~ttkPlanarGraphLayout() {
-}
+ttkPlanarGraphLayout::~ttkPlanarGraphLayout() = default;
 
 int ttkPlanarGraphLayout::FillInputPortInformation(int port,
                                                    vtkInformation *info) {
@@ -128,7 +127,6 @@ int ttkPlanarGraphLayout::mergeTreePlanarLayoutCallTemplate(
   vtkUnstructuredGrid *output) {
   auto mergeTree = ttk::ftm::makeTree<dataType>(treeNodes, treeArcs);
   ttk::ftm::FTMTree_MT *tree = &(mergeTree.tree);
-  // tree->printTree2();
 
   ttk::ftm::computePersistencePairs<dataType>(tree);
 
@@ -148,11 +146,14 @@ int ttkPlanarGraphLayout::mergeTreePlanarLayoutCallTemplate(
   visuMaker.setImportantPairsSpacing(ImportantPairsSpacing);
   visuMaker.setNonImportantPairsSpacing(NonImportantPairsSpacing);
   visuMaker.setNonImportantPairsProximity(NonImportantPairsProximity);
+  visuMaker.setExcludeImportantPairsHigher(ExcludeImportantPairsHigher);
+  visuMaker.setExcludeImportantPairsLower(ExcludeImportantPairsLower);
   visuMaker.setVtkOutputNode(output);
   visuMaker.setVtkOutputArc(output);
   visuMaker.setTreesNodes(treeNodes);
   visuMaker.setTreesNodeCorrMesh(treeNodeCorrMesh);
   visuMaker.setDebugLevel(this->debugLevel_);
+  visuMaker.copyPointData(treeNodes);
   visuMaker.makeTreesOutput<dataType>(tree);
 
   return 1;
@@ -168,17 +169,8 @@ int ttkPlanarGraphLayout::mergeTreePlanarLayoutCall(
   vtkUnstructuredGrid *treeArcs
     = vtkUnstructuredGrid::GetData(inputVector[0], 1);
   auto output = vtkUnstructuredGrid::GetData(outputVector);
-  int dataTypeInt
-    = treeNodes->GetPointData()->GetArray("Scalar")->GetDataType();
 
-  int res = 0;
-
-  switch(dataTypeInt) {
-    vtkTemplateMacro(res = mergeTreePlanarLayoutCallTemplate<VTK_TT>(
-                       treeNodes, treeArcs, output););
-  }
-
-  return res;
+  return mergeTreePlanarLayoutCallTemplate<float>(treeNodes, treeArcs, output);
 }
 
 int ttkPlanarGraphLayout::RequestData(vtkInformation *request,

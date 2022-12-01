@@ -20,6 +20,11 @@
 ///
 /// \sa ttk::Triangulation
 /// \sa ttk::CompactTriangulationPreconditioning
+///
+/// \b Online \b examples: \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/compactTriangulation/">
+///   Compact Triangulation example</a> \n
 
 #pragma once
 
@@ -73,12 +78,10 @@ namespace ttk {
     std::vector<std::array<SimplexId, 4>> tetraTriangles_;
 
   public:
-    ImplicitCluster() {
-    }
+    ImplicitCluster() = default;
     ImplicitCluster(SimplexId id) : nid(id) {
     }
-    ~ImplicitCluster() {
-    }
+    ~ImplicitCluster() = default;
 
     friend class CompactTriangulation;
   };
@@ -92,7 +95,7 @@ namespace ttk {
     CompactTriangulation();
     CompactTriangulation(const CompactTriangulation &rhs);
     CompactTriangulation &operator=(const CompactTriangulation &rhs);
-    ~CompactTriangulation();
+    ~CompactTriangulation() override;
     CompactTriangulation(CompactTriangulation &&rhs) = default;
     CompactTriangulation &operator=(CompactTriangulation &&rhs) = default;
 
@@ -275,8 +278,8 @@ namespace ttk {
             getClusterTetraEdges(exnode);
           }
           for(size_t i = 0; i < exnode->tetraEdges_.size(); i++) {
-            cellEdgeVector_.push_back({exnode->tetraEdges_.at(i).begin(),
-                                       exnode->tetraEdges_.at(i).end()});
+            cellEdgeVector_.emplace_back(exnode->tetraEdges_.at(i).begin(),
+                                         exnode->tetraEdges_.at(i).end());
           }
         }
       }
@@ -396,9 +399,9 @@ namespace ttk {
             getClusterCellTriangles(exnode);
           }
           for(size_t i = 0; i < exnode->tetraTriangles_.size(); i++) {
-            cellTriangleVector_.push_back(
-              {exnode->tetraTriangles_.at(i).begin(),
-               exnode->tetraTriangles_.at(i).end()});
+            cellTriangleVector_.emplace_back(
+              exnode->tetraTriangles_.at(i).begin(),
+              exnode->tetraTriangles_.at(i).end());
           }
         }
       }
@@ -776,8 +779,9 @@ namespace ttk {
             getClusterTriangleEdges(exnode);
           }
           for(size_t i = 0; i < exnode->triangleEdges_.size(); i++) {
-            triangleEdgeVector_.push_back({exnode->triangleEdges_.at(i).begin(),
-                                           exnode->triangleEdges_.at(i).end()});
+            triangleEdgeVector_.emplace_back(
+              exnode->triangleEdges_.at(i).begin(),
+              exnode->triangleEdges_.at(i).end());
           }
         }
       }
@@ -1085,6 +1089,9 @@ namespace ttk {
       SimplexId nid = vertexIndices_[vertexId];
       SimplexId localVertexId = vertexId - vertexIntervals_[nid - 1] - 1;
       ImplicitCluster *exnode = searchCache(nid);
+      if(exnode == nullptr) {
+        return -1;
+      }
       if(exnode->vertexNeighbors_.empty()) {
         getClusterVertexNeighbors(exnode);
       }
@@ -1491,6 +1498,8 @@ namespace ttk {
      */
     inline void initCache(const float ratio = 0.2) {
       cacheSize_ = nodeNumber_ * ratio + 1;
+      caches_.resize(threadNumber_);
+      cacheMaps_.resize(threadNumber_);
       for(int i = 0; i < threadNumber_; i++) {
         caches_[i].clear();
         cacheMaps_[i].clear();

@@ -10,10 +10,16 @@
 ///
 ///
 /// \sa ttkHarmonicField.cpp % for a usage example.
+///
+/// \b Online \b examples: \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/harmonicSkeleton/">
+///   Harmonic Skeleton example</a> \n
 
 #pragma once
 
 // base code includes
+#include <Laplacian.h>
 #include <Triangulation.h>
 
 namespace ttk {
@@ -28,14 +34,9 @@ namespace ttk {
       this->setDebugMsgPrefix("HarmonicField");
     }
 
-    inline void preconditionTriangulation(AbstractTriangulation &triangulation,
-                                          const bool cotanWeights) {
-      triangulation.preconditionVertexNeighbors();
-      triangulation.preconditionEdges();
-      if(cotanWeights) {
-        // cotan weights method needs more pre-processing
-        triangulation.preconditionEdgeTriangles();
-      }
+    inline void
+      preconditionTriangulation(AbstractTriangulation &triangulation) const {
+      Laplacian::preconditionTriangulation(triangulation);
     }
 
     template <class T, class TriangulationType = AbstractTriangulation>

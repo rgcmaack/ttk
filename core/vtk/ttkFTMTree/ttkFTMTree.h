@@ -52,20 +52,22 @@
 /// Pages 1889-1905
 ///
 /// \b Online \b examples: \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/contourTreeAlignment/">Contour
+///   Tree Alignment example</a> \n
 ///   - <a href="https://topology-tool-kit.github.io/examples/ctBones/">CT Bones
 ///   example</a> \n
 ///   - <a href="https://topology-tool-kit.github.io/examples/dragon/">Dragon
-///   example</a>
-///   - <a
-///   href="https://topology-tool-kit.github.io/examples/mergeTreeClustering/">Merge
-///   Tree Clustering example</a> \n
-///   example</a> \n
-///   - <a
-///   href="https://topology-tool-kit.github.io/examples/mergeTreeTemporalReduction/">Merge
-///   Tree Temporal Reduction</a> \n
+///   example</a>\n
 ///   - <a
 ///   href="https://topology-tool-kit.github.io/examples/interactionSites/">
 ///   Interaction sites</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/mergeTreeClustering/">Merge
+///   Tree Clustering example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/mergeTreeTemporalReduction/">Merge
+///   Tree Temporal Reduction</a> \n
 
 #pragma once
 
@@ -103,7 +105,7 @@ public:
     params_.treeType = (ttk::ftm::TreeType)type;
     Modified();
   }
-  ttk::ftm::TreeType GetTreeType(void) const {
+  ttk::ftm::TreeType GetTreeType() const {
     return params_.treeType;
   }
   /// @}
@@ -114,7 +116,7 @@ public:
     params_.segm = segm;
     Modified();
   }
-  bool GetWithSegmentation(void) const {
+  bool GetWithSegmentation() const {
     return params_.segm;
   }
   /// @}
@@ -126,7 +128,7 @@ public:
     params_.normalize = norm;
     Modified();
   }
-  bool GetWithNormalize(void) const {
+  bool GetWithNormalize() const {
     return params_.normalize;
   }
   /// @}
@@ -138,7 +140,7 @@ public:
     params_.advStats = adv;
     Modified();
   }
-  bool GetWithAdvStats(void) const {
+  bool GetWithAdvStats() const {
     return params_.advStats;
   }
   /// @}
@@ -149,7 +151,7 @@ public:
     params_.samplingLvl = lvl;
     Modified();
   }
-  int GetSuperArcSamplingLevel(void) const {
+  int GetSuperArcSamplingLevel() const {
     return params_.samplingLvl;
   }
   /// @}

@@ -25,9 +25,6 @@
 ///   href="https://topology-tool-kit.github.io/examples/mergeTreeClustering/">Merge
 ///   Tree Clustering example</a> \n
 
-#ifndef _TTKMERGETREEDISTANCEMATRIX_
-#define _TTKMERGETREEDISTANCEMATRIX_
-
 #pragma once
 
 // VTK Module
@@ -36,6 +33,8 @@
 // VTK Includes
 #include <ttkAlgorithm.h>
 #include <vtkMultiBlockDataSet.h>
+#include <vtkSmartPointer.h>
+#include <vtkUnstructuredGrid.h>
 
 // TTK Base Includes
 #include <MergeTreeDistanceMatrix.h>
@@ -52,6 +51,11 @@ private:
    */
   // Execution Options
   int Backend = 0;
+  bool oldBD = branchDecomposition_;
+  bool oldNW = normalizedWasserstein_;
+  bool oldKS = keepSubtree_;
+
+  bool UseFieldDataParameters = false;
 
 public:
   /**
@@ -99,24 +103,39 @@ public:
     return persistenceThreshold_;
   }
 
-  void SetUseMinMaxPair(bool useMinMaxPair) {
-    useMinMaxPair_ = useMinMaxPair;
-    Modified();
-  }
-  bool SetUseMinMaxPair() {
-    return useMinMaxPair_;
-  }
-
-  void SetDeleteMultiPersPairs(bool deleteMultiPersPairs) {
-    deleteMultiPersPairs_ = deleteMultiPersPairs;
+  void SetDeleteMultiPersPairs(bool doDelete) {
+    deleteMultiPersPairs_ = doDelete;
     Modified();
   }
   bool SetDeleteMultiPersPairs() {
     return deleteMultiPersPairs_;
   }
 
+  void SetBranchMetric(int m) {
+    branchMetric_ = m;
+    Modified();
+  }
+
+  void SetPathMetric(int m) {
+    pathMetric_ = m;
+    Modified();
+  }
+
   // Execution Options
-  vtkSetMacro(Backend, int);
+  void SetBackend(int newBackend) {
+    if(Backend == 2) { // Custom
+      oldBD = branchDecomposition_;
+      oldNW = normalizedWasserstein_;
+      oldKS = keepSubtree_;
+    }
+    if(newBackend == 2) { // Custom
+      branchDecomposition_ = oldBD;
+      normalizedWasserstein_ = oldNW;
+      keepSubtree_ = oldKS;
+    }
+    Backend = newBackend;
+    Modified();
+  }
   vtkGetMacro(Backend, int);
 
   void SetAssignmentSolver(int assignmentSolver) {
@@ -159,6 +178,12 @@ public:
     return distanceSquared_;
   }
 
+  vtkSetMacro(UseFieldDataParameters, bool);
+  vtkGetMacro(UseFieldDataParameters, bool);
+
+  vtkSetMacro(mixtureCoefficient_, double);
+  vtkGetMacro(mixtureCoefficient_, double);
+
   /**
    * This static method and the macro below are VTK conventions on how to
    * instantiate VTK objects. You don't have to modify this.
@@ -196,7 +221,6 @@ protected:
 
   template <class dataType>
   int run(vtkInformationVector *outputVector,
-          std::vector<vtkMultiBlockDataSet *> inputTrees);
+          std::vector<vtkSmartPointer<vtkMultiBlockDataSet>> &inputTrees,
+          std::vector<vtkSmartPointer<vtkMultiBlockDataSet>> &inputTrees2);
 };
-
-#endif

@@ -138,7 +138,8 @@ public:
                           const std::string &arrayName,
                           vtkDataSet *const inputData,
                           std::vector<ttk::SimplexId> &spareStorage,
-                          const int inputPort = 0);
+                          const int inputPort = 0,
+                          const bool printErr = true);
 
   /**
    * This method retrieves the ttk::Triangulation of a vtkDataSet.
@@ -161,10 +162,10 @@ public:
    * To pass the triangulation along the pipeline, filters have to perform a
    * shallow or deep copy of an input that already has a triangulation.
    */
-  ttk::Triangulation *GetTriangulation(vtkDataSet *object);
+  ttk::Triangulation *GetTriangulation(vtkDataSet *dataSet);
 
   /**
-   * This key can be used during the FillOutputPortInfomration() call to
+   * This key can be used during the FillOutputPortInformation() call to
    * specify that an output port should produce the same data type as a
    * certain input port.
    */
@@ -206,7 +207,56 @@ public:
 
 protected:
   ttkAlgorithm();
-  virtual ~ttkAlgorithm();
+  ~ttkAlgorithm() override;
+
+  /**
+   * This method is called in GetTriangulation, after the triangulation as been
+   * created. It verifies that ghost cells and points are present and if they
+   * are not, computes them.
+   */
+
+  void MPIGhostPipelinePreconditioning(vtkDataSet *input);
+
+  /**
+   * This method is called in GetTriangulation, after the triangulation as been
+   * created. It verifies that several attributes necessary for MPI computation
+   * are present in the pipeline and if not, computes them.
+   */
+  void MPIPipelinePreconditioning(vtkDataSet *input,
+                                  std::vector<int> &neighbors,
+                                  ttk::Triangulation *triangulation = nullptr);
+
+  /**
+   * This method checks the validity of the global identifiers given in
+   * argument. A set of global identifiers is valid if the highest global id is
+   * equal to the global number of simplices (without ghosts) - 1 and if the
+   * lowest global id is equal to 0. Simplices can either be vertices or
+   * simplices of highest dimension.
+   */
+
+  bool checkGlobalIdValidity(ttk::LongSimplexId *globalIds,
+                             ttk::SimplexId simplexNumber,
+                             unsigned char *ghost,
+                             int *rankArray);
+  /**
+   * This methods generates global ids and is called during the MPI
+   * preconditioning. It behaves differently for PolyData and ImageData
+   * datasets.
+   */
+
+  bool GenerateGlobalIds(
+    vtkDataSet *input,
+    std::unordered_map<ttk::SimplexId, ttk::SimplexId> &vertGtoL,
+    std::vector<int> &neighborRanks);
+
+  /**
+   * This method is called in GetTriangulation, after the triangulation as been
+   * created. It retrieves several attributes from the pipeline to precondition
+   * the triangulation for MPI computation.
+   */
+
+  void MPITriangulationPreconditioning(ttk::Triangulation *triangulation,
+                                       vtkDataSet *input);
 
   /**
    * This method is called during the first pipeline pass in
@@ -313,9 +363,8 @@ protected:
    * This method has to be overridden to specify the required input data
    * types.
    */
-  virtual int
-    FillInputPortInformation(int ttkNotUsed(port),
-                             vtkInformation *ttkNotUsed(info)) override {
+  int FillInputPortInformation(int ttkNotUsed(port),
+                               vtkInformation *ttkNotUsed(info)) override {
     return 0;
   }
 
@@ -329,9 +378,8 @@ protected:
    * This method has to be overridden to specify the data types of the
    * outputs.
    */
-  virtual int
-    FillOutputPortInformation(int ttkNotUsed(port),
-                              vtkInformation *ttkNotUsed(info)) override {
+  int FillOutputPortInformation(int ttkNotUsed(port),
+                                vtkInformation *ttkNotUsed(info)) override {
     return 0;
   }
 };

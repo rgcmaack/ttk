@@ -28,10 +28,16 @@ Related publication:
 Mathieu Pont, Jules Vidal, Julie Delon, Julien Tierny.
 Proc. of IEEE VIS 2021.
 IEEE Transactions on Visualization and Computer Graphics, 2021
+
+                Online examples:
+
+                - https://topology-tool-kit.github.io/examples/contourTreeAlignment/
+
+                - https://topology-tool-kit.github.io/examples/nestedTrackingFromOverlap/
             </Documentation>
 
             <!-- Inputs -->
-            <InputProperty name="Input" command="AddInputConnection" multiple_input="1">
+            <InputProperty name="Input" command="AddInputConnection" clean_command="RemoveAllInputs" multiple_input="1">
                 <ProxyGroupDomain name="groups">
                     <Group name="sources" />
                     <Group name="filters" />

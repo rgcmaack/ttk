@@ -5,12 +5,15 @@
 ///
 ///\brief TTK base package defining the standard types.
 
-#ifndef _DATATYPES_H
-#define _DATATYPES_H
+#pragma once
 
 namespace ttk {
   /// \brief Identifier type for simplices of any dimension.
+#ifdef TTK_HW_IS_32BITS // i386
+  using LongSimplexId = int;
+#else // amd64
   using LongSimplexId = long long int;
+#endif // TTK_HW_IS_32BITS
 
   /// \brief Identifier type for simplices of any dimension.
 #ifdef TTK_ENABLE_64BIT_IDS
@@ -30,6 +33,9 @@ namespace ttk {
 
   /// default name for vertex scalar field
   const char VertexScalarFieldName[] = "ttkVertexScalarField";
+
+  /// default name for cell scalar field
+  const char CellScalarFieldName[] = "ttkCellScalarField";
 
   /// default name for offset scalar field
   const char OffsetScalarFieldName[] = "ttkOffsetScalarField";
@@ -65,6 +71,7 @@ namespace ttk {
   const char PersistencePairIdentifierName[] = "PairIdentifier";
   const char PersistenceName[] = "Persistence";
   const char PersistencePairTypeName[] = "PairType";
+  const char PersistenceIsFinite[] = "IsFinite";
 
   // default name for compact triangulation index
   const char compactTriangulationIndex[] = "ttkCompactTriangulationIndex";
@@ -82,5 +89,3 @@ namespace ttk {
   const int CriticalTypeNumber = 6;
 
 } // namespace ttk
-
-#endif // _DATATYPES_H

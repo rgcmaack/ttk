@@ -27,7 +27,7 @@ namespace ttk {
 
   public:
     MultiresTriangulation();
-    ~MultiresTriangulation();
+    ~MultiresTriangulation() override;
 
     SimplexId getVertexNeighborAtDecimation(const SimplexId &vertexId,
                                             const int &localNeighborId,
@@ -820,7 +820,7 @@ namespace ttk {
         if(dimensionality_ == 2) {
           if(gridDimensions_[0] == 1) {
             Di_ = 1;
-            Di_ = 2;
+            Dj_ = 2;
           } else if(gridDimensions_[1] == 1) {
             Di_ = 0;
             Dj_ = 2;
@@ -925,7 +925,7 @@ namespace ttk {
       return dimensions;
     }
 
-    ImplicitTriangulation *getTriangulation() {
+    ImplicitTriangulation *getTriangulation() const {
       return triangulation_;
     }
 

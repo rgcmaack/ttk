@@ -211,14 +211,14 @@ int SubLevelSetTree::build() {
 
   vector<UnionFind> seeds;
   vector<vector<int>> seedSuperArcs;
-  vector<UnionFind *> vertexSeeds(vertexNumber_, (UnionFind *)NULL);
+  vector<UnionFind *> vertexSeeds(vertexNumber_, (UnionFind *)nullptr);
   vector<UnionFind *> starSets;
   vector<bool> visitedVertices(vertexNumber_, false);
 
   SimplexId vertexId = -1, nId = -1;
-  UnionFind *seed = NULL, *firstUf = NULL;
+  UnionFind *seed = nullptr, *firstUf = nullptr;
 
-  const vector<int> *extremumList = NULL;
+  const vector<int> *extremumList = nullptr;
 
   bool isMergeTree = true;
 
@@ -272,7 +272,7 @@ int SubLevelSetTree::build() {
     starSets.clear();
 
     merge = false;
-    firstUf = NULL;
+    firstUf = nullptr;
 
     SimplexId neighborNumber
       = triangulation_->getVertexNeighborNumber(vertexId);
@@ -1649,14 +1649,6 @@ bool SubLevelSetTree::buildPlanarLayout(const double &scaleX,
 
   } while(!nodeQueue.empty());
 
-  // scale a bit
-  int maintainedArcNumber = 0;
-  for(int i = 0; i < (int)superArcList_.size(); i++) {
-    if(!superArcList_[i].pruned_) {
-      maintainedArcNumber++;
-    }
-  }
-
   // test
   //   for(int i = 0; i < (int) superArcList_.size(); i++){
   //     if(!superArcList_[i].pruned_){
@@ -2437,8 +2429,7 @@ int ContourTree::combineTrees() {
     return -1;
 
   queue<const Node *> nodeQueue;
-  const Node *mergeNode = NULL, *splitNode = NULL;
-  int initNumber = 0;
+  const Node *mergeNode = nullptr, *splitNode = nullptr;
 
   do {
 
@@ -2461,7 +2452,7 @@ int ContourTree::combineTrees() {
     if((int)nodeQueue.size() == initQueueSize)
       break;
 
-    const Node *n0 = NULL, *n1 = NULL, *other = NULL;
+    const Node *n0 = nullptr, *n1 = nullptr, *other = nullptr;
 
     do {
 
@@ -2483,7 +2474,7 @@ int ContourTree::combineTrees() {
         if(!((other->getNumberOfUpArcs())
              && (other->getNumberOfDownArcs() > 1))) {
 
-          n1 = NULL;
+          n1 = nullptr;
 
           if(n0->getNumberOfUpArcs()) {
 
@@ -2533,7 +2524,7 @@ int ContourTree::combineTrees() {
         if(!((other->getNumberOfUpArcs())
              && (other->getNumberOfDownArcs() > 1))) {
 
-          n1 = NULL;
+          n1 = nullptr;
 
           if(n0->getNumberOfUpArcs()) {
 
@@ -2566,8 +2557,6 @@ int ContourTree::combineTrees() {
       }
     } while(nodeQueue.size());
 
-    initNumber++;
-
     if((int)nodeList_.size() == vertexNumber_)
       break;
 
@@ -2587,23 +2576,6 @@ int ContourTree::combineTrees() {
 }
 
 int ContourTree::finalize() {
-
-  int minCount = 0, mergeCount = 0, splitCount = 0, maxCount = 0, regCount = 0;
-
-  for(int i = 0; i < (int)nodeList_.size(); i++) {
-    if(!nodeList_[i].getNumberOfDownArcs()) {
-      minCount++;
-    } else if(!nodeList_[i].getNumberOfUpArcs()) {
-      maxCount++;
-    } else if((nodeList_[i].getNumberOfDownArcs() == 1)
-              && (nodeList_[i].getNumberOfUpArcs() == 1)) {
-      regCount++;
-    } else if(nodeList_[i].getNumberOfDownArcs() > 1) {
-      mergeCount++;
-    } else if(nodeList_[i].getNumberOfUpArcs() > 1) {
-      splitCount++;
-    }
-  }
 
   vector<bool> inQueue(nodeList_.size(), false);
   queue<int> nodeIdQueue;
@@ -2682,7 +2654,7 @@ bool ContourTree::isNodeEligible(const Node *n) const {
   }
 #endif // TTK_ENABLE_KAMIKAZE
 
-  const Node *merge = NULL, *split = NULL;
+  const Node *merge = nullptr, *split = nullptr;
 
   if(mergeTree_.getNode(n - mergeTree_.getNode(0)) == n) {
     merge = n;

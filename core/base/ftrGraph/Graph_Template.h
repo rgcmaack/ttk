@@ -1,5 +1,4 @@
-#ifndef GRAPH_TEMPLATE_H
-#define GRAPH_TEMPLATE_H
+#pragma once
 
 #ifndef NDEBUG
 // #include<sstream>
@@ -22,7 +21,6 @@ namespace ttk {
       std::map<std::pair<idVertex, idVertex>, idSuperArc> masterArcs;
 
       // int totalArc = getNumberOfArcs();
-      int merged = 0;
 
       // Arc created by increasing and decreasing tasks are reversed in
       // terms of up/down node. We use this property to merge such arcs. in
@@ -71,8 +69,6 @@ namespace ttk {
         }
 
         if(arc.merged()) {
-          ++merged;
-          // std::cout << "arc merged: " << printArc(arcId) << std::endl;
           const idSuperArc target = arc.mergedIn();
           if(mapArcs.count(target) == 0) {
             mapArcs[arcId] = target;
@@ -80,8 +76,6 @@ namespace ttk {
           }
         }
       }
-
-      // std::cout << "Merged: " << merged << " / " << totalArc << std::endl;
 
       if(!mapArcs.size())
         return;
@@ -242,5 +236,3 @@ namespace ttk {
   } // namespace ftr
 
 } // namespace ttk
-
-#endif /* end of include guard: GRAPH_TEMPLATE_H */

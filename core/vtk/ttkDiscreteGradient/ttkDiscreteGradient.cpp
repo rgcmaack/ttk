@@ -92,12 +92,6 @@ int ttkDiscreteGradient::fillCriticalPoints(
   PLVertexIdentifiers->SetName(ttk::VertexScalarFieldName);
   PLVertexIdentifiers->SetNumberOfTuples(nPoints);
 
-  vtkNew<vtkIdTypeArray> offsets{}, connectivity{};
-  offsets->SetNumberOfComponents(1);
-  offsets->SetNumberOfTuples(nPoints + 1);
-  connectivity->SetNumberOfComponents(1);
-  connectivity->SetNumberOfTuples(nPoints);
-
 #ifdef TTK_ENABLE_OPENMP
 #pragma omp parallel for num_threads(this->threadNumber_)
 #endif // TTK_ENABLE_OPENMP
@@ -108,15 +102,9 @@ int ttkDiscreteGradient::fillCriticalPoints(
     cellScalars->SetTuple1(i, scalars[critPoints_PLVertexIdentifiers[i]]);
     isOnBoundary->SetTuple1(i, critPoints_isOnBoundary[i]);
     PLVertexIdentifiers->SetTuple1(i, critPoints_PLVertexIdentifiers[i]);
-    offsets->SetTuple1(i, i);
-    connectivity->SetTuple1(i, i);
   }
-  offsets->SetTuple1(nPoints, nPoints);
 
-  vtkNew<vtkCellArray> cells{};
-  cells->SetData(offsets, connectivity);
-  outputCriticalPoints->SetPoints(points);
-  outputCriticalPoints->SetVerts(cells);
+  ttkUtils::CellVertexFromPoints(outputCriticalPoints, points);
 
   vtkPointData *pointData = outputCriticalPoints->GetPointData();
 #ifndef TTK_ENABLE_KAMIKAZE
@@ -126,7 +114,7 @@ int ttkDiscreteGradient::fillCriticalPoints(
   }
 #endif
 
-  pointData->AddArray(cellDimensions);
+  pointData->SetScalars(cellDimensions);
   pointData->AddArray(cellIds);
   pointData->AddArray(cellScalars);
   pointData->AddArray(isOnBoundary);
@@ -148,10 +136,13 @@ int ttkDiscreteGradient::fillGradientGlyphs(
   std::vector<std::array<float, 3>> gradientGlyphs_points;
   std::vector<char> gradientGlyphs_points_pairOrigins;
   std::vector<char> gradientGlyphs_cells_pairTypes;
+  std::vector<SimplexId> gradientGlyphs_point_ids{};
+  std::vector<char> gradientGlyphs_point_dimensions{};
 
-  this->setGradientGlyphs(gradientGlyphs_points,
-                          gradientGlyphs_points_pairOrigins,
-                          gradientGlyphs_cells_pairTypes, triangulation);
+  this->setGradientGlyphs(
+    gradientGlyphs_points, gradientGlyphs_points_pairOrigins,
+    gradientGlyphs_cells_pairTypes, gradientGlyphs_point_ids,
+    gradientGlyphs_point_dimensions, triangulation);
 
   const auto nPoints = gradientGlyphs_points.size();
 
@@ -182,6 +173,14 @@ int ttkDiscreteGradient::fillGradientGlyphs(
   pairTypes->SetNumberOfComponents(1);
   pairTypes->SetName("PairType");
   pairTypes->SetNumberOfTuples(nCells);
+  vtkNew<ttkSimplexIdTypeArray> cellIds{};
+  cellIds->SetNumberOfComponents(1);
+  cellIds->SetName("CellId");
+  cellIds->SetNumberOfTuples(2 * nCells);
+  vtkNew<vtkSignedCharArray> cellDimensions{};
+  cellDimensions->SetNumberOfComponents(1);
+  cellDimensions->SetName("CellDimension");
+  cellDimensions->SetNumberOfTuples(2 * nCells);
 
 #ifdef TTK_ENABLE_OPENMP
 #pragma omp parallel for num_threads(this->threadNumber_)
@@ -192,6 +191,12 @@ int ttkDiscreteGradient::fillGradientGlyphs(
     connectivity->SetTuple1(2 * i, 2 * i);
     connectivity->SetTuple1(2 * i + 1, 2 * i + 1);
     pairTypes->SetTuple1(i, gradientGlyphs_cells_pairTypes[i]);
+    cellIds->SetTuple1(2 * i + 0, gradientGlyphs_point_ids[2 * i + 0]);
+    cellIds->SetTuple1(2 * i + 1, gradientGlyphs_point_ids[2 * i + 1]);
+    cellDimensions->SetTuple1(
+      2 * i + 0, gradientGlyphs_point_dimensions[2 * i + 0]);
+    cellDimensions->SetTuple1(
+      2 * i + 1, gradientGlyphs_point_dimensions[2 * i + 1]);
   }
   offsets->SetTuple1(nCells, connectivity->GetNumberOfTuples());
 
@@ -210,7 +215,9 @@ int ttkDiscreteGradient::fillGradientGlyphs(
 #endif
 
   pointData->AddArray(pairOrigins);
-  cellData->AddArray(pairTypes);
+  pointData->AddArray(cellIds);
+  pointData->AddArray(cellDimensions);
+  cellData->SetScalars(pairTypes);
 
   this->printMsg(
     "Computed gradient glyphs", 1.0, tm.getElapsedTime(), this->threadNumber_);
@@ -268,7 +275,8 @@ int ttkDiscreteGradient::RequestData(vtkInformation *ttkNotUsed(request),
 #endif
 
   // baseCode processing
-  this->setInputScalarField(ttkUtils::GetVoidPointer(inputScalars));
+  this->setInputScalarField(
+    ttkUtils::GetVoidPointer(inputScalars), inputScalars->GetMTime());
   this->setInputOffsets(
     static_cast<SimplexId *>(ttkUtils::GetVoidPointer(inputOffsets)));
 

@@ -23,16 +23,12 @@ void DiscreteGradient::initMemory(const AbstractTriangulation &triangulation) {
     numberOfCells[i] = this->getNumberOfCells(i, triangulation);
   }
 
-  dmtMax2PL_.clear();
-  dmt1Saddle2PL_.clear();
-  dmt2Saddle2PL_.clear();
-
   // clear & init gradient memory
   for(int i = 0; i < dimensionality_; ++i) {
-    gradient_[2 * i].clear();
-    gradient_[2 * i].resize(numberOfCells[i], -1);
-    gradient_[2 * i + 1].clear();
-    gradient_[2 * i + 1].resize(numberOfCells[i + 1], -1);
+    (*gradient_)[2 * i].clear();
+    (*gradient_)[2 * i].resize(numberOfCells[i], -1);
+    (*gradient_)[2 * i + 1].clear();
+    (*gradient_)[2 * i + 1].resize(numberOfCells[i + 1], -1);
   }
 
   std::vector<std::vector<std::string>> rows{
@@ -120,7 +116,7 @@ CriticalType
 
 bool DiscreteGradient::isMinimum(const Cell &cell) const {
   if(cell.dim_ == 0) {
-    return (gradient_[0][cell.id_] == -1);
+    return ((*gradient_)[0][cell.id_] == -1);
   }
 
   return false;
@@ -128,7 +124,8 @@ bool DiscreteGradient::isMinimum(const Cell &cell) const {
 
 bool DiscreteGradient::isSaddle1(const Cell &cell) const {
   if(cell.dim_ == 1) {
-    return (gradient_[1][cell.id_] == -1 and gradient_[2][cell.id_] == -1);
+    return ((*gradient_)[1][cell.id_] == -1
+            and (*gradient_)[2][cell.id_] == -1);
   }
 
   return false;
@@ -136,7 +133,8 @@ bool DiscreteGradient::isSaddle1(const Cell &cell) const {
 
 bool DiscreteGradient::isSaddle2(const Cell &cell) const {
   if(dimensionality_ == 3 and cell.dim_ == 2) {
-    return (gradient_[3][cell.id_] == -1 and gradient_[4][cell.id_] == -1);
+    return ((*gradient_)[3][cell.id_] == -1
+            and (*gradient_)[4][cell.id_] == -1);
   }
 
   return false;
@@ -144,15 +142,15 @@ bool DiscreteGradient::isSaddle2(const Cell &cell) const {
 
 bool DiscreteGradient::isMaximum(const Cell &cell) const {
   if(dimensionality_ == 1 and cell.dim_ == 1) {
-    return (gradient_[1][cell.id_] == -1);
+    return ((*gradient_)[1][cell.id_] == -1);
   }
 
   if(dimensionality_ == 2 and cell.dim_ == 2) {
-    return (gradient_[3][cell.id_] == -1);
+    return ((*gradient_)[3][cell.id_] == -1);
   }
 
   if(dimensionality_ == 3 and cell.dim_ == 3) {
-    return (gradient_[5][cell.id_] == -1);
+    return ((*gradient_)[5][cell.id_] == -1);
   }
 
   return false;
@@ -166,21 +164,21 @@ bool DiscreteGradient::isCellCritical(const int cellDim,
   }
 
   if(cellDim == 0) {
-    return (gradient_[0][cellId] == -1);
+    return ((*gradient_)[0][cellId] == -1);
   }
 
   if(cellDim == 1) {
-    return (gradient_[1][cellId] == -1
-            && (dimensionality_ == 1 || gradient_[2][cellId] == -1));
+    return ((*gradient_)[1][cellId] == -1
+            && (dimensionality_ == 1 || (*gradient_)[2][cellId] == -1));
   }
 
   if(cellDim == 2) {
-    return (gradient_[3][cellId] == -1
-            && (dimensionality_ == 2 || gradient_[4][cellId] == -1));
+    return ((*gradient_)[3][cellId] == -1
+            && (dimensionality_ == 2 || (*gradient_)[4][cellId] == -1));
   }
 
   if(cellDim == 3) {
-    return (gradient_[5][cellId] == -1);
+    return ((*gradient_)[5][cellId] == -1);
   }
 
   return false;
@@ -188,20 +186,6 @@ bool DiscreteGradient::isCellCritical(const int cellDim,
 
 bool DiscreteGradient::isCellCritical(const Cell &cell) const {
   return isCellCritical(cell.dim_, cell.id_);
-}
-
-int DiscreteGradient::getCriticalPointMap(
-  const vector<pair<SimplexId, char>> &criticalPoints, vector<char> &isPL) {
-  isPL.resize(numberOfVertices_);
-  std::fill(isPL.begin(), isPL.end(), 0);
-  for(pair<SimplexId, char> criticalPoint : criticalPoints) {
-    const SimplexId criticalPointId = criticalPoint.first;
-    const char criticalPointType = criticalPoint.second;
-
-    isPL[criticalPointId] = criticalPointType;
-  }
-
-  return 0;
 }
 
 int DiscreteGradient::setManifoldSize(

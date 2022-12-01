@@ -31,7 +31,7 @@
         thresholds for topological simplification or for fast similarity
         estimations for instance.
 
-        Three backends are available for the computation of the persistence diagram:
+        Five backends are available for the computation of the persistence diagram:
 
         1) FTM
 
@@ -53,12 +53,40 @@
         Set both the Start and End resolution levels to -1 to execute in
         non-progressive mode on the finest level, i.e. the original grid.
 
-        3) Persistent Simplex
+        3) Discrete Morse Sandwich (default)
+
+        Related publication:
+        'Discrete Morse Sandwich: Fast Computation of Persistence Diagrams for Scalar Data -- An Algorithm and A Benchmark'
+        Pierre Guillou, Jules Vidal, Julien Tierny
+        Technical Report, arXiv:2206.13932, 2022
+
+        Fast and versatile algorithm for persistence diagram computation.
+
+        4) Approximate Approach
+
+        Related publication
+        "Fast Approximation of Persistence Diagrams with Guarantees"
+        Jules Vidal, Julien Tierny
+        IEEE Symposium on Large Data Visualization and Analysis (LDAV), 2021.
+
+        This approach computes an approximation of the persistence diagram of the extremum-saddle pairs
+        of an input scalar field. It necessitates the input data to be defined on an implicit regular grid.
+
+        The approximation comes with a user-controlled error on the Bottleneck distance to the exact diagram.
+        The tolerance on the relative Bottleneck error is set using the parameter "Error".
+        An error of 0.05 corresponds to a maximal relative Bottleneck error of 5%.
+
+        See ttkPersistenceDiagramApproximation for more outputs, such as the approximated scalar field and visual cues
+        about the diagram approximation.
+
+
+        5) Persistent Simplex
 
         This is a textbook (and very slow) algorithm, described in
         "Algorithm and Theory of Computation Handbook (Second Edition)
         - Special Topics and Techniques" by Atallah and Blanton on
         page 97.
+
 
         See also ContourForests, PersistenceCurve, ScalarFieldCriticalPoints,
         TopologicalSimplification.
@@ -69,8 +97,12 @@
 
         - https://topology-tool-kit.github.io/examples/1manifoldLearningCircles/
 
-        - https://topology-tool-kit.github.io/examples/2manifoldLearning/        
+        - https://topology-tool-kit.github.io/examples/2manifoldLearning/
+
+        - https://topology-tool-kit.github.io/examples/BuiltInExample1/
         
+        - https://topology-tool-kit.github.io/examples/clusteringKelvinHelmholtzInstabilities/
+
         - https://topology-tool-kit.github.io/examples/ctBones/
 
         - https://topology-tool-kit.github.io/examples/dragon/
@@ -79,10 +111,12 @@
 
         - https://topology-tool-kit.github.io/examples/imageProcessing/
 
+        - https://topology-tool-kit.github.io/examples/interactionSites/
+
         - https://topology-tool-kit.github.io/examples/karhunenLoveDigits64Dimensions/
 
         - https://topology-tool-kit.github.io/examples/morsePersistence/
-        
+
         - https://topology-tool-kit.github.io/examples/morseSmaleQuadrangulation/
 
         - https://topology-tool-kit.github.io/examples/persistenceClustering0/
@@ -95,13 +129,19 @@
 
         - https://topology-tool-kit.github.io/examples/persistenceClustering4/
 
+        - https://topology-tool-kit.github.io/examples/persistenceDiagramClustering/
+
+        - https://topology-tool-kit.github.io/examples/persistenceDiagramDistance/
+
         - https://topology-tool-kit.github.io/examples/tectonicPuzzle/
 
-        - https://topology-tool-kit.github.io/examples/uncertainStartingVortex/
-        
-        - https://topology-tool-kit.github.io/examples/interactionSites/
+        - https://topology-tool-kit.github.io/examples/tribute/
 
-                
+        - https://topology-tool-kit.github.io/examples/uncertainStartingVortex/
+
+
+
+
       </Documentation>
 
       <InputProperty
@@ -187,20 +227,22 @@
       </StringVectorProperty>
 
        <IntVectorProperty
-          name="BackEnd"
-          label="Backend"
-          command="SetBackEnd"
-          number_of_elements="1"
-         default_values="0"
-         panel_visibility="advanced" >
+           name="BackEnd"
+           label="Backend"
+           command="SetBackEnd"
+           number_of_elements="1"
+           default_values="2"
+           panel_visibility="advanced" >
          <EnumerationDomain name="enum">
           <Entry value="0" text="FTM (IEEE TPSD 2019)"/>
           <Entry value="1" text="Progressive Approach (IEEE TVCG 2020)"/>
-          <Entry value="2" text="Persistent Simplex (Zomorodian 2010)"/>
+          <Entry value="2" text="Discrete Morse Sandwich"/>
+          <Entry value="3" text="Approximation Approach (IEEE LDAV 2021)"/>
+          <Entry value="4" text="Persistent Simplex (Zomorodian 2010)"/>
         </EnumerationDomain>
         <Documentation>
             Backend for the computation of the persistence diagram.
-            The progressive approach only allows the computation of saddle-extremum pairs.
+            The progressive and approximate approaches only allow the computation of saddle-extremum pairs on regular grids.
         </Documentation>
       </IntVectorProperty>
 
@@ -213,10 +255,7 @@
          panel_visibility="advanced" >
         <IntRangeDomain name="range" min="-1" max="100" />
         <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator"
-            mode="visibility"
-            property="BackEnd"
-            value="1" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="BackEnd" values="1" />
         </Hints>
         <Documentation>
              Set the starting level of resolution for the progressive approach.
@@ -233,10 +272,7 @@
          panel_visibility="advanced" >
         <IntRangeDomain name="range" min="-1" max="100" />
         <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator"
-            mode="visibility"
-            property="BackEnd"
-            value="1" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="BackEnd" values="1" />
         </Hints>
         <Documentation>
              Set the ending level of resolution for the progressive approach.
@@ -264,6 +300,26 @@
       </IntVectorProperty>
 
       <DoubleVectorProperty
+          name="Epsilon"
+          label="Error"
+          command="SetEpsilon"
+          number_of_elements="1"
+          default_values="0.05"
+         panel_visibility="advanced" >
+          <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="BackEnd"
+                                   value="3" />
+        </Hints>
+        <Documentation>
+            Tolerance on the maximal relative Bottleneck error.
+            Corresponds to the parameter Epsilon in the publication.
+            An error of 0.05 denotes a maximal relative error of 5%.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty
           name="TimeLimit"
           label="Time Limit (s)"
           command="SetTimeLimit"
@@ -283,20 +339,122 @@
       </DoubleVectorProperty>
 
       <IntVectorProperty
-         name="SaddleConnectors"
-         command="SetComputeSaddleConnectors"
-         label="Compute saddle-saddle pairs (SLOW!)"
-         number_of_elements="1"
-         default_values="0" panel_visibility="advanced">
-          <Hints>
+          name="Ignore Boundary"
+          command="SetIgnoreBoundary"
+          number_of_elements="1"
+          default_values="0" panel_visibility="advanced">
+        <BooleanDomain name="bool"/>
+        <Hints>
           <PropertyWidgetDecorator type="GenericDecorator"
                                    mode="visibility"
                                    property="BackEnd"
-                                   value="0" />
+                                   value="2" />
         </Hints>
-        <BooleanDomain name="bool"/>
         <Documentation>
-          Add saddle-saddle pairs in the diagram (SLOW!).
+          Ignore the boundary component.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty
+          name="DMSDimensions"
+          label="Dimensions"
+          command="SetDMSDimensions"
+          number_of_elements="1"
+          default_values="0"
+          panel_visibility="advanced" >
+         <EnumerationDomain name="enum">
+          <Entry value="0" text="All Dimensions"/>
+          <Entry value="1" text="Selected Dimensions (no infinite pairs)"/>
+        </EnumerationDomain>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="BackEnd"
+                                   value="2" />
+        </Hints>
+        <Documentation>
+          Should we compute all pairs with DiscreteMorseSandwich or a selection?
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty
+          name="ComputeMinSad"
+          label="Minimum-saddle diagram (dimension 0)"
+          command="SetComputeMinSad"
+          number_of_elements="1"
+          default_values="1"
+          panel_visibility="advanced">
+        <BooleanDomain name="bool"/>
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="and">
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       mode="visibility"
+                                       property="BackEnd"
+                                       value="2" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       mode="visibility"
+                                       property="DMSDimensions"
+                                       value="1" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          Compute the minimum-saddle pairs.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty
+          name="ComputeSadSad"
+          label="Saddle-saddle diagram (dimension 1, slowest)"
+          command="SetComputeSadSad"
+          number_of_elements="1"
+          default_values="1"
+          panel_visibility="advanced">
+        <BooleanDomain name="bool"/>
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="and">
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       mode="visibility"
+                                       property="BackEnd"
+                                       value="2" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       mode="visibility"
+                                       property="DMSDimensions"
+                                       value="1" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          Compute the saddle-saddle pairs.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty
+          name="ComputeSadMax"
+          label="Saddle-maximum diagram (dimension d - 1)"
+          command="SetComputeSadMax"
+          number_of_elements="1"
+          default_values="1"
+          panel_visibility="advanced">
+        <BooleanDomain name="bool"/>
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="and">
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       mode="visibility"
+                                       property="BackEnd"
+                                       value="2" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       mode="visibility"
+                                       property="DMSDimensions"
+                                       value="1" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          Compute the saddle-maximum pairs.
         </Documentation>
       </IntVectorProperty>
 
@@ -312,22 +470,47 @@
         </Documentation>
       </IntVectorProperty>
 
+      <IntVectorProperty
+          name="ClearDGCache"
+          label="Clear DiscreteGradient Cache"
+          command="SetClearDGCache"
+          number_of_elements="1"
+          default_values="0"
+          panel_visibility="advanced" >
+        <BooleanDomain name="bool"/>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="BackEnd"
+                                   value="2" />
+        </Hints>
+        <Documentation>
+          To clear the DiscreteGradient cache after computation (releases memory).
+        </Documentation>
+      </IntVectorProperty>
+
       <PropertyGroup panel_widget="Line" label="Input options">
-          <Property name="ScalarFieldNew" />
-          <Property name="ForceInputOffsetScalarField"/>
-          <Property name="InputOffsetScalarFieldNameNew"/>
+        <Property name="ScalarFieldNew" />
+        <Property name="ForceInputOffsetScalarField"/>
+        <Property name="InputOffsetScalarFieldNameNew"/>
         <Property name="BackEnd" />
         <Property name="StartingResolutionLevel" />
         <Property name="StoppingResolutionLevel" />
         <Property name="IsResumable" />
         <Property name="TimeLimit" />
+        <Property name="Epsilon" />
         <Property name="ScalarFieldNew" />
         <Property name="ForceInputOffsetScalarField"/>
         <Property name="InputOffsetScalarFieldNameNew"/>
       </PropertyGroup>
 
       <PropertyGroup panel_widget="Line" label="Output options">
-        <Property name="SaddleConnectors" />
+        <Property name="Ignore Boundary" />
+        <Property name="DMSDimensions" />
+        <Property name="ComputeMinSad" />
+        <Property name="ComputeSadSad" />
+        <Property name="ComputeSadMax" />
+        <Property name="ClearDGCache" />
         <Property name="ShowInsideDomain" />
       </PropertyGroup>
 

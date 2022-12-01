@@ -11,8 +11,7 @@ Octree::Octree(const AbstractTriangulation *t, const int k) {
   initialize(t, k);
 }
 
-Octree::~Octree() {
-}
+Octree::~Octree() = default;
 
 // Initialize the octree with the given triangulation and bucket threshold.
 void Octree::initialize(const AbstractTriangulation *t, const int k) {
@@ -48,7 +47,7 @@ void Octree::initialize(const AbstractTriangulation *t, const int k) {
  */
 bool Octree::empty() {
   OctreeNode *root = lookupNode(1);
-  if(root->vertexIds_.empty() && !root->childExists_) {
+  if(root != nullptr && root->vertexIds_.empty() && !root->childExists_) {
     return true;
   }
 
@@ -127,6 +126,9 @@ int Octree::insertVertex(SimplexId &vertexId) {
   }
 
   OctreeNode *current = lookupNode(1);
+  if(current == nullptr) {
+    return -2;
+  }
   uint32_t location = current->locCode_;
   std::array<float, 3> ncenter{}, nsize{};
 
@@ -159,16 +161,15 @@ int Octree::insertCell(SimplexId &cellId) {
   }
 
   int dim = triangulation_->getCellVertexNumber(cellId);
-  uint32_t location{};
   std::array<float, 3> ncenter{}, nsize{};
   for(int i = 0; i < dim; i++) {
     SimplexId vertexId{};
     OctreeNode *current = lookupNode(1);
 
-    location = current->locCode_;
     triangulation_->getCellVertex(cellId, i, vertexId);
 
     while(current != nullptr && current->childExists_ != 0) {
+      auto location = current->locCode_;
       computeCenterSize(location, ncenter, nsize);
       location = getChildLocation(location, vertexId, ncenter);
       current = lookupNode(location);

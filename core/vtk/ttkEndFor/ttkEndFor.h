@@ -14,6 +14,12 @@
 /// \b Online \b examples: \n
 ///   - <a href="https://topology-tool-kit.github.io/examples/cinemaIO/">Cinema
 ///   IO example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/contourTreeAlignment/">Contour
+///   Tree Alignment example</a> \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/nestedTrackingFromOverlap/">Nested
+///   Tracking from Overlap example</a> \n
 
 #pragma once
 
@@ -34,7 +40,7 @@ public:
 
 protected:
   ttkEndFor();
-  ~ttkEndFor();
+  ~ttkEndFor() override;
 
   int FillInputPortInformation(int port, vtkInformation *info) override;
   int FillOutputPortInformation(int port, vtkInformation *info) override;

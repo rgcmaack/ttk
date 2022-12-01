@@ -33,6 +33,12 @@ Debug::~Debug() {
 
 int Debug::welcomeMsg(ostream &stream) {
 
+#if TTK_ENABLE_MPI
+  if(MPIrank_ != 0) {
+    ttk::welcomeMsg_ = false;
+  }
+#endif
+
   int priorityAsInt = (int)debug::Priority::PERFORMANCE;
 
   if((ttk::welcomeMsg_) && (debugLevel_ > priorityAsInt)) {
@@ -53,6 +59,25 @@ int Debug::welcomeMsg(ostream &stream) {
     printMsg(
       debug::output::YELLOW + "Expect important performance degradation.",
       debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg("", debug::Priority::WARNING, debug::LineMode::NEW, stream);
+#endif
+#ifndef TTK_ENABLE_OPENMP
+    printMsg("", debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg(
+      debug::output::YELLOW + "TTK has *NOT* been built in parallel mode!",
+      debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg(debug::output::YELLOW + "DEVELOPERS ONLY!",
+             debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg(
+      debug::output::YELLOW + "Expect important performance degradation.",
+      debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg("", debug::Priority::WARNING, debug::LineMode::NEW, stream);
+
+    printMsg(
+      debug::output::YELLOW + "To enable the parallel mode, rebuild TTK with:",
+      debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg(debug::output::YELLOW + "  -DTTK_ENABLE_OPENMP=ON",
+             debug::Priority::WARNING, debug::LineMode::NEW, stream);
     printMsg("", debug::Priority::WARNING, debug::LineMode::NEW, stream);
 #endif
 #ifndef TTK_ENABLE_KAMIKAZE
@@ -93,6 +118,25 @@ int Debug::welcomeMsg(ostream &stream) {
              debug::Priority::WARNING, debug::LineMode::NEW, stream);
     printMsg("", debug::Priority::WARNING, debug::LineMode::NEW, stream);
 #endif
+#ifdef TTK_REDUCE_TEMPLATE_INSTANTIATIONS
+    printMsg("", debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg(
+      debug::output::YELLOW + "TTK has *NOT* been built with all VTK types!",
+      debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg(debug::output::YELLOW + "DEVELOPERS ONLY!",
+             debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg(debug::output::YELLOW + "Expect unsupported scalar field types!",
+             debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg("", debug::Priority::WARNING, debug::LineMode::NEW, stream);
+
+    printMsg(
+      debug::output::YELLOW + "To support all VTK types, rebuild TTK with:",
+      debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg(
+      debug::output::YELLOW + "  -DTTK_REDUCE_TEMPLATE_INSTANTIATIONS=OFF",
+      debug::Priority::WARNING, debug::LineMode::NEW, stream);
+    printMsg("", debug::Priority::WARNING, debug::LineMode::NEW, stream);
+#endif // TTK_REDUCE_TEMPLATE_INSTANTIATIONS
 
     debugMsgPrefix_ = currentPrefix;
   }

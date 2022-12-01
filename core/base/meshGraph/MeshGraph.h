@@ -30,6 +30,11 @@
 ///     |                   |
 ///     a0--s0d--s1d-- ...  b0
 ///
+///
+/// \b Online \b examples: \n
+///   - <a
+///   href="https://topology-tool-kit.github.io/examples/nestedTrackingFromOverlap/">Nested
+///   Tracking from Overlap example</a> \n
 
 #pragma once
 
@@ -44,7 +49,7 @@ namespace ttk {
     MeshGraph() {
       this->setDebugMsgPrefix("MeshGraph");
     }
-    ~MeshGraph() = default;
+    ~MeshGraph() override = default;
 
     inline size_t computeNumberOfOutputPoints(const size_t &nInputPoints,
                                               const size_t &nInputCells,
